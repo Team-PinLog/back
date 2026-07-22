@@ -94,7 +94,38 @@ ContextAiRequestedListener
 - `@Async`를 붙여 응답 지연이 사용자 요청 시간에 포함되지 않게 합니다.
 - 전용 `ThreadPoolTaskExecutor`(`aiCallExecutor`)를 사용하고 큐가 가득 차면 `CallerRunsPolicy` 대신 **버립니다**. 버려진 요청은 PENDING 상태로 남아 재스캔 대상이 되므로 유실이 아닙니다.
 
-이벤트 payload에는 엔티티를 담지 않고 `contextId`, `contextVersion`, `memberId`, `recordId`만 담습니다. 리스너는 별도 읽기 전용 트랜잭션에서 최신 Core Context 본문과 Place metadata를 다시 조회해 요청을 만듭니다. 커밋 직후 값이 이미 바뀌었을 수 있고, 오래된 본문을 보내면 저장 직전 Version 검사에서 폐기되어 낭비이기 때문입니다.
+이벤트 payload에는 엔티티를 담지 않고 `contextId`, `memberId`, `recordId`만 담습니다. 리스너는 별도 읽기 전용 트랜잭션에서 해당 `context_id`의 Context 본문과 Place metadata를 다시 조회해 요청을 만듭니다. 엔티티를 그대로 실어 보내면 영속성 컨텍스트 밖에서 지연 로딩이 터지고, 커밋 시점 스냅샷을 담아두면 재사용 경로에서 무엇이 최신인지 판단할 근거가 사라지기 때문입니다.
+
+Context는 불변이므로 재조회한 본문은 이벤트 발행 시점의 본문과 항상 같습니다. 그 사이에 사용자가 수정했다면 이 `context_id`는 이미 삭제·CANCELLED 상태이고, 수정 요청이 만든 **다른 `context_id`**에 대해 별도 이벤트가 발행되어 있습니다. 따라서 조회 결과가 삭제 상태이면 호출을 생략하면 되고, 잘못된 본문을 보낼 위험은 없습니다.
+
+### 4.3 Context 수정 시 호출
+
+수정은 구 Context 삭제와 신 Context 생성의 조합이며, 두 동작이 한 Core 트랜잭션 안에서 처리됩니다. 호출 관점에서 지켜야 할 것은 두 가지입니다.
+
+- 커밋 이후 **신 `context_id`로만** `process`를 호출합니다. 구 `context_id`로는 호출하지 않습니다.
+- 구 Context에 대한 취소 통보 API를 두지 않습니다. 구 State가 CANCELLED이므로 FastAPI가 스스로 폐기합니다.
+
+트랜잭션이 롤백되면 `AFTER_COMMIT` 리스너가 실행되지 않으므로 신 Context에 대한 호출도 발생하지 않습니다. 트랜잭션 의미론의 원본은 [`context-state-sync.md`](context-state-sync.md) 6장입니다.
+
+### 4.4 `process` 요청 payload
+
+논리 계약은 공용 계약 `static/05_AI_설계.md` §13.1이 원본입니다. Spring이 실어 보내는 값은 다음이 전부입니다.
+
+```text
+contextId
+userId
+recordId
+text
+placeMeta
+```
+
+Context 본문 버전 필드는 보내지 않습니다. `context_id`가 곧 본문의 정체성이므로 FastAPI가 버전을 비교할 이유가 없습니다.
+
+**같은 `context_id`로 다른 `text`를 보내는 것은 계약 위반입니다.** FastAPI는 이를 정상적인 Context 수정으로 처리하지 않으며, 상태 검사만 통과하면 낡은 본문이 그대로 저장될 수 있습니다. 따라서 Spring 구현에서 다음을 보장해야 합니다.
+
+- 요청의 `text`는 반드시 그 `context_id`의 Core 본문을 그대로 조회해서 채웁니다. 다른 곳에서 넘어온 문자열을 그대로 신뢰하지 않습니다.
+- 수정은 언제나 새 `context_id`로 호출합니다. 기존 `context_id`에 새 본문을 실어 재호출하는 코드 경로를 만들지 않습니다.
+- 재시도 요청도 동일합니다. 이전 요청 본문을 보관했다가 재전송하지 않고 매번 재조회합니다.
 
 ## 5. Fire-and-Forget 의미
 
@@ -122,6 +153,7 @@ ContextAiRequestedListener
 - Core 데이터는 그대로 유지됩니다.
 - `context_ai_state`는 PENDING으로 남습니다.
 - `retry_count`를 여기서 증가시키지 않습니다. 증가 주체는 Scheduler입니다.
+- **상태를 FAILED로 바꾸지 않습니다.** 호출 실패는 FastAPI 내부 작업의 실패가 아니므로 Spring이 이를 대신 판단해 기록하지 않습니다. Spring이 쓰는 유일한 FAILED는 재시도 소진 Finalizer뿐입니다. 상세는 [`context-state-sync.md`](context-state-sync.md) 8장을 참조합니다.
 - 사용자 응답은 성공입니다. AI 호출 실패를 API 오류로 노출하지 않습니다.
 
 PENDING이 만료(5분)되면 재스캔이 같은 Context를 다시 집어 처리합니다. 상세는 [`ai-rescan-scheduler.md`](ai-rescan-scheduler.md)를 참조합니다.

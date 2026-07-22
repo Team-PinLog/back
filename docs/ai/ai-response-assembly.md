@@ -74,27 +74,45 @@ SELECT ct.record_id, kp.code, kp.display_name, kp.category
 FROM core.context ct
 JOIN ai.context_ai_state st ON st.context_id = ct.id
 JOIN ai.context_keyword  ck ON ck.context_id = ct.id
-                           AND ck.context_version = ct.body_version
 JOIN ai.keyword_preset   kp ON kp.id = ck.keyword_id
 WHERE ct.record_id IN (:recordIds)
   AND ct.deleted_at IS NULL
   AND st.keyword_status = 'COMPLETED'
-  AND st.context_version = ct.body_version
   AND kp.visibility = 'PUBLIC'
   AND kp.active = true;
 ```
 
 소유자용은 마지막 Visibility 조건만 `IN ('PUBLIC','PRIVATE_ONLY')`로 바꿉니다.
 
-핵심 조건 세 가지:
+정리하면 두 경로의 판정 조건은 다음과 같습니다.
 
-- `ck.context_version = ct.body_version` — 구버전 Keyword 차단
-- `st.context_version = ct.body_version` — 상태와 본문의 버전 일치
-- `st.keyword_status = 'COMPLETED'` — 미완료·취소 상태 제외
+| 대상 | 조건 |
+|---|---|
+| 본인 | `keyword_status = COMPLETED` AND Preset `active = true` AND `visibility IN ('PUBLIC','PRIVATE_ONLY')` |
+| 타인 | `keyword_status = COMPLETED` AND Preset `active = true` AND `visibility = 'PUBLIC'` |
 
-`keyword_status = COMPLETED`만 확인하고 Version 비교를 빼면, v1 완료 직후 v2로 수정된 찰나에 구 Keyword가 노출됩니다.
+세 조건이 각각 담당하는 것:
 
-### 4.2 N+1 방지
+- `st.keyword_status = 'COMPLETED'` — 미완료·실패·취소 상태 제외
+- `kp.active = true` — 폐기된 Preset 제외
+- `kp.visibility` — 공개 범위 제한
+
+**Context 본문 버전을 비교하는 조건은 없습니다.** Context는 불변이므로 `context_id`가 곧 본문의 정체성이고, `ai.context_keyword`에도 `ai.context_ai_state`에도 본문 버전 컬럼이 존재하지 않습니다. 조회 판정은 State 조인 하나로 끝납니다.
+
+### 4.2 구 Context가 제외되는 방식
+
+Context가 수정되면 구 Context는 소프트 삭제되고 두 status가 CANCELLED가 됩니다. 따라서 위 쿼리에서 구 Context는 **두 조건에 의해 이중으로 제외**됩니다.
+
+- `ct.deleted_at IS NULL` — Core 소프트 삭제
+- `st.keyword_status = 'COMPLETED'` — CANCELLED는 통과하지 못함
+
+구 Context의 `keyword_status`가 직전까지 COMPLETED였더라도 수정 트랜잭션이 CANCELLED로 덮으므로, 수정 커밋 시점 이후에는 구 Keyword가 노출되지 않습니다. 커밋 전에는 구 Context가 여전히 유효한 최신 Context이므로 노출되는 것이 정상입니다. 중간 상태가 없다는 것이 단일 트랜잭션 설계의 이점입니다.
+
+**따라서 `ai.context_keyword` Row를 즉시 물리 삭제할 필요가 없습니다.** 삭제 트랜잭션에서 Keyword Row를 지우는 작업을 추가하지 않습니다. 취소 처리 대상은 `context_ai_state`와 `context_embedding`뿐이며, `context_keyword`와 `context_keyword_analysis`는 State에 의해 자연히 차단됩니다. 물리 삭제는 향후 보존 정책에 따른 정리 배치의 몫입니다.
+
+신 Context는 새 `context_id`이므로 아직 Keyword가 없습니다. 이 구간의 응답은 5장의 "AI 미완료" 규칙에 따라 빈 배열입니다.
+
+### 4.3 N+1 방지
 
 Record 목록·Collection 상세·Feed 모두 Record 여러 건을 한 번에 그립니다. Keyword는 `record_id IN (:recordIds)`로 **일괄 조회**한 뒤 애플리케이션에서 `record_id` 기준으로 그룹핑합니다. Record별 조회를 반복하지 않습니다.
 
@@ -109,7 +127,7 @@ Record Keyword와 Collection Keyword는 저장하지 않고 이 조인 집계로
 | `keyword_status = PENDING` | `"keywords": []` |
 | `keyword_status = PROCESSING` | `"keywords": []` |
 | `keyword_status = FAILED` | `"keywords": []` |
-| `keyword_status = CANCELLED` | 해당 Context 자체가 응답 대상 아님 |
+| `keyword_status = CANCELLED` | 해당 Context 자체가 응답 대상 아님 (삭제되었거나 수정으로 교체된 구 Context) |
 | 매칭 Keyword가 0개인 COMPLETED | `"keywords": []` |
 | `context_ai_state` 행 자체가 없음 | `"keywords": []` |
 
@@ -120,6 +138,7 @@ Record Keyword와 Collection Keyword는 저장하지 않고 이 조인 집계로
 - HTTP 상태 코드를 바꾸지 않습니다. `200`입니다.
 - 마지막 두 행이 중요합니다. "매칭 Keyword 없음"과 "AI 미완료"는 응답상 구분되지 않으며, 구분할 필요도 없습니다. 매칭 결과 0건은 오류가 아니라 정상 COMPLETED입니다.
 - 이 규칙은 Feed에도 그대로 적용됩니다. AI 미완료 Collection도 Keyword 없이 기본 조회와 Feed 노출이 가능해야 합니다.
+- **수정 직후도 같은 케이스입니다.** 신 Context는 새 `context_id`로 PENDING부터 시작하므로 처리가 끝날 때까지 Keyword가 비어 있습니다. 이를 오류나 별도 상태로 표현하지 않습니다.
 
 `4.1`의 쿼리는 LEFT JOIN이 아니라 INNER JOIN이므로 미완료 Context는 결과에 아예 나오지 않습니다. 그룹핑 단계에서 `recordIds` 전체를 기준으로 맵을 초기화하고 조회 결과를 채우는 방식으로 구현하면, 결과가 없는 Record가 자연히 빈 리스트가 됩니다.
 

@@ -5,9 +5,11 @@
 
 ## 1. 범위
 
-Context 삭제, Record 삭제, 회원 탈퇴 시 Spring이 AI 파생 데이터를 어떻게 취소 처리하는지 정의합니다.
+Context 삭제, Record 삭제, 회원 탈퇴, 그리고 **Context 수정으로 인한 구 Context 취소** 시 Spring이 AI 파생 데이터를 어떻게 처리하는지 정의합니다.
 
 Core 도메인의 소프트 삭제 절차(활성 Context 수 확인, 마지막 Record였던 Collection 자동 삭제, `record_count` 갱신 등)는 데이터 모델 문서가 원본입니다. 여기서는 그 트랜잭션에 **추가로 붙는 AI 처리**만 다룹니다.
+
+Context는 불변 엔티티이므로 수정은 구 Context 삭제와 신 Context 생성의 조합입니다. 그 결과 **삭제와 수정은 완전히 동일한 취소 경로를 사용합니다.** 수정 전용 취소 로직이나 수정 전용 상태 전이는 존재하지 않으며, 이 문서의 3장 공통 처리가 두 경우 모두에 그대로 적용됩니다. 수정 트랜잭션의 전체 순서는 [`context-state-sync.md`](context-state-sync.md) 5장이 원본입니다.
 
 ## 2. 두 장치의 역할 분리
 
@@ -43,6 +45,11 @@ core 소프트 삭제 (deleted_at = now())
 - 상태 변경이므로 `updated_at`을 반드시 갱신합니다. 누락하면 만료 판정과 운영 조회에서 삭제 시점을 알 수 없습니다.
 - FastAPI에 취소 신호를 보내지 않습니다. 취소 통보용 내부 API를 두지 않습니다. FastAPI는 저장 직전 status 검사에서 스스로 폐기합니다.
 - 대상 Context가 여러 건이면 `context_id IN (...)` 형태의 벌크 UPDATE로 처리합니다. 건별 반복은 Record 삭제·탈퇴에서 쿼리 수가 폭발합니다.
+- **`is_deleted` UPDATE의 영향 행 수가 0이어도 정상입니다.** AI 처리가 아직 Embedding을 저장하기 전이면 걸 대상이 되는 Row 자체가 없습니다. 이를 오류로 처리하거나 경고 로그를 남기지 않습니다. 이 경우 늦게 도착하는 Embedding INSERT는 State의 CANCELLED가 차단합니다.
+
+마지막 항목이 두 장치가 서로를 대체하지 않는 이유를 가장 잘 보여줍니다. `is_deleted`는 이미 존재하는 Row에만 걸 수 있고, 아직 존재하지 않는 Row에 대한 방어는 CANCELLED만이 수행합니다.
+
+`ai.context_ai_state` Row가 없는 경우는 다릅니다. Core Context와 AI State는 같은 트랜잭션에서 INSERT되므로 활성 Context에 State가 없다면 정합성 문제이며, 이때는 경고 로그를 남깁니다.
 
 ## 4. Context 삭제
 
@@ -59,6 +66,32 @@ core 소프트 삭제 (deleted_at = now())
 ```
 
 프런트엔드가 Record 삭제를 안내하더라도, 백엔드는 프런트엔드 동작과 무관하게 마지막 Context의 개별 삭제를 거부합니다.
+
+### 4.1 수정으로 인한 구 Context 취소
+
+Context 수정은 위 취소 절차를 구 Context에 그대로 적용한 뒤, 같은 트랜잭션에서 신 Context 생성을 이어 붙인 것입니다.
+
+```text
+@Transactional
+  구 core.context 행 잠금
+  → [이 문서 3장의 공통 처리를 구 Context에 적용]
+       core.context.deleted_at = now()
+       ai.context_embedding: is_deleted = true
+       ai.context_ai_state:  두 status CANCELLED
+  → 신 Context INSERT + 신 AI State PENDING
+커밋
+```
+
+삭제와 다른 점은 **활성 Context 수 검사가 없다는 것**뿐입니다. 수정은 같은 트랜잭션에서 신 Context를 즉시 만들므로 마지막 Context를 수정해도 Record가 Context 0건이 되지 않습니다. "마지막 Context는 개별 삭제 불가" 규칙을 수정 경로에 그대로 적용하면 정상적인 수정이 거부되므로 주의합니다.
+
+AI 관점에서 구 Context는 삭제된 Context와 완전히 동일하게 취급됩니다.
+
+- 재스캔 대상이 아닙니다 (CANCELLED).
+- 늦게 도착한 구 Context 결과는 저장되지 않습니다.
+- 검색과 Keyword 응답에서 제외됩니다.
+- Finalizer가 CANCELLED를 FAILED로 덮어쓰지 않습니다.
+
+신 Context는 새 `context_id`를 가진 독립 처리 단위이며, 구 Context의 AI 상태나 파생 데이터를 승계하지 않습니다.
 
 ## 5. Record 삭제
 
@@ -118,11 +151,13 @@ Record 삭제는 그 Record의 **모든 활성 Context**를 삭제하므로 AI �
 
 ```text
 FastAPI 처리 시작
-→ Spring이 Context 삭제, State CANCELLED
+→ Spring이 Context 삭제(또는 수정에 의한 교체), State CANCELLED
 → FastAPI 결과 도착
 → 저장 전 status 검사: PROCESSING 아님
 → 결과 폐기
 ```
+
+수정으로 교체된 경우도 이 흐름 그대로입니다. 구 `context_id`의 State가 CANCELLED이므로 구 결과가 폐기되고, 신 `context_id`는 별도 State를 가지므로 영향을 받지 않습니다.
 
 ## 8. 조회·계산에서의 제외
 
@@ -130,9 +165,12 @@ CANCELLED와 `is_deleted`는 처리 경로뿐 아니라 모든 읽기 경로에�
 
 | 경로 | 필터 |
 |---|---|
-| 개인 자연어 검색 | `is_deleted = false`, `embedding_status = COMPLETED`, Version·Profile 일치 |
-| Keyword 응답 조립 | `keyword_status = COMPLETED`, Version 일치, `context.deleted_at IS NULL` |
+| 개인 자연어 검색 | `is_deleted = false`, `embedding_status = COMPLETED`, `embedding_profile` 일치 |
+| Keyword 응답 조립 | `keyword_status = COMPLETED`, Preset `active = true`, `context.deleted_at IS NULL` |
 | Feed 특징 계산 | 위와 동일 + `collection`·`record`·`member` 활성 확인 |
 | 재스캔 후보 | CANCELLED 제외 |
+| Finalizer 후보 | CANCELLED 제외 (CANCELLED 우선) |
+
+구 Context를 걸러내기 위한 별도 버전 비교 조건은 없습니다. `keyword_status = CANCELLED` 하나가 수정·삭제 양쪽을 모두 덮습니다.
 
 Feed·Library 조회는 `member`, `collection`, `collection_record`, `record`의 삭제 상태를 모두 확인해야 합니다. 한 단계만 빠져도 삭제된 데이터가 노출됩니다.

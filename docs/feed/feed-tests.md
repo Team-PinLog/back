@@ -122,34 +122,44 @@ N1~N3은 Client Bean을 Mock으로 주입하고 **호출이 0회임을 단언**�
 
 각 시나리오의 SQL과 Fixture는 이 표를 기준으로 back 저장소 테스트에서 관리합니다.
 
+번호는 공용 계약 §16의 시나리오 번호입니다.
+
 | # | 시나리오 | back이 검증할 것 |
 |---|---|---|
-| 1 | v1 처리 중 Context가 v2로 수정됨 | Spring이 `body_version`을 증가시키고 `context_version`을 갱신, 두 status를 PENDING으로 리셋, `retry_count = 0` |
-| 2 | 수정 직후 검색 | 검색 응답 조립 시 Version 불일치 Context가 제외됨. Core 재검증 통과 여부 확인 |
-| 3 | 수정 직후 Keyword 조회 | 응답 쿼리의 `ck.context_version = ct.body_version` 조건으로 구 Keyword 미노출 |
-| 5 | PROCESSING 중 서버 종료 | 10분 경과 후 재스캔이 해당 행을 후보로 선택하고 PENDING으로 되돌림 |
-| 6 | 동일 Context 처리 요청 중복 | `FOR UPDATE SKIP LOCKED`로 동시 실행 두 스레드가 같은 행을 집지 않음 |
-| 7 | 삭제 중 Embedding 완료 | Context 삭제 트랜잭션이 `embedding_status = CANCELLED`와 `is_deleted = true`를 같은 커밋에 반영 |
-| 8 | 삭제 중 Keyword 완료 | 삭제 트랜잭션이 `keyword_status = CANCELLED`를 반영. 조회에서 해당 Context 제외 |
-| 11 | `BLOCKED` Keyword | 소유자·타인 응답, Profile, Collection 특징 어디에도 나타나지 않음 (6장 P6) |
-| 12 | 재스캔 후보 선택 후 Context 삭제 | 재조회에서 삭제를 확인하고 FastAPI 호출을 생략 |
-| 13 | 타인 데이터 검색 시도 | 검색 요청의 `userId`가 인증 컨텍스트에서만 결정됨. 결과 Core 재검증에서 소유권 불일치 Record 제외 |
-| 14 | 한 Record의 여러 Context 일치 | 검색 응답에 해당 Record가 1건만, similarity 순서 유지 |
-| 15 | AI 미완료 Collection | Keyword 없이 기본 조회 성공, Feed 후보·응답에 정상 포함, `"keywords": []` |
+| 1 | 처리 중 사용자가 Context 본문 수정 | 한 트랜잭션에서 구 Context 소프트 삭제 + 두 status CANCELLED + 구 Embedding `is_deleted = true`, 신 Context가 **새 `context_id`** 와 PENDING(`retry_count = 0`)으로 INSERT |
+| 3 | 수정 후 검색 | 구 Context가 `is_deleted = true`와 `embedding_status = CANCELLED`로 검색에서 제외됨. Core 재검증 통과 여부 확인 |
+| 4 | 수정 후 Keyword 조회 | 구 Context Keyword가 직전까지 COMPLETED였더라도 `keyword_status = CANCELLED`로 응답에서 제외됨 |
+| 8 | `PROCESSING` 중 서버 종료 | 10분 경과 후 재스캔이 해당 행을 후보로 선택하고 재요청. Spring이 status를 직접 되돌리지 않음 |
+| 9 | 동일 Context 처리 요청 중복 | `FOR UPDATE SKIP LOCKED`로 동시 실행 두 스레드가 같은 행을 집지 않음 |
+| 10 | 삭제 중 Embedding 완료 | Context 삭제 트랜잭션이 `embedding_status = CANCELLED`와 `is_deleted = true`를 같은 커밋에 반영 |
+| 11 | 삭제 중 Keyword 완료 | 삭제 트랜잭션이 `keyword_status = CANCELLED`를 반영. 조회에서 해당 Context 제외 |
+| 12 | Embedding Row가 없는 상태에서 삭제·수정 | `is_deleted` UPDATE 영향 행 수가 0이어도 정상 처리. 예외·경고 없음 |
+| 15 | `BLOCKED` Keyword | 소유자·타인 응답, Profile, Collection 특징 어디에도 나타나지 않음 (6장 P6) |
+| 16 | `retry_count = 3` stale 상태 | Finalizer가 미완료 단계만 FAILED, COMPLETED 단계는 유지 |
+| 17 | Finalizer 처리 중 Context 삭제 | CANCELLED 우선. Finalizer가 CANCELLED를 FAILED로 덮어쓰지 않음 |
+| 18 | 재스캔 후보 선택 후 Context 삭제 | 재조회에서 삭제를 확인하고 FastAPI 호출을 생략 |
+| 19 | 타인 데이터 검색 시도 | 검색 요청의 `userId`가 인증 컨텍스트에서만 결정됨. 결과 Core 재검증에서 소유권 불일치 Record 제외 |
+| 20 | 한 Record의 여러 Context 일치 | 검색 응답에 해당 Record가 1건만, similarity 순서 유지 |
+| 21 | AI 미완료 Collection | Keyword 없이 기본 조회 성공, Feed 후보·응답에 정상 포함, `"keywords": []` |
+
+2·5·6·7·13·14번은 FastAPI 측 저장 거부와 판정 로직이 대상이므로 ai 레포 테스트가 소관입니다.
 
 추가로 back이 검증해야 하는 상태 관리 항목:
 
 | # | 항목 | 기대 |
 |---|---|---|
-| A1 | 본문이 바뀌지 않는 Context 수정 | `body_version` 미증가, AI State 미변경, FastAPI 미호출 |
-| A2 | 공백만 다른 수정 | 정규화 후 비교하여 `body_version` 미증가 |
-| A3 | FastAPI 호출 실패 | Core 커밋 유지, PENDING 유지, 사용자 응답 성공 |
+| A1 | 본문이 바뀌지 않는 Context 수정 | 정규화 후 본문이 동일하면 Context 미교체, AI State 미변경, FastAPI 미호출, 응답 `contextId` 불변 |
+| A2 | 공백만 다른 수정 | 정규화 후 비교하여 Context 미교체 |
+| A3 | FastAPI 호출 실패 | Core 커밋 유지, PENDING 유지, 사용자 응답 성공. 상태를 FAILED로 쓰지 않음 |
 | A4 | Core 트랜잭션 롤백 | `AFTER_COMMIT` 리스너가 실행되지 않아 FastAPI 미호출 |
-| A5 | `retry_count`가 최대치 도달 | 미완료 단계만 FAILED, COMPLETED 단계는 유지 |
+| A5 | 수정 트랜잭션 실패 | 구 Context 삭제와 신 Context 생성이 **모두** 롤백. 구 Context와 구 State가 수정 이전 상태 유지 |
 | A6 | FAILED 상태 | 재스캔 후보로 선택되지 않음 |
-| A7 | FAILED 상태에서 본문 수정 | PENDING으로 리셋되어 다시 처리 대상이 됨 |
+| A7 | FAILED 상태에서 본문 수정 | 구 State는 CANCELLED가 되고, 신 Context가 새 `context_id`·`retry_count = 0`·PENDING으로 처리됨. 기존 State를 PENDING으로 되돌리지 않음 |
 | A8 | Record 삭제 | 모든 활성 Context의 두 status가 CANCELLED, `is_deleted = true` |
 | A9 | 회원 탈퇴 | 해당 User의 모든 AI 파생 데이터가 CANCELLED·`is_deleted`, Feed·Library 즉시 제외 |
 | A10 | 모든 상태 변경 | `updated_at` 갱신됨 |
+| A11 | 수정 커밋 후 FastAPI 호출 실패 | 신 Context와 PENDING State 유지, 재스캔이 복구 |
+| A12 | 수정 API 응답 | 응답에 **새 `contextId`** 포함. 구 `contextId`를 반환하지 않음 |
+| A13 | 마지막 Context 수정 | "마지막 Context 개별 삭제 불가" 규칙에 걸리지 않고 정상 교체됨 |
 
-A10은 눈에 띄지 않지만 누락 시 재스캔 만료 판정 전체가 오작동하므로 반드시 단언합니다.
+A10은 눈에 띄지 않지만 누락 시 재스캔 만료 판정 전체가 오작동하므로 반드시 단언합니다. A12는 클라이언트 계약이 깨지는 지점이므로 컨트롤러 레벨에서 단언합니다.

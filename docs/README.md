@@ -7,14 +7,22 @@
 
 공용 계약(원칙, 상태값, 내부 API, Visibility 정의, AI 데이터 구조)은 여기에 복사하지 않습니다. 항상 `static/05_AI_설계.md`가 단일 원본이며, 이 디렉터리의 문서는 그 계약을 Spring에서 **어떻게 구현할지**만 기술합니다. 두 문서가 충돌하면 공용 계약이 우선입니다.
 
+AI 연동 문서 전체를 관통하는 전제는 하나입니다.
+
+```text
+동일한 context_id는 항상 동일한 Context 본문을 의미한다.
+```
+
+Context는 불변 엔티티이며 본문을 in-place로 UPDATE하지 않습니다. 수정은 구 Context 삭제와 신 Context 생성의 조합이고, 두 동작은 한 Core 트랜잭션에서 처리됩니다. 근거는 공용 계약 §4.2와 §5.5에 있습니다.
+
 ## AI 연동 — `ai/`
 
 | 문서 | 내용 |
 |---|---|
 | [`ai/ai-integration.md`](ai/ai-integration.md) | FastAPI Client 구성, 호출 시점, 타임아웃, 내부 인증, 호출 실패 시 동작 |
-| [`ai/context-state-sync.md`](ai/context-state-sync.md) | Context 생성·수정 트랜잭션과 `body_version` / `ai.context_ai_state` 동기화 |
-| [`ai/ai-rescan-scheduler.md`](ai/ai-rescan-scheduler.md) | 5분 주기 재스캔 Scheduler, 만료 판정, 후보 잠금, 재시도 종결 |
-| [`ai/deletion-cancellation.md`](ai/deletion-cancellation.md) | Context·Record 삭제와 회원 탈퇴 시 AI 파생 데이터 취소 처리 |
+| [`ai/context-state-sync.md`](ai/context-state-sync.md) | Context 생성 동기화·삭제 동기화와 그 조합인 수정, `ai.context_ai_state` 트랜잭션 |
+| [`ai/ai-rescan-scheduler.md`](ai/ai-rescan-scheduler.md) | 5분 주기 재스캔 Scheduler, 만료 판정, 후보 잠금, FAILED Finalizer |
+| [`ai/deletion-cancellation.md`](ai/deletion-cancellation.md) | Context·Record 삭제, 수정으로 인한 구 Context 취소, 회원 탈퇴 시 AI 파생 데이터 처리 |
 | [`ai/ai-response-assembly.md`](ai/ai-response-assembly.md) | Keyword Visibility에 따른 응답 조립과 검색 결과 Core 재검증 |
 
 ## Feed — `feed/`
