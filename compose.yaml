@@ -1,0 +1,13 @@
+services:
+  postgres:
+    image: 'postgres:latest'
+    environment:
+      - 'POSTGRES_DB=pinlog'
+      - 'POSTGRES_USER=ssafy'
+      - 'POSTGRES_PASSWORD=secret'
+    ports:
+      - '5432:5432'
+  redis:
+    image: 'redis:latest'
+    ports:
+      - '6379'
