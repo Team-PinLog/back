@@ -35,3 +35,8 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Codex local files ###
+.codex/
+.codex-tmp/
+.agents/
