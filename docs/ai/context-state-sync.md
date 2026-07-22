@@ -100,23 +100,29 @@ Context 삭제, Record 삭제, 회원 탈퇴의 구체적 절차와 벌크 처�
 @Transactional
   구 core.context 조회 및 잠금 (SELECT ... FOR UPDATE)
   → 소유권 확인
-  → [삭제 동기화]
-       구 core.context.deleted_at = now()
-       구 ai.context_ai_state.embedding_status = CANCELLED
-       구 ai.context_ai_state.keyword_status   = CANCELLED
-       존재하는 구 ai.context_embedding.is_deleted = true
-       updated_at 갱신
-  → [생성 동기화]
+  → [생성 동기화]  ← 반드시 먼저
        신 core.context INSERT   → 새 context_id 발급
        신 ai.context_ai_state INSERT
            embedding_status = PENDING
            keyword_status   = PENDING
            retry_count      = 0
            updated_at       = now()
+  → [삭제 동기화]
+       구 core.context.deleted_at = now()
+       구 ai.context_ai_state.embedding_status = CANCELLED
+       구 ai.context_ai_state.keyword_status   = CANCELLED
+       존재하는 구 ai.context_embedding.is_deleted = true
+       updated_at 갱신
   → ContextAiRequested(신 context_id) 이벤트 발행
 커밋
 → (AFTER_COMMIT, 비동기) 신 context_id로 FastAPI 호출
 ```
+
+**생성이 삭제보다 먼저 와야 합니다.** 활성 Record는 활성 Context를 최소 한 개 가져야 하고, 이를 위해 마지막 Context의 개별 삭제를 거부하는 가드가 있습니다(`deletion-cancellation.md` 4장). 삭제를 먼저 수행하면 Context가 하나뿐인 Record에서 이 가드에 걸려 정상적인 수정이 거부됩니다.
+
+순서를 뒤집으면 활성 Context 수가 0이 되는 순간이 없으므로 가드를 그대로 통과합니다. **가드를 수정 경로에서 예외 처리하지 않습니다.** 안전 장치를 우회하는 대신 순서로 만족시킵니다.
+
+트랜잭션 중간에 구·신 Context가 함께 활성인 구간이 생기지만 커밋 전이므로 외부에 관측되지 않습니다.
 
 ### 5.2 승계 금지
 
@@ -209,11 +215,11 @@ FastAPI가 구 Context를 처리하는 도중 사용자가 수정할 수 있습�
 ```text
 FastAPI: 구 context_id PROCESSING
 Spring:  수정 트랜잭션
+         신 Context INSERT → 신 context_id
+         신 State PENDING
          구 Context 소프트 삭제
          구 State 두 status CANCELLED
          구 Embedding is_deleted = true
-         신 Context INSERT → 신 context_id
-         신 State PENDING
 FastAPI: 구 결과 저장 시도
          대상 단계 status가 PROCESSING이 아님 (CANCELLED)  → 폐기
 Spring:  신 context_id로 FastAPI 호출 → 독립 처리

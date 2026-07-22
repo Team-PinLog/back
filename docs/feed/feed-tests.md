@@ -160,6 +160,6 @@ N1~N3은 Client Bean을 Mock으로 주입하고 **호출이 0회임을 단언**�
 | A10 | 모든 상태 변경 | `updated_at` 갱신됨 |
 | A11 | 수정 커밋 후 FastAPI 호출 실패 | 신 Context와 PENDING State 유지, 재스캔이 복구 |
 | A12 | 수정 API 응답 | 응답에 **새 `contextId`** 포함. 구 `contextId`를 반환하지 않음 |
-| A13 | 마지막 Context 수정 | "마지막 Context 개별 삭제 불가" 규칙에 걸리지 않고 정상 교체됨 |
+| A13 | 마지막 Context 수정 | 신 Context INSERT가 삭제보다 먼저 실행되어 "마지막 Context 개별 삭제 불가" 가드에 걸리지 않고 정상 교체됨 |
 
 A10은 눈에 띄지 않지만 누락 시 재스캔 만료 판정 전체가 오작동하므로 반드시 단언합니다. A12는 클라이언트 계약이 깨지는 지점이므로 컨트롤러 레벨에서 단언합니다.

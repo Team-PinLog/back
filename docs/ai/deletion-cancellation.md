@@ -75,14 +75,17 @@ Context 수정은 위 취소 절차를 구 Context에 그대로 적용한 뒤, �
 @Transactional
   구 core.context 행 잠금
   → [이 문서 3장의 공통 처리를 구 Context에 적용]
+  → 신 Context INSERT + 신 AI State PENDING
+  → 구 Context 취소
        core.context.deleted_at = now()
        ai.context_embedding: is_deleted = true
        ai.context_ai_state:  두 status CANCELLED
-  → 신 Context INSERT + 신 AI State PENDING
 커밋
 ```
 
-삭제와 다른 점은 **활성 Context 수 검사가 없다는 것**뿐입니다. 수정은 같은 트랜잭션에서 신 Context를 즉시 만들므로 마지막 Context를 수정해도 Record가 Context 0건이 되지 않습니다. "마지막 Context는 개별 삭제 불가" 규칙을 수정 경로에 그대로 적용하면 정상적인 수정이 거부되므로 주의합니다.
+삭제와 다른 점은 **신 Context INSERT가 구 Context 삭제보다 먼저 온다는 것**입니다.
+
+이 순서 덕분에 활성 Context 수가 한 번도 0이 되지 않으므로, "마지막 Context는 개별 삭제 불가" 가드를 그대로 통과합니다. 반대 순서로 구현하면 Context가 하나뿐인 Record에서 가드에 걸려 수정이 거부됩니다. 가드를 수정 경로에서 예외 처리하는 방식은 사용하지 않습니다. 순서로 해결하는 편이 안전 장치를 우회하지 않으면서 목적을 달성합니다.
 
 AI 관점에서 구 Context는 삭제된 Context와 완전히 동일하게 취급됩니다.
 
