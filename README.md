@@ -73,13 +73,32 @@ macOS/Linux:
 
 이 설정은 곧 실제 인증·인가 구현으로 변경될 예정이며, 변경 과정에서 기본 계정 설정도 제거됩니다.
 
-헬스체크와 Prometheus 메트릭 엔드포인트는 인증 없이 접근할 수 있습니다.
+## 모니터링 및 헬스체크
 
-- 헬스체크: `http://localhost:8080/api/core/actuator/health`
-- Prometheus: `http://localhost:8080/api/core/actuator/prometheus`
+백엔드는 Actuator와 Micrometer를 통해 상태 및 Prometheus 형식의 메트릭을 제공합니다.
 
-운영 환경의 probe 경로는 `/api/core/actuator/health`로 설정해야 합니다. Grafana에서
-메트릭을 사용하려면 인프라 담당자에게 `/api/core/actuator/prometheus` 수집 등록을 요청합니다.
+| 용도 | URI |
+| --- | --- |
+| 전체 상태 | `http://localhost:8080/api/core/actuator/health` |
+| Liveness | `http://localhost:8080/api/core/actuator/health/liveness` |
+| Readiness | `http://localhost:8080/api/core/actuator/health/readiness` |
+| Prometheus 메트릭 | `http://localhost:8080/api/core/actuator/prometheus` |
+
+모니터링 데이터는 다음 흐름으로 전달됩니다.
+
+```text
+Backend Actuator → Prometheus 수집 → Grafana 시각화
+```
+
+백엔드는 위 엔드포인트를 제공하고 정상 응답을 보장합니다. Kubernetes probe 연결,
+Prometheus 수집, Grafana 대시보드 및 외부 접근 제한은 인프라에서 구성합니다.
+
+현재 health와 Prometheus 엔드포인트는 인프라 구성요소가 인증 없이 호출할 수 있도록
+애플리케이션에서 허용되어 있습니다. 운영 Ingress와 NetworkPolicy에서는 Actuator 경로를
+필요한 내부 구성요소에만 노출해야 합니다.
+
+운영 환경의 기본 probe 경로는 `/api/core/actuator/health`이며, 세부 probe를 분리한다면
+`/api/core/actuator/health/liveness`와 `/api/core/actuator/health/readiness`를 사용합니다.
 
 ## 컨테이너 이미지
 
