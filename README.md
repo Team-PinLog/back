@@ -144,6 +144,15 @@ pinlog-back/
 └── settings.gradle
 ```
 
+## 구현 문서
+
+AI 연동과 Feed 구현의 세부 명세는 [`docs/`](./docs)에서 관리합니다.
+
+- [`docs/ai/`](./docs/ai) — FastAPI 연동, Context AI State 동기화, 재스캔 Scheduler, 삭제·취소 처리, Keyword 응답 조립
+- [`docs/feed/`](./docs/feed) — 추천 파이프라인, 이벤트 수집, Redis Cache, 점수 계산, 테스트
+
+전체 목록은 [`docs/README.md`](./docs/README.md)를 참고합니다. AI 공용 계약은 Team-PinLog/docs의 `static/05_AI_설계.md`가 단일 원본입니다.
+
 ## 설정 참고
 
 - Java toolchain은 21로 고정되어 있습니다.
