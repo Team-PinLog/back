@@ -1,0 +1,10 @@
+.git
+.github
+.gradle
+.idea
+build
+out
+*.iml
+*.log
+compose.yaml
+README.md

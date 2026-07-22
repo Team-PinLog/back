@@ -1,3 +1,8 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api/core
+
 spring:
   application:
     name: pinlog-back
@@ -5,3 +10,16 @@ spring:
     user:
       name: ssafy
       password: ssafy
+
+build:
+  sha: ${BUILD_SHA:unknown}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
