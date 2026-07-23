@@ -44,7 +44,8 @@ global/{config, common, exception, security}                       # 전역 관�
 
 | 패키지 | 도메인 | 엔티티 · 비고 |
 | --- | --- | --- |
-| `member` | 계정 | `member`, `social_account` · 가입/로그인/로그아웃/찾기/탈퇴/정보수정, 소셜(추후), 토큰 재발급 |
+| `auth` | 인증 | `social_account`, **AuthMember**(보안 principal) · 로그인/로그아웃, 토큰 발급·재발급, 소셜 로그인(OAuth). 토큰 필터·provider 인프라는 `global/security` |
+| `member` | 계정 | `member` · 회원가입, 회원정보 수정, 탈퇴, 아이디/비밀번호 찾기 |
 | `place` | 지도/장소 | `place`(kakao_place_id UK, 공유 마스터, 삭제 안 함) · 저장·조회, Kakao 검색 연동 |
 | `record` | 기록 | `record`, `context`(불변, member_id 비정규화) · 기록·맥락 CRUD, 자연어 검색 |
 | `collection` | 컬렉션 | `collection`, `collection_record`(조인) · CRUD, Record 추가/제거, 공개 토글, record_count |
