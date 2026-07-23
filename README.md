@@ -13,7 +13,6 @@ PinLog 백엔드 애플리케이션입니다. Spring Boot와 Java 21을 기반�
 - Spring Boot Actuator / Micrometer Prometheus
 - PostgreSQL
 - Redis
-- H2
 - Lombok
 - JUnit 5
 
@@ -102,6 +101,8 @@ docker build --build-arg BUILD_SHA=sha-local -t pinlog-back:local .
 
 ## 테스트
 
+테스트는 Testcontainers로 `pgvector/pgvector:0.8.1-pg16` PostgreSQL 컨테이너를 실행하므로 Docker Desktop이 실행 중이어야 합니다.
+
 Windows:
 
 ```powershell
@@ -148,7 +149,7 @@ pinlog-back/
 - Java toolchain은 21로 고정되어 있습니다.
 - Gradle은 시스템 Gradle 대신 저장소에 포함된 Wrapper를 사용합니다.
 - PostgreSQL과 Redis는 로컬 개발용 Docker Compose 서비스입니다.
-- H2는 가벼운 로컬·테스트 실행을 위한 런타임 의존성으로 포함되어 있습니다.
+- 통합 테스트는 Testcontainers의 PostgreSQL(pgvector)에서 Flyway 마이그레이션을 검증합니다.
 - 운영 ingress 경로와 애플리케이션 context path는 모두 `/api/core`로 맞춰야 합니다.
 - 운영 health probe 경로는 `/api/core/actuator/health`입니다.
 - 환경별 설정과 실제 인증정보는 저장소에 직접 커밋하지 않습니다.

@@ -49,7 +49,6 @@
 - [P21 Flyway 번호 컨벤션](../proposals/P21-flyway-migration-convention.md)
 - [P22 feed_event 소유권](../proposals/P22-feed-event-ownership.md)
 - [P24 flyway.schemas 미지정](../proposals/P24-flyway-schemas-unspecified.md)
-- [H2·pgvector 비호환 트러블슈팅](../troubleshooting/h2-pgvector-incompat.md)
 
 ## 후속
 
