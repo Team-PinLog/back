@@ -4,8 +4,8 @@
 
 ## 테스트 종류
 
-- 순수 도메인과 Service 단위 테스트에는 Spring Context를 올리지 않습니다. 외부 의존성은 테스트 대역으로 분리해 빠르고 독립적으로 검증합니다.
-- Repository, Flyway와 DB 통합 테스트는 PostgreSQL Testcontainers를 사용합니다. H2 또는 인메모리 DB로 대체하지 않습니다.
+- 모든 순수 단위 테스트에는 Spring Context를 올리지 않습니다. 외부 의존성은 테스트 대역으로 분리해 빠르고 독립적으로 검증합니다.
+- DB가 필요한 모든 테스트는 PostgreSQL Testcontainers를 사용합니다. Repository, Flyway와 DB 통합 테스트도 포함하며, H2 또는 인메모리 DB로 대체하지 않습니다.
 - Docker가 실행되지 않은 환경에서는 DB 테스트를 skip하지 않습니다. Docker 연결 문제를 드러내며 실패해야 합니다.
 
 ## PR별 필수 테스트

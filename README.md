@@ -23,7 +23,7 @@ PinLog 백엔드 애플리케이션입니다. Spring Boot와 Java 21을 기반�
 ## 사전 준비
 
 - JDK 21
-- Docker Desktop 및 Docker Compose
+- Docker Desktop or Docker Engine with Docker Compose
 
 ## 로컬 인프라
 
@@ -105,7 +105,7 @@ docker build --build-arg BUILD_SHA=sha-local -t pinlog-back:local .
 
 ## 테스트
 
-완료 전 공통 검증은 다음 명령입니다. 테스트는 Testcontainers로 `pgvector/pgvector:0.8.1-pg16` PostgreSQL 컨테이너를 실행하므로 Docker Desktop이 실행 중이어야 합니다.
+완료 전 공통 검증은 다음 명령입니다. 테스트는 Testcontainers로 `pgvector/pgvector:0.8.1-pg16` PostgreSQL 컨테이너를 실행하므로 Docker Desktop or Docker Engine with Docker Compose가 실행 중이어야 합니다.
 
 ```bash
 ./gradlew clean check --no-daemon

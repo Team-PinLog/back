@@ -34,7 +34,7 @@ Compose가 PostgreSQL과 Redis가 `healthy` 상태가 될 때까지 기다립니
 
 예를 들어 `feat/S15P11A705-14-member-search` 브랜치의 커밋은 `feat(S15P11A705-14): add member search`와 같이 작성합니다. `type`에는 `feat`, `fix`, `docs`, `refactor`, `chore`, `test`, `perf`를 사용합니다.
 
-이번 backend foundation reset만 Jira 없이 [GitHub Issue #9](https://github.com/Team-PinLog/back/issues/9)로 단독 추적하는 예외입니다. 이 예외는 일반 작업, 브랜치 이름, 커밋 메시지, PR 및 Issue 템플릿에 적용되지 않습니다.
+이번 backend foundation reset의 모든 작업은 Jira 없이 [GitHub Issue #9](https://github.com/Team-PinLog/back/issues/9)로 단독 추적하는 예외입니다. 이 예외는 foundation 작업의 브랜치 이름, 커밋 메시지와 PR에도 적용됩니다. 일반 작업에는 적용하지 않으며, 일반 작업은 Jira 키를 계속 사용합니다.
 
 `dev`에는 직접 push하지 않습니다. 변경은 PR로 제출하고, `backend-ci / check`, 승인 1건, 대화 해결을 포함한 저장소 보호 규칙을 통과해야 합니다. 이 보호 규칙은 관리자에게도 적용됩니다.
 
@@ -66,7 +66,7 @@ Compose가 PostgreSQL과 Redis가 `healthy` 상태가 될 때까지 기다립니
 | API 계약 | 요청·응답 및 validation 계약 테스트와 관련 문서 갱신 |
 | 인증·인가 | 성공, 401, 403 또는 확정된 리소스 은닉 404 테스트 |
 
-PR은 [PR 템플릿](.github/pull_request_template.md)을 사용합니다. Jira 키를 필수로 적고, 관련 GitHub Issue가 있을 때만 선택적으로 연결합니다. 검증 명령과 결과, 범위 밖 항목, 리뷰가 필요한 판단을 PR 본문에 남깁니다.
+일반 PR은 [PR 템플릿](.github/pull_request_template.md)을 사용하고 Jira 키를 필수로 적으며, 관련 GitHub Issue가 있을 때만 선택적으로 연결합니다. foundation reset PR은 Issue #9를 참조하고 Jira 키 없이 제출할 수 있지만, 이 예외 때문에 일반 템플릿의 Jira 필수 규칙은 바뀌지 않습니다. 모든 PR에는 검증 명령과 결과, 범위 밖 항목, 리뷰가 필요한 판단을 남깁니다.
 
 ## 문서의 역할
 
