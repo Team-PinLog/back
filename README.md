@@ -40,6 +40,8 @@ docker compose ps
 ./gradlew bootRun
 ```
 
+Windows에서는 `./gradlew` 대신 `.\gradlew.bat`를 사용합니다.
+
 `docker compose down`은 서비스를 중지하고, 데이터 볼륨은 유지합니다.
 
 ```bash
@@ -57,20 +59,6 @@ Compose 서비스의 포트와 PostgreSQL 계정은 `.env.example`에 정의되�
 Spring Boot Docker Compose 지원이 포함되어 있어 애플리케이션을 개발 모드로 실행하면 Compose 서비스 연결 정보를 자동으로 감지합니다.
 
 > 현재 Compose 계정과 비밀번호는 로컬 개발 전용입니다. 배포 환경에서는 환경 변수나 별도의 시크릿 저장소로 분리해야 합니다.
-
-## 애플리케이션 실행
-
-Windows:
-
-```powershell
-.\gradlew.bat bootRun
-```
-
-macOS/Linux:
-
-```bash
-./gradlew bootRun
-```
 
 서비스가 `/api/core` 경로 prefix를 직접 소유하므로 기본 애플리케이션 주소는
 `http://localhost:8080/api/core`입니다. 컨트롤러에는 `/api/core`를 다시 붙이지 않습니다.
