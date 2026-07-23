@@ -1,15 +1,30 @@
 services:
   postgres:
-    # pgvector 확장 포함 이미지. ai 스키마의 VECTOR(1536) 컬럼과 V1의
-    # CREATE EXTENSION vector에 필요하다. 운영 이미지 교체는 infra 소관.
-    image: 'pgvector/pgvector:pg16'
+    image: pgvector/pgvector:0.8.1-pg16
     environment:
-      - 'POSTGRES_DB=pinlog'
-      - 'POSTGRES_USER=ssafy'
-      - 'POSTGRES_PASSWORD=secret'
+      POSTGRES_DB: ${POSTGRES_DB:-pinlog}
+      POSTGRES_USER: ${POSTGRES_USER:-pinlog}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pinlog-local}
     ports:
-      - '5432:5432'
+      - "${POSTGRES_PORT:-15432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pinlog} -d ${POSTGRES_DB:-pinlog}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
   redis:
-    image: 'redis:latest'
+    image: redis:7.4.5-alpine
     ports:
-      - '6379'
+      - "${REDIS_PORT:-16379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:

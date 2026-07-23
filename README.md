@@ -28,21 +28,31 @@ PinLog 백엔드 애플리케이션입니다. Spring Boot와 Java 21을 기반�
 
 | 서비스 | 이미지 | 로컬 포트 | 개발용 설정 |
 | --- | --- | --- | --- |
-| PostgreSQL | `postgres:latest` | `5432` | DB `pinlog`, 사용자 `ssafy`, 비밀번호 `secret` |
-| Redis | `redis:latest` | Docker가 동적으로 할당 | 컨테이너 포트 `6379` |
+| PostgreSQL | `pgvector/pgvector:0.8.1-pg16` | `15432` | DB/사용자 `pinlog`, 비밀번호는 `.env`에서 관리 |
+| Redis | `redis:7.4.5-alpine` | `16379` | 컨테이너 포트 `6379` |
 
-직접 실행하고 상태를 확인하려면 다음 명령을 사용합니다.
+기본 실행은 다음 한 가지 흐름을 사용합니다.
 
-```powershell
+```bash
+cp .env.example .env
 docker compose up -d
 docker compose ps
+./gradlew bootRun
 ```
 
-종료할 때는 다음 명령을 사용합니다.
+`docker compose down`은 서비스를 중지하고, 데이터 볼륨은 유지합니다.
 
-```powershell
+```bash
 docker compose down
 ```
+
+로컬 PostgreSQL 데이터를 초기화해야 할 때만 다음 명령을 사용합니다. 이 명령은 `postgres-data` 볼륨을 삭제합니다.
+
+```bash
+docker compose down -v
+```
+
+Compose 서비스의 포트와 PostgreSQL 계정은 `.env.example`에 정의되어 있습니다. `.env`는 각 개발자의 로컬 환경 파일이며 커밋하지 않습니다.
 
 Spring Boot Docker Compose 지원이 포함되어 있어 애플리케이션을 개발 모드로 실행하면 Compose 서비스 연결 정보를 자동으로 감지합니다.
 

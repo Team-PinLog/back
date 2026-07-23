@@ -41,3 +41,7 @@ out/
 .codex-tmp/
 .agents/
 .worktrees/
+
+# Local environment
+.env
+!.env.example
