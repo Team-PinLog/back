@@ -1,6 +1,8 @@
 services:
   postgres:
     image: pgvector/pgvector:0.8.1-pg16
+    labels:
+      org.springframework.boot.service-connection: postgres
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-pinlog}
       POSTGRES_USER: ${POSTGRES_USER:-pinlog}
