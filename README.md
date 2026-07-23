@@ -126,6 +126,8 @@ macOS/Linux:
 ```
 
 테스트 결과 보고서는 `build/reports/tests/test/index.html`에서 확인할 수 있습니다.
+JaCoCo 커버리지 보고서는 `build/reports/jacoco/test/html/index.html`에서 확인할 수 있습니다.
+(커버리지 최소 임계값을 강제하는 빌드 게이트는 임계값 확정 후 활성화합니다.)
 
 ## 프로젝트 구조
 
