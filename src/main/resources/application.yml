@@ -10,6 +10,15 @@ spring:
     user:
       name: ssafy
       password: ssafy
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    # schemas 미지정: 스키마 생성은 V1이 전담하고, flyway_schema_history는 public에 둔다.
+    # (schemas를 지정하면 Flyway가 스키마 자동생성을 시도해 V1과 역할이 충돌하고
+    #  이력 테이블이 core 스키마에 섞인다.)
 
 build:
   sha: ${BUILD_SHA:unknown}
