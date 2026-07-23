@@ -72,6 +72,7 @@ macOS/Linux:
 - 비밀번호: `ssafy`
 
 이 설정은 곧 실제 인증·인가 구현으로 변경될 예정이며, 변경 과정에서 기본 계정 설정도 제거됩니다.
+인가 정책의 상세 규칙은 [`docs/authorization.md`](./docs/authorization.md)를 참고합니다.
 
 ## 모니터링 및 헬스체크
 

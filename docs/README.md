@@ -10,7 +10,9 @@
 |---|---|---|
 | AI 연동 | [`ai/`](ai/) | 구현 예정 명세 |
 | Feed 추천 | [`feed/`](feed/) | 구현 예정 명세 |
-| 도메인·인증·API 규약 등 | (향후) | 미작성 |
+| 인증·인가 규약 | [`authorization.md`](authorization.md) | 정책 명세 |
+| 커밋 컨벤션 | [`git-convention.md`](git-convention.md) | 규약 |
+| 도메인·API 규약 등 | (향후) | 미작성 |
 
 > `ai/`·`feed/` 문서는 아직 코드가 없는 **구현 예정 명세**입니다. 백엔드 코드가 생긴 뒤 실제 코드를 문서화하는 항목에는 이 표시를 달지 않습니다.
 
@@ -45,6 +47,12 @@ Feed는 Spring 단독 기능이며 요청 시 FastAPI·LLM·Embedding API를 호
 | [`feed/feed-profile-cache.md`](feed/feed-profile-cache.md) | 관심 Profile·Collection 특징 Redis Cache와 TTL, stale 방어 |
 | [`feed/feed-scoring.md`](feed/feed-scoring.md) | 후보 채널, 점수 공식, 가중치 설정값, 다양성, Cold Start |
 | [`feed/feed-tests.md`](feed/feed-tests.md) | Feed 테스트 항목과 공용 검증 시나리오 중 back 소관 항목 |
+
+## 인증·인가 — `authorization.md`
+
+[`authorization.md`](authorization.md)는 권한 단계(`PUBLIC`~`PUBLIC_RESOURCE`), 공통 인증 규칙(Access/Refresh/일회성 토큰), 기능별(계정·지도·기록·컬렉션·피드·프로필·팔로우·설정) 인가 규칙, 권장 API 패턴, HTTP 응답 기준을 정리합니다. 소유권 검증은 조회한 리소스의 `ownerId == currentUserId` 확인을 기본으로 하며, 타인의 비공개 리소스에는 존재 여부를 숨기기 위해 `404`를 반환합니다.
+
+커밋 메시지 규약은 [`git-convention.md`](git-convention.md)(Conventional Commits)를 따릅니다.
 
 ## 공용 문서 참조
 
