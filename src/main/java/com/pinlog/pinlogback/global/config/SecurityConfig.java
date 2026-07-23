@@ -1,4 +1,4 @@
-package com.pinlog.pinlogback.config;
+package com.pinlog.pinlogback.global.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
