@@ -127,7 +127,7 @@ macOS/Linux:
 
 테스트 결과 보고서는 `build/reports/tests/test/index.html`에서 확인할 수 있습니다.
 JaCoCo 커버리지 보고서는 `build/reports/jacoco/test/html/index.html`에서 확인할 수 있습니다.
-라인 커버리지 80% 미만이면 `check`(및 `build`)가 실패합니다.
+라인 커버리지 70% 미만이면 `check`(및 `build`)가 실패합니다.
 
 ## 프로젝트 구조
 

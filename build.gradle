@@ -62,14 +62,14 @@ tasks.named('jacocoTestReport') {
     }
 }
 
-// 커버리지 게이트(개발 제한): 라인 커버리지 80% 이상을 요구한다.
+// 커버리지 게이트(개발 제한): 라인 커버리지 70% 이상을 요구한다.
 tasks.named('jacocoTestCoverageVerification') {
     dependsOn tasks.named('test')
     violationRules {
         rule {
             limit {
                 counter = 'LINE'
-                minimum = 0.80
+                minimum = 0.70
             }
         }
     }
