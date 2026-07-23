@@ -19,9 +19,7 @@
 | PR 2 | PostgreSQL 16 + pgvector와 Redis 7의 이미지·포트·환경 변수·healthcheck를 Compose에 고정 | [PR #11](https://github.com/Team-PinLog/back/pull/11) | `docker compose config`, `docker compose up -d --wait`, 데이터 유지와 초기화 흐름 확인 |
 | PR 3 | H2를 제거하고 PostgreSQL Testcontainers와 빈 DB Flyway 검증을 추가 | [PR #12](https://github.com/Team-PinLog/back/pull/12) | V1, V100, V101, V102와 schema, `vector` extension, 이력 테이블 검증 및 전체 check 성공 |
 | PR 4 | 동일한 Gradle 검증을 `dev` PR의 GitHub Actions 품질 게이트로 전환 | [PR #13](https://github.com/Team-PinLog/back/pull/13) | `backend-ci / check`, JaCoCo 보고서 업로드, 승인 1건·대화 해결·관리자 적용을 포함한 `dev` 보호 규칙 적용 |
-| PR 5 | 사람과 에이전트가 같은 개발 계약을 읽도록 문서, 템플릿과 설정 경계를 정리 | 현재 `docs/backend-development-harness` 브랜치 | 문서 링크, Claude 설정 JSON, Compose config와 전체 Gradle check 성공 |
-
-PR 5는 아직 URL이 없는 현재 브랜치의 변경입니다. 상위 Issue와 이미 병합된 PR의 링크는 위 표의 실제 GitHub URL을 사용합니다.
+| PR 5 | 사람과 에이전트가 같은 개발 계약을 읽도록 문서, 템플릿과 설정 경계를 정리 | [PR #14](https://github.com/Team-PinLog/back/pull/14) | 문서 링크, Claude 설정 JSON, Compose config와 전체 Gradle check 성공 |
 
 ## 현재 개발 시작 방법
 
