@@ -10,7 +10,6 @@ PinLog 백엔드 애플리케이션입니다. Spring Boot와 Java 21을 기반�
 - Spring Web MVC
 - Spring Data JPA
 - Spring Data Redis
-- Spring Security / OAuth 2.0 Client
 - Spring Boot Actuator / Micrometer Prometheus
 - PostgreSQL
 - Redis
@@ -65,13 +64,6 @@ macOS/Linux:
 
 서비스가 `/api/core` 경로 prefix를 직접 소유하므로 기본 애플리케이션 주소는
 `http://localhost:8080/api/core`입니다. 컨트롤러에는 `/api/core`를 다시 붙이지 않습니다.
-
-현재 Spring Security에는 애플리케이션 실행 확인을 위한 임시 개발용 기본 계정이 설정되어 있습니다.
-
-- 사용자명: `ssafy`
-- 비밀번호: `ssafy`
-
-이 설정은 곧 실제 인증·인가 구현으로 변경될 예정이며, 변경 과정에서 기본 계정 설정도 제거됩니다.
 
 ## 모니터링 및 헬스체크
 
@@ -149,7 +141,7 @@ pinlog-back/
 백엔드 설계·구현 문서는 [`docs/`](./docs)에서 관리합니다. 현재는 AI 연동과 Feed를 다루며, 기능이 늘어남에 따라 도메인·인증·API 규약 등으로 확장합니다.
 
 - [`docs/ai/`](./docs/ai) — FastAPI 연동, Context AI State 동기화, 재스캔 Scheduler, 삭제·취소 처리, Keyword 응답 조립
-- [`docs/feed/`](./docs/feed) — 추천 파이프라인, 이벤트 수집, Redis Cache, 점수 계산, 테스트
+- Feed 문서는 [`docs/ai/spec/`](./docs/ai/spec)에 포함되어 있습니다.
 
 전체 목록과 구성은 [`docs/README.md`](./docs/README.md)를 참고합니다. AI 공용 계약은 Team-PinLog/docs의 `static/05_AI_설계.md`가 단일 원본입니다.
 
