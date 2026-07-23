@@ -169,7 +169,7 @@ CANCELLED와 `is_deleted`는 처리 경로뿐 아니라 모든 읽기 경로에�
 | 경로 | 필터 |
 |---|---|
 | 개인 자연어 검색 | `is_deleted = false`, `embedding_status = COMPLETED`, `embedding_profile` 일치 |
-| Keyword 응답 조립 | `keyword_status = COMPLETED`, Preset `active = true`, `context.deleted_at IS NULL` |
+| Keyword 응답 조립 | `keyword_status = COMPLETED`, Preset `is_active = true`, `context.deleted_at IS NULL` |
 | Feed 특징 계산 | 위와 동일 + `collection`·`record`·`member` 활성 확인 |
 | 재스캔 후보 | CANCELLED 제외 |
 | Finalizer 후보 | CANCELLED 제외 (CANCELLED 우선) |
