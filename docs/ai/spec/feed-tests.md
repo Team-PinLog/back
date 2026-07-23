@@ -75,7 +75,7 @@ K4~K6이 stale 방어의 핵심 테스트입니다. Cache를 인위적으로 채
 | P4 | 본인 Profile에 `PRIVATE_ONLY` Keyword | 사용됨 |
 | P5 | `PRIVATE_ONLY` Keyword가 응답에 노출 | 되지 않음 |
 | P6 | `BLOCKED` Keyword | Profile·특징·응답 어디에도 없음 |
-| P7 | `active = false` Preset | 응답에 없음 |
+| P7 | `is_active = false` Preset | 응답에 없음 |
 
 P3과 P4를 함께 검증해야 의미가 있습니다. 한쪽만 보면 "그냥 안 쓴다"와 구분되지 않습니다.
 

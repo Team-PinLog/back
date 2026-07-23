@@ -4,7 +4,7 @@
 - **PR**: [back#3](https://github.com/Team-PinLog/back/pull/3) — `feat: Flyway 도입 + ai 스키마·feed_event 마이그레이션 (V1/V100~102)`
 - **주요 커밋**: `946df11` (merge `23f1933`)
 - **브랜치**: `feat/ai-schema-migration` ← `dev`
-- **소유 파트**: AI 파트(스키마·feed_event·컨벤션) / 백엔드 공통(Flyway 도입)
+- **주도(Driver)**: AI 파트(스키마·feed_event·컨벤션) / 백엔드 공통(Flyway 도입)
 
 ## 목표
 
@@ -14,7 +14,7 @@
 
 ### 빌드·설정
 - `build.gradle`: `flyway-core`, `flyway-database-postgresql` 추가.
-- `application.yml`: `spring.flyway`(enabled, locations, **schemas 미지정**), `jpa.hibernate.ddl-auto: validate` → [ADR-003](../decisions/ADR-003-flyway-schemas-unspecified.md).
+- `application.yml`: `spring.flyway`(enabled, locations, **schemas 미지정**), `jpa.hibernate.ddl-auto: validate` → [P24](../proposals/P24-flyway-schemas-unspecified.md).
 - `compose.yaml`: `postgres:latest` → `pgvector/pgvector:pg16` (로컬 pgvector).
 
 ### 마이그레이션 (`src/main/resources/db/migration/`)
@@ -23,9 +23,9 @@
 | `V1` | `V1__create_schemas.sql` | `core`·`ai` 스키마(`IF NOT EXISTS` 없이), `CREATE EXTENSION IF NOT EXISTS vector` |
 | `V100` | `V100__ai_tables.sql` | `ai` 5테이블 — `keyword_preset`, `context_ai_state`(embedding/keyword 두 status), `context_embedding`(PK `context_id`), `context_keyword`, `context_keyword_analysis` |
 | `V101` | `V101__ai_indexes.sql` | 5개 인덱스(user_active, record, 두 status, keyword) |
-| `V102` | `V102__feed_event.sql` | `core.feed_event`(append-only, FK 없음) → [ADR-002](../decisions/ADR-002-feed-event-ownership.md) |
+| `V102` | `V102__feed_event.sql` | `core.feed_event`(append-only, FK 없음) → [P22](../proposals/P22-feed-event-ownership.md) |
 
-- `db/migration/README.md`: 버전 구간 컨벤션([ADR-001](../decisions/ADR-001-flyway-version-convention.md)) + feed_event 소유권 고지.
+- `db/migration/README.md`: 버전 구간 컨벤션([P21](../proposals/P21-flyway-migration-convention.md)) + feed_event 소유권 고지.
 - 버전 컨벤션: `V1` 공통 / `V2~99` 백엔드 / `V100~199` AI / `V200~` 선점.
 
 ## 검증
@@ -46,9 +46,9 @@
 
 ## 관련 결정
 
-- [ADR-001 Flyway 번호 컨벤션](../decisions/ADR-001-flyway-version-convention.md)
-- [ADR-002 feed_event 소유권](../decisions/ADR-002-feed-event-ownership.md)
-- [ADR-003 flyway.schemas 미지정](../decisions/ADR-003-flyway-schemas-unspecified.md)
+- [P21 Flyway 번호 컨벤션](../proposals/P21-flyway-migration-convention.md)
+- [P22 feed_event 소유권](../proposals/P22-feed-event-ownership.md)
+- [P24 flyway.schemas 미지정](../proposals/P24-flyway-schemas-unspecified.md)
 - [H2·pgvector 비호환 트러블슈팅](../troubleshooting/h2-pgvector-incompat.md)
 
 ## 후속

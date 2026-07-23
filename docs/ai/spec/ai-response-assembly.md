@@ -46,7 +46,7 @@ findPublicKeywords(recordIds)               -- visibility = 'PUBLIC'
 
 - Visibility 필터는 **SQL의 WHERE 절**에 둡니다. 자바 코드의 stream filter로 두지 않습니다. 조건이 코드에 있으면 새 호출 경로가 추가될 때 조용히 누락됩니다.
 - `BLOCKED`는 두 메서드 어디에도 등장하지 않습니다. `visibility IN (...)` 화이트리스트로 작성하고 `visibility <> 'BLOCKED'` 같은 블랙리스트로 작성하지 않습니다. Visibility 값이 나중에 추가될 때 블랙리스트는 새 값을 통과시킵니다.
-- `kp.active = true`를 함께 확인합니다. 폐기된 Preset은 행 삭제가 아니라 `active = false`로 처리되므로 필터가 없으면 계속 노출됩니다.
+- `kp.is_active = true`를 함께 확인합니다. 폐기된 Preset은 행 삭제가 아니라 `is_active = false`로 처리되므로 필터가 없으면 계속 노출됩니다.
 
 ### 3.2 DTO 분리
 
@@ -79,7 +79,7 @@ WHERE ct.record_id IN (:recordIds)
   AND ct.deleted_at IS NULL
   AND st.keyword_status = 'COMPLETED'
   AND kp.visibility = 'PUBLIC'
-  AND kp.active = true;
+  AND kp.is_active = true;
 ```
 
 소유자용은 마지막 Visibility 조건만 `IN ('PUBLIC','PRIVATE_ONLY')`로 바꿉니다.
@@ -88,13 +88,13 @@ WHERE ct.record_id IN (:recordIds)
 
 | 대상 | 조건 |
 |---|---|
-| 본인 | `keyword_status = COMPLETED` AND Preset `active = true` AND `visibility IN ('PUBLIC','PRIVATE_ONLY')` |
-| 타인 | `keyword_status = COMPLETED` AND Preset `active = true` AND `visibility = 'PUBLIC'` |
+| 본인 | `keyword_status = COMPLETED` AND Preset `is_active = true` AND `visibility IN ('PUBLIC','PRIVATE_ONLY')` |
+| 타인 | `keyword_status = COMPLETED` AND Preset `is_active = true` AND `visibility = 'PUBLIC'` |
 
 세 조건이 각각 담당하는 것:
 
 - `st.keyword_status = 'COMPLETED'` — 미완료·실패·취소 상태 제외
-- `kp.active = true` — 폐기된 Preset 제외
+- `kp.is_active = true` — 폐기된 Preset 제외
 - `kp.visibility` — 공개 범위 제한
 
 **Context 본문 버전을 비교하는 조건은 없습니다.** Context는 불변이므로 `context_id`가 곧 본문의 정체성이고, `ai.context_keyword`에도 `ai.context_ai_state`에도 본문 버전 컬럼이 존재하지 않습니다. 조회 판정은 State 조인 하나로 끝납니다.

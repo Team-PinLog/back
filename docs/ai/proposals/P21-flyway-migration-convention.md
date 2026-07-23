@@ -1,9 +1,9 @@
-# ADR-001: Flyway 마이그레이션 파트별 번호 구간
+# P21: Flyway 마이그레이션 파트별 번호 구간
 
-- **상태**: 채택
+- **상태**: Accepted
 - **날짜**: 2026-07-23
 - **관련 PR/커밋**: [back#3](https://github.com/Team-PinLog/back/pull/3) (`946df11`, merge `23f1933`)
-- **소유 파트**: AI 파트(컨벤션 제정) / 백엔드 전 파트(준수)
+- **주도(Driver)**: AI 파트(컨벤션 제정) / 백엔드 전 파트(준수)
 
 ## 맥락
 
@@ -24,7 +24,7 @@ PinLog는 `core`(백엔드 도메인)와 `ai`(임베딩·키워드) 두 스키�
 
 ## 근거
 
-- **경계가 파일 소유와 일치한다.** "남의 파일을 수정하지 않는다"는 협업 원칙을 버전 번호에도 그대로 적용해, 리뷰 시 소유 파트가 번호만으로 드러난다.
+- **경계가 파일 소유와 일치한다.** "남의 파일을 수정하지 않는다"는 협업 원칙을 버전 번호에도 그대로 적용해, 리뷰 시 주도 파트가 번호만으로 드러난다.
 - **실행 순서가 예측 가능하다.** 정수 순차라 `V1 → V2 → … → V100`의 적용 순서와 의존(스키마 먼저, 테이블 나중)이 리뷰에서 눈으로 보인다.
 - **구간이 넉넉하다.** 백엔드 98개, AI 100개는 MVP 범위를 크게 초과하므로 조기 소진 걱정이 없다.
 
@@ -35,10 +35,10 @@ PinLog는 `core`(백엔드 도메인)와 `ai`(임베딩·키워드) 두 스키�
 
 ## 영향
 
-- 백엔드 도메인 마이그레이션은 `V2`부터 시작한다. `V1`은 이미 AI 파트가 스키마·extension을 만들었으므로, 백엔드는 **기존 스키마 위에 테이블만** 생성한다(`CREATE SCHEMA` 재선언 금지 → [ADR-003](ADR-003-flyway-schemas-unspecified.md) 참조).
-- `core.feed_event`가 `V102`(AI 구간)에 있다. 백엔드가 `core` 테이블을 훑을 때 누락으로 오인해 중복 정의하면 안 된다 → [ADR-002](ADR-002-feed-event-ownership.md).
+- 백엔드 도메인 마이그레이션은 `V2`부터 시작한다. `V1`은 이미 AI 파트가 스키마·extension을 만들었으므로, 백엔드는 **기존 스키마 위에 테이블만** 생성한다(`CREATE SCHEMA` 재선언 금지 → [P24](P24-flyway-schemas-unspecified.md) 참조).
+- `core.feed_event`가 `V102`(AI 구간)에 있다. 백엔드가 `core` 테이블을 훑을 때 누락으로 오인해 중복 정의하면 안 된다 → [P22](P22-feed-event-ownership.md).
 
 ## 검증
 
 - `pgvector/pgvector:pg16` 컨테이너에서 `V1 → V100 → V101 → V102` 순차 적용 성공.
-- 구간 컨벤션은 [`db/migration/README.md`](../../src/main/resources/db/migration/README.md)에 명문화해 다음 작성자에게 전달.
+- 구간 컨벤션은 [`db/migration/README.md`](../../../src/main/resources/db/migration/README.md)에 명문화해 다음 작성자에게 전달.

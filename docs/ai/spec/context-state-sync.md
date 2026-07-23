@@ -242,7 +242,7 @@ Spring:  신 context_id로 FastAPI 호출 → 독립 처리
 | `ai.context_embedding` | `context_id` | `user_id`, `record_id`, `embedding`, `embedding_profile`, `is_deleted`, `updated_at` |
 | `ai.context_keyword` | `context_id` + `keyword_id` | `confidence`, `preset_version` |
 | `ai.context_keyword_analysis` | `context_id` | `preset_version`, `unmatched_concepts`, `model_profile`, `updated_at` |
-| `ai.keyword_preset` | `id` | `code`, `display_name`, `category`, `description`, `examples`, `embedding`, `embedding_profile`, `visibility`, `active`, `version` |
+| `ai.keyword_preset` | `id` | `code`, `display_name`, `category`, `description`, `examples`, `embedding`, `embedding_profile`, `visibility`, `is_active`, `version` |
 
 - **AI 테이블에는 Context 본문 버전 컬럼을 두지 않습니다.** `context_version` 컬럼은 어느 테이블에도 존재하지 않습니다.
 - 남는 버전 개념은 세 가지뿐이며 모두 Context와 무관합니다. `embedding_profile`(모델·차원·거리 식별), `preset_version`(판정 시점 Preset 개정 번호), `keyword_preset.version`(Preset 목록 개정 번호).

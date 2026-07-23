@@ -1,9 +1,9 @@
-# ADR-003: `flyway.schemas` 미지정 — 이력 테이블을 public에
+# P24: `flyway.schemas` 미지정 — 이력 테이블을 public에
 
-- **상태**: 채택
+- **상태**: Accepted
 - **날짜**: 2026-07-23
 - **관련 PR/커밋**: [back#3](https://github.com/Team-PinLog/back/pull/3) (`946df11`)
-- **소유 파트**: 백엔드
+- **주도(Driver)**: 백엔드
 
 ## 맥락
 
@@ -33,7 +33,7 @@ spring:
 
 - **스키마 생성 주체를 하나로 고정**한다. `V1`이 유일한 생성 지점이라, `V1`이 스키마를 `IF NOT EXISTS` 없이 만들어 백엔드가 `V2`에서 재선언하면 명시적으로 실패하게 해 경계를 보호한다.
 - **이력과 도메인을 분리**한다. `public.flyway_schema_history`는 인프라성 메타데이터이고 `core`/`ai`는 도메인이라, 백업·권한·조회 관점에서 섞이지 않는 편이 깔끔하다.
-- **`validate`**는 마이그레이션을 스키마의 단일 원본으로 두겠다는 [ADR-001](ADR-001-flyway-version-convention.md)의 연장이다. Hibernate `update`/`create`가 스키마를 몰래 바꾸는 경로를 막는다.
+- **`validate`**는 마이그레이션을 스키마의 단일 원본으로 두겠다는 [P21](P21-flyway-migration-convention.md)의 연장이다. Hibernate `update`/`create`가 스키마를 몰래 바꾸는 경로를 막는다.
 
 ## 버린 대안
 

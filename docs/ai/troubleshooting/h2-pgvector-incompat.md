@@ -1,7 +1,7 @@
 # H2는 pgvector·VECTOR 타입을 지원하지 않는다
 
 - **날짜**: 2026-07-23
-- **관련**: [back#3](https://github.com/Team-PinLog/back/pull/3), [ADR-003](../decisions/ADR-003-flyway-schemas-unspecified.md)
+- **관련**: [back#3](https://github.com/Team-PinLog/back/pull/3), [P24](../proposals/P24-flyway-schemas-unspecified.md)
 - **레이어**: 빌드·테스트 런타임 / DB
 
 ## 증상
