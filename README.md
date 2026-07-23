@@ -29,7 +29,7 @@ PinLog 백엔드 애플리케이션입니다. Spring Boot와 Java 21을 기반�
 
 | 서비스 | 이미지 | 로컬 포트 | 개발용 설정 |
 | --- | --- | --- | --- |
-| PostgreSQL | `postgres:latest` | `5432` | DB `pinlog`, 사용자 `ssafy`, 비밀번호 `secret` |
+| PostgreSQL | `pgvector/pgvector:pg16` | `15432` | DB `pinlog`, 사용자 `ssafy`, 비밀번호 `secret` |
 | Redis | `redis:latest` | Docker가 동적으로 할당 | 컨테이너 포트 `6379` |
 
 직접 실행하고 상태를 확인하려면 다음 명령을 사용합니다.

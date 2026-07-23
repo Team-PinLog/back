@@ -8,7 +8,8 @@ services:
       - 'POSTGRES_USER=ssafy'
       - 'POSTGRES_PASSWORD=secret'
     ports:
-      - '5432:5432'
+      # 로컬 포트 충돌을 피하려고 호스트 포트에 1을 접두한다. 컨테이너 포트는 5432 유지.
+      - '15432:5432'
   redis:
     image: 'redis:latest'
     ports:
