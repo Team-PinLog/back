@@ -59,5 +59,5 @@ global/{config, common, exception, security}                       # 전역 관�
 ## 커버리지 게이트 (JaCoCo)
 
 `build.gradle`에 JaCoCo가 설정되어 있고 `test` 실행 시 리포트가 생성된다.
-`jacocoTestCoverageVerification` 규칙과 `check` 연결은 임계값이 정해지면 활성화한다
-(현재 비활성, `build.gradle`의 `TODO(#7)` 참고).
+라인 커버리지 **80% 미만이면 `check`(및 `build`)가 실패**한다
+(`jacocoTestCoverageVerification` 게이트가 `check`에 연결됨).

@@ -62,20 +62,20 @@ tasks.named('jacocoTestReport') {
     }
 }
 
-// 커버리지 게이트(개발 제한). 임계값은 추후 팀 결정 후 채운다.
-// 값이 정해지면 아래 verification 규칙을 활성화하고 check 가 의존하도록 연결한다.
+// 커버리지 게이트(개발 제한): 라인 커버리지 80% 이상을 요구한다.
 tasks.named('jacocoTestCoverageVerification') {
     dependsOn tasks.named('test')
     violationRules {
         rule {
-            enabled = false // TODO(#7): 임계값 확정 시 true 로 전환
             limit {
                 counter = 'LINE'
-                minimum = 0.00 // TODO(#7): 목표 커버리지로 교체
+                minimum = 0.80
             }
         }
     }
 }
 
-// TODO(#7): 임계값 확정 후 아래 줄의 주석을 해제해 빌드 게이트로 강제한다.
-// tasks.named('check') { dependsOn tasks.named('jacocoTestCoverageVerification') }
+// check(및 build)가 커버리지 검증을 강제한다. 미달 시 빌드 실패.
+tasks.named('check') {
+    dependsOn tasks.named('jacocoTestCoverageVerification')
+}

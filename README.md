@@ -30,7 +30,7 @@ PinLog 백엔드 애플리케이션입니다. Spring Boot와 Java 21을 기반�
 | 서비스 | 이미지 | 로컬 포트 | 개발용 설정 |
 | --- | --- | --- | --- |
 | PostgreSQL | `pgvector/pgvector:pg16` | `15432` | DB `pinlog`, 사용자 `ssafy`, 비밀번호 `secret` |
-| Redis | `redis:latest` | Docker가 동적으로 할당 | 컨테이너 포트 `6379` |
+| Redis | `redis:latest` | `16379` | 컨테이너 포트 `6379` |
 
 직접 실행하고 상태를 확인하려면 다음 명령을 사용합니다.
 
@@ -127,7 +127,7 @@ macOS/Linux:
 
 테스트 결과 보고서는 `build/reports/tests/test/index.html`에서 확인할 수 있습니다.
 JaCoCo 커버리지 보고서는 `build/reports/jacoco/test/html/index.html`에서 확인할 수 있습니다.
-(커버리지 최소 임계값을 강제하는 빌드 게이트는 임계값 확정 후 활성화합니다.)
+라인 커버리지 80% 미만이면 `check`(및 `build`)가 실패합니다.
 
 ## 프로젝트 구조
 
