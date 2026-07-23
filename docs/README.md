@@ -10,7 +10,20 @@
 |---|---|---|
 | AI 연동 | [`ai/`](ai/) | 구현 예정 명세 |
 | Feed 추천 | [`feed/`](feed/) | 구현 예정 명세 |
+| 결정 기록(ADR) | [`decisions/`](decisions/) | 진행 중 |
+| 트러블슈팅 | [`troubleshooting/`](troubleshooting/) | 진행 중 |
+| 작업 리포트 | [`reports/`](reports/) | 진행 중 |
 | 도메인·인증·API 규약 등 | (향후) | 미작성 |
+
+### 작업 기록 (제안·트러블슈팅·리포트)
+
+명세(`ai/`·`feed/`)가 **무엇을 구현하는가**를 다룬다면, 아래는 그것을 만들며 **왜 그렇게 정했고 무슨 문제를 어떻게 넘겼는가**를 남깁니다. 커밋·PR과 연결해 이후 복기가 가능하게 합니다.
+
+| 구분 | 위치 | 내용 |
+|---|---|---|
+| 결정 | [`decisions/`](decisions/) | Flyway 번호 컨벤션, feed_event 소유, flyway.schemas 미지정 |
+| 트러블슈팅 | [`troubleshooting/`](troubleshooting/) | H2·pgvector 비호환 |
+| 리포트 | [`reports/`](reports/) | Flyway 도입 + ai 스키마·feed_event 마이그레이션(back#3) |
 
 > `ai/`·`feed/` 문서는 아직 코드가 없는 **구현 예정 명세**입니다. 백엔드 코드가 생긴 뒤 실제 코드를 문서화하는 항목에는 이 표시를 달지 않습니다.
 
