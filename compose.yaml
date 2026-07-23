@@ -1,6 +1,8 @@
 services:
   postgres:
-    image: 'postgres:latest'
+    # pgvector 확장 포함 이미지. ai 스키마의 VECTOR(1536) 컬럼과 V1의
+    # CREATE EXTENSION vector에 필요하다. 운영 이미지 교체는 infra 소관.
+    image: 'pgvector/pgvector:pg16'
     environment:
       - 'POSTGRES_DB=pinlog'
       - 'POSTGRES_USER=ssafy'
