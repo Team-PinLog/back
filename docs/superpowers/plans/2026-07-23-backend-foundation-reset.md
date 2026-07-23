@@ -8,6 +8,8 @@
 
 **Tech Stack:** Java 21, Spring Boot 4.1.0, Gradle 9.5.1 Wrapper, Flyway 12.4, PostgreSQL 16 + pgvector 0.8.1, Redis 7.4.5, Testcontainers 2.0.5, JUnit 6, JaCoCo, GitHub Actions
 
+**Tracking Issue:** [#9 chore: rebuild backend development foundation](https://github.com/Team-PinLog/back/issues/9)
+
 ## Global Constraints
 
 - 기준 브랜치는 최신 `dev`다.
