@@ -40,22 +40,26 @@ domain/<feature>/{controller, service, repository, entity, dto}   # 기능 단�
 global/{config, common, exception, security}                       # 전역 관심사
 ```
 
-현재 도메인:
+현재 도메인 (물리 테이블 기준, ERD 반영):
 
-| 패키지 | 도메인 | 주요 엔티티/기능 |
+| 패키지 | 도메인 | 엔티티 · 비고 |
 | --- | --- | --- |
-| `account` | 계정 | User · 가입/로그인/로그아웃/찾기/탈퇴/정보수정 (소셜 추후) |
-| `place` | 지도/장소 | Place · 장소 저장·조회, Kakao 검색 연동 |
-| `record` | 기록 | Record, Context · 기록 CRUD, 자연어 검색 |
-| `collection` | 컬렉션 | Collection · CRUD, Record 추가/제거, 공개 토글, 키워드 |
-| `feed` | 발견 | 발행 컬렉션·장소 추천, Feed 상세 |
-| `profile` | 프로필 | Setting · 내 프로필 조회, 팔로잉·팔로워 수, 개인설정 |
-| `follow` | 팔로우 | Follow(User→User) · 팔로우/해제, 별칭 수정 |
+| `member` | 계정 | `member`, `social_account` · 가입/로그인/로그아웃/찾기/탈퇴/정보수정, 소셜(추후), 토큰 재발급 |
+| `place` | 지도/장소 | `place`(kakao_place_id UK, 공유 마스터, 삭제 안 함) · 저장·조회, Kakao 검색 연동 |
+| `record` | 기록 | `record`, `context`(불변, member_id 비정규화) · 기록·맥락 CRUD, 자연어 검색 |
+| `collection` | 컬렉션 | `collection`, `collection_record`(조인) · CRUD, Record 추가/제거, 공개 토글, record_count |
+| `follow` | 팔로우 | `follow`(followee↔follower, display_name=별칭) · 팔로우/해제, 별칭 수정 |
+| `feed` | 발견 | `feed_event` · 추천 목록, 이벤트 수집(IMPRESSION/CLICK/SAVE) |
+| `profile` | 프로필 | (자체 테이블 없음) 내 프로필·서재·라이브러리 조회 — Member+Collection+Follow 조합 |
 
 - 새 기능은 `domain/<feature>` 아래에 위 레이어로 추가한다.
 - 전역 설정/공통 유틸/예외/보안은 `global/` 아래에 둔다. (예: `global/config/SecurityConfig`)
 - 빈 패키지는 `.gitkeep`으로 추적 중이며, 실제 코드가 생기면 제거한다.
-- Shelf는 ERD에서 제거됨(팔로우는 User를 대상으로 함).
+
+물리 테이블이 아닌 개념 / 아직 없는 것:
+- **Shelf(선반)·Library(라이브러리)**는 테이블이 아니라 조회 결과다. Shelf=`collection.member_id` 그룹핑, Library=내 컬렉션+팔로우한 컬렉션 조합. 선반 이름은 `follow.display_name`에 속한다.
+- **개인 설정(Setting)**은 현재 ERD에 테이블이 없어 도메인을 만들지 않았다. 스키마 확정 후 추가한다.
+- **AI 연동**(FastAPI 클라이언트, `ai.context_ai_state` 전이, 임베딩·키워드 읽기, 재스캔 스케줄러)은 `ai` 스키마(AI 파트 소유)와 연동되는 통합 코드다. 표준 레이어 템플릿에 맞지 않아 스캐폴드에서 제외했고, 구현 시점에 배치를 결정한다([`docs/ai/`](./docs/ai) 참고).
 
 ## 인가 규칙
 
