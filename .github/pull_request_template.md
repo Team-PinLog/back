@@ -15,7 +15,10 @@ type: feat | fix | docs | refactor | chore | test | perf
 
 ## 테스트 / 검증
 <!-- 재현 가능한 명령과 결과. 없으면 삭제. -->
--
+- [ ] `./gradlew clean check --no-daemon`
+- [ ] DB 변경 시 PostgreSQL 통합 테스트
+- [ ] migration 변경 시 빈 DB migration 테스트
+- [ ] API 계약 변경 시 관련 문서 갱신
 
 <!--
 아래는 필요할 때만 (리팩토링·복잡한 결정 등). 단순 feat/fix면 지워도 됩니다.
