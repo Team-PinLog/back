@@ -12,12 +12,16 @@
 
 [`ai/`](ai/) — AI 연동·Feed 관련 **설계·결정·구현 기록** (AI 파트 소유). 하위 구조·문서는 AI 파트가 관리합니다.
 
-### 백엔드가 참고해야 할 확정 규칙
+### 현재 구현 기준
 
-아래는 백엔드 도메인 작업 시 반드시 따라야 하는, AI 파트가 확정한 규칙입니다.
+백엔드 도메인 작업은 아래의 현재 구현 기준을 따릅니다.
 
-- [Flyway 마이그레이션 버전 구간](ai/proposals/P21-flyway-migration-convention.md) — **`V2`~`V99`가 백엔드 구간**. 자기 구간 밖 번호 미사용.
+- [데이터베이스 개발 규약](development/database-conventions.md) — Flyway의 현재 기준: `V1` 공통 기반, `V2`~`V99` 백엔드, `V100`~`V199` AI, `V200` 이후 미할당.
 - [`core.feed_event` 소유](ai/proposals/P22-feed-event-ownership.md) — `V102`(AI 구간)에 정의됨. **백엔드 `V2~`에서 중복 정의 금지**(재정의 시 `already exists`).
+
+### 과거 제안·결정 기록
+
+- [P21: Flyway 마이그레이션 파트별 번호 구간](ai/proposals/P21-flyway-migration-convention.md) — 과거 결정 기록입니다. 현재 구현 기준으로 사용하지 말고 위 데이터베이스 개발 규약을 따릅니다.
 
 ## 백엔드 공통 문서
 
