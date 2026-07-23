@@ -28,6 +28,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Run checks
         run: ./gradlew clean check --no-daemon
+      - name: Generate coverage report after failed checks
+        if: failure()
+        run: ./gradlew jacocoTestReport -x test --no-daemon
       - name: Upload test and coverage reports
         if: always()
         uses: actions/upload-artifact@v4
