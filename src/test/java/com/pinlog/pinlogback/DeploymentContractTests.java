@@ -47,6 +47,13 @@ class DeploymentContractTests {
 		assertEquals(404, response.statusCode());
 	}
 
+	@Test
+	void unmappedServiceUrlIsNotBlockedByAuthentication() throws Exception {
+		HttpResponse<String> response = get("/api/core/not-found");
+
+		assertEquals(404, response.statusCode());
+	}
+
 	private HttpResponse<String> get(String path) throws IOException, InterruptedException {
 		HttpRequest request = HttpRequest.newBuilder()
 			.uri(URI.create("http://localhost:" + port + path))

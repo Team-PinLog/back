@@ -149,7 +149,7 @@ pinlog-back/
 백엔드 설계·구현 문서는 [`docs/`](./docs)에서 관리합니다. 현재는 AI 연동과 Feed를 다루며, 기능이 늘어남에 따라 도메인·인증·API 규약 등으로 확장합니다.
 
 - [`docs/ai/`](./docs/ai) — FastAPI 연동, Context AI State 동기화, 재스캔 Scheduler, 삭제·취소 처리, Keyword 응답 조립
-- [`docs/feed/`](./docs/feed) — 추천 파이프라인, 이벤트 수집, Redis Cache, 점수 계산, 테스트
+- Feed 문서는 [`docs/ai/spec/`](./docs/ai/spec)에 포함되어 있습니다.
 
 전체 목록과 구성은 [`docs/README.md`](./docs/README.md)를 참고합니다. AI 공용 계약은 Team-PinLog/docs의 `static/05_AI_설계.md`가 단일 원본입니다.
 

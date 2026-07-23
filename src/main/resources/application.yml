@@ -6,10 +6,6 @@ server:
 spring:
   application:
     name: pinlog-back
-  security:
-    user:
-      name: ssafy
-      password: ssafy
   jpa:
     hibernate:
       ddl-auto: validate

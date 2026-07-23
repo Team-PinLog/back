@@ -1,7 +1,7 @@
 -- core.feed_event는 Feed 설계(AI 파트 소유)에서 나온 테이블이므로 V102(AI 구간)에 있습니다.
 -- 백엔드 V2~ 작성 시 중복 정의하지 마세요.
 --
--- 근거: Team-PinLog/back docs/feed/feed-event.md §2.
+-- 근거: docs/ai/spec/feed-event.md §2.
 -- append-only 관측 로그. FK 없음(Collection 삭제 후에도 집계용으로 남아야 함),
 -- deleted_at 없음. 보존 기간은 유한하게 두고 created_at 기준으로 주기 삭제한다.
 CREATE TABLE core.feed_event (
