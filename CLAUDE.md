@@ -40,9 +40,22 @@ domain/<feature>/{controller, service, repository, entity, dto}   # 기능 단�
 global/{config, common, exception, security}                       # 전역 관심사
 ```
 
+현재 도메인:
+
+| 패키지 | 도메인 | 주요 엔티티/기능 |
+| --- | --- | --- |
+| `account` | 계정 | User · 가입/로그인/로그아웃/찾기/탈퇴/정보수정 (소셜 추후) |
+| `place` | 지도/장소 | Place · 장소 저장·조회, Kakao 검색 연동 |
+| `record` | 기록 | Record, Context · 기록 CRUD, 자연어 검색 |
+| `collection` | 컬렉션 | Collection · CRUD, Record 추가/제거, 공개 토글, 키워드 |
+| `feed` | 발견 | 발행 컬렉션·장소 추천, Feed 상세 |
+| `profile` | 프로필 | Setting · 내 프로필 조회, 팔로잉·팔로워 수, 개인설정 |
+| `follow` | 팔로우 | Follow(User→User) · 팔로우/해제, 별칭 수정 |
+
 - 새 기능은 `domain/<feature>` 아래에 위 레이어로 추가한다.
 - 전역 설정/공통 유틸/예외/보안은 `global/` 아래에 둔다. (예: `global/config/SecurityConfig`)
 - 빈 패키지는 `.gitkeep`으로 추적 중이며, 실제 코드가 생기면 제거한다.
+- Shelf는 ERD에서 제거됨(팔로우는 User를 대상으로 함).
 
 ## 인가 규칙
 
