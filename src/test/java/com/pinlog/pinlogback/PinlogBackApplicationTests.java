@@ -21,4 +21,9 @@ class PinlogBackApplicationTests extends PostgresContainerSupport {
 	void contextLoads() {
 	}
 
+	@Test
+	void ciFailurePathProbe() {
+		throw new AssertionError("intentional CI failure-path probe");
+	}
+
 }
