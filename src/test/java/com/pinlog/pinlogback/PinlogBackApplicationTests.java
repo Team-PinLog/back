@@ -21,4 +21,9 @@ class PinlogBackApplicationTests extends PostgresContainerSupport {
 	void contextLoads() {
 	}
 
+	@Test
+	void ciCoverageRecoveryProbe() {
+		throw new AssertionError("intentional coverage recovery probe");
+	}
+
 }
