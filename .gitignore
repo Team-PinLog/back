@@ -45,3 +45,6 @@ out/
 # Local environment
 .env
 !.env.example
+
+# Personal Claude Code permissions and environment settings
+.claude/settings.local.json

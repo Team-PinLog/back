@@ -1,0 +1,32 @@
+# API 개발 규약
+
+시작 절차와 PR 규칙은 [CONTRIBUTING.md](../../CONTRIBUTING.md)를 따릅니다. 이 문서는 HTTP API를 추가하거나 변경할 때의 상세 기준입니다.
+
+## 경로와 리소스
+
+- 애플리케이션 context path는 `/api/core`입니다.
+- Controller의 `@RequestMapping`과 메서드 매핑에는 `/api/core`를 중복하지 않습니다. 예를 들어 회원 리소스는 `/members`로 매핑해 최종 경로를 `/api/core/members`로 만듭니다.
+- URI는 복수 명사를 사용합니다. 동작이 필요한 경우에도 리소스와 하위 리소스로 표현하는 방식을 먼저 선택합니다.
+
+## 요청과 응답 모델
+
+- JPA Entity를 request 또는 response DTO로 직접 노출하지 않습니다. Entity, request DTO, response DTO는 각각의 변경 이유에 맞게 분리합니다.
+- 시간 값은 ISO-8601 UTC 형식으로 주고받습니다. 예: `2026-07-23T14:06:24Z`.
+- Bean Validation 실패는 HTTP 400으로 응답합니다.
+- 목록 pagination의 query parameter 이름은 `page`, `size`, `sort`를 사용합니다.
+
+## 오류 계약
+
+공통 오류 응답에는 항상 다음 필드를 제공합니다.
+
+| 필드 | 의미 |
+| --- | --- |
+| `code` | 클라이언트가 분기할 수 있는 안정적인 오류 코드 |
+| `message` | 사용자 또는 호출자가 이해할 수 있는 오류 설명 |
+| `traceId` | 로그와 요청을 연결하는 추적 식별자 |
+
+새 오류를 추가할 때는 상태 코드, `code`, 발생 조건과 API 테스트를 함께 추가합니다. validation 오류도 이 공통 오류 계약을 지켜 HTTP 400으로 반환합니다.
+
+## API 변경 검증
+
+요청·응답 계약을 바꾸면 정상 요청과 validation 실패를 테스트하고, 관련 API 문서를 갱신합니다. 인증이 포함된 API는 [CONTRIBUTING.md](../../CONTRIBUTING.md)의 인증 변경 검증도 함께 만족해야 합니다.

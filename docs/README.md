@@ -2,6 +2,12 @@
 
 루트 [`README.md`](../README.md)가 기술 스택·실행·운영을 다룬다면, 이 디렉터리는 도메인 로직과 파트 간 연동을 **어떻게 구현하는지**를 다룹니다.
 
+## 시작과 팀 규칙
+
+- [`CONTRIBUTING.md`](../CONTRIBUTING.md) — 시작 절차, Jira 중심 작업 추적, 검증과 PR 규칙의 단일 원본
+- [`setup/backend-initial-setup.md`](setup/backend-initial-setup.md) — backend foundation reset의 배경과 현재 개발 시작 방법
+- [`development/`](development/) — [API](development/api-conventions.md), [데이터베이스](development/database-conventions.md), [테스트](development/testing-conventions.md) 상세 규약
+
 ## AI 파트 문서
 
 [`ai/`](ai/) — AI 연동·Feed 관련 **설계·결정·구현 기록** (AI 파트 소유). 하위 구조·문서는 AI 파트가 관리합니다.
@@ -15,7 +21,7 @@
 
 ## 백엔드 공통 문서
 
-도메인·인증·API 규약 등 백엔드 소관 문서는 백엔드가 이 `docs/` 아래에 자체 구조로 추가합니다. (현재 미작성)
+백엔드 공통 규약은 [`development/`](development/)에서 관리합니다. 도메인별 설계 문서는 해당 도메인 디렉터리에 추가하고, 시작·검증·PR 규칙은 중복하지 않고 [`CONTRIBUTING.md`](../CONTRIBUTING.md)를 참조합니다.
 
 ## 공용 계약 참조
 
