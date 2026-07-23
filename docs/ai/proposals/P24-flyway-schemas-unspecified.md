@@ -42,7 +42,7 @@ spring:
 
 ## 영향
 
-- 마이그레이션·벡터 검증은 pgvector를 지원하는 PostgreSQL에서만 가능하다(H2 불가) → [troubleshooting/h2-pgvector-incompat.md](../troubleshooting/h2-pgvector-incompat.md).
+- 마이그레이션·벡터 검증은 pgvector를 지원하는 PostgreSQL에서만 가능하다.
 - 엔티티(JPA) 매핑은 마이그레이션이 만든 스키마와 정확히 일치해야 `validate`를 통과한다.
 
 ## 검증
