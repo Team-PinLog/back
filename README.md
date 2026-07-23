@@ -18,7 +18,7 @@ PinLog 백엔드 애플리케이션입니다. Spring Boot와 Java 21을 기반�
 - PostgreSQL
 - Redis
 - Lombok
-- JUnit 5
+- JUnit 6
 
 ## 사전 준비
 
