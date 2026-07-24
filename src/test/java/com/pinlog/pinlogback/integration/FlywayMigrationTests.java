@@ -43,16 +43,50 @@ class FlywayMigrationTests extends PostgresContainerSupport {
 			"SELECT count(*) FROM information_schema.tables"
 				+ " WHERE table_schema = 'public' AND table_name = 'flyway_schema_history'"))
 			.isEqualTo(1);
-		assertThat(count("SELECT count(*) FROM information_schema.tables WHERE table_schema = 'ai'"))
-			.isEqualTo(5);
-		assertThat(count(
-			"SELECT count(*) FROM information_schema.tables"
-				+ " WHERE table_schema = 'core' AND table_name = 'feed_event'"))
-			.isEqualTo(1);
+		assertThat(tableNamesIn("ai")).contains(
+			"keyword_preset",
+			"context_ai_state",
+			"context_embedding",
+			"context_keyword",
+			"context_keyword_analysis"
+		);
+		assertThat(tableNamesIn("core")).contains("feed_event");
+		assertThat(indexNamesIn("ai")).contains(
+			"idx_context_embedding_user_active",
+			"idx_context_embedding_record",
+			"idx_context_ai_state_embedding",
+			"idx_context_ai_state_keyword",
+			"idx_context_keyword_keyword"
+		);
+		assertThat(indexNamesIn("core")).contains(
+			"ix_feed_event_penalty",
+			"ix_feed_event_request",
+			"ix_feed_event_created"
+		);
 	}
 
 	private int count(String sql) {
 		Integer result = jdbcTemplate.queryForObject(sql, Integer.class);
 		return result == null ? 0 : result;
+	}
+
+	private Set<String> tableNamesIn(String schemaName) {
+		return jdbcTemplate.queryForList(
+				"SELECT table_name FROM information_schema.tables WHERE table_schema = ?",
+				String.class,
+				schemaName
+			)
+			.stream()
+			.collect(Collectors.toSet());
+	}
+
+	private Set<String> indexNamesIn(String schemaName) {
+		return jdbcTemplate.queryForList(
+				"SELECT indexname FROM pg_indexes WHERE schemaname = ?",
+				String.class,
+				schemaName
+			)
+			.stream()
+			.collect(Collectors.toSet());
 	}
 }

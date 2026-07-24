@@ -2,20 +2,29 @@
 
 루트 [`README.md`](../README.md)가 기술 스택·실행·운영을 다룬다면, 이 디렉터리는 도메인 로직과 파트 간 연동을 **어떻게 구현하는지**를 다룹니다.
 
+## 시작과 팀 규칙
+
+- [`CONTRIBUTING.md`](../CONTRIBUTING.md) — 시작 절차, Jira 중심 작업 추적, 검증과 PR 규칙의 단일 원본
+- [`development/`](development/) — [개발 워크플로우](development/workflow.md), [코드 리뷰](development/code-review.md), [패키지 구조](development/package-structure.md), [API](development/api-conventions.md), [API 문서화](development/api-documentation.md), [에러 처리](development/error-handling.md), [로깅](development/logging.md), [설정·프로파일](development/configuration.md), [데이터베이스](development/database-conventions.md), [테스트](development/testing-conventions.md) 상세 규약
+
 ## AI 파트 문서
 
 [`ai/`](ai/) — AI 연동·Feed 관련 **설계·결정·구현 기록** (AI 파트 소유). 하위 구조·문서는 AI 파트가 관리합니다.
 
-### 백엔드가 참고해야 할 확정 규칙
+### 현재 구현 기준
 
-아래는 백엔드 도메인 작업 시 반드시 따라야 하는, AI 파트가 확정한 규칙입니다.
+백엔드 도메인 작업은 아래의 현재 구현 기준을 따릅니다.
 
-- [Flyway 마이그레이션 버전 구간](ai/proposals/P21-flyway-migration-convention.md) — **`V2`~`V99`가 백엔드 구간**. 자기 구간 밖 번호 미사용.
+- [데이터베이스 개발 규약](development/database-conventions.md) — Flyway의 현재 기준: `V1` 공통 기반, `V2`~`V99` 백엔드, `V100`~`V199` AI, `V200` 이후 미할당.
 - [`core.feed_event` 소유](ai/proposals/P22-feed-event-ownership.md) — `V102`(AI 구간)에 정의됨. **백엔드 `V2~`에서 중복 정의 금지**(재정의 시 `already exists`).
+
+### 과거 제안·결정 기록
+
+- [P21: Flyway 마이그레이션 파트별 번호 구간](ai/proposals/P21-flyway-migration-convention.md) — 과거 결정 기록입니다. 현재 구현 기준으로 사용하지 말고 위 데이터베이스 개발 규약을 따릅니다.
 
 ## 백엔드 공통 문서
 
-도메인·인증·API 규약 등 백엔드 소관 문서는 백엔드가 이 `docs/` 아래에 자체 구조로 추가합니다. (현재 미작성)
+백엔드 공통 규약은 [`development/`](development/)에서 관리합니다. 도메인별 설계 문서는 해당 도메인 디렉터리에 추가하고, 시작·검증·PR 규칙은 중복하지 않고 [`CONTRIBUTING.md`](../CONTRIBUTING.md)를 참조합니다.
 
 ## 공용 계약 참조
 

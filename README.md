@@ -2,6 +2,10 @@
 
 PinLog 백엔드 애플리케이션입니다. Spring Boot와 Java 21을 기반으로 하며, 로컬 개발 인프라는 Docker Compose로 실행합니다.
 
+## 기여와 개발 규칙
+
+시작 절차, Jira 중심 작업 추적, 검증과 PR 규칙의 단일 원본은 [CONTRIBUTING.md](./CONTRIBUTING.md)입니다. API, DB, 테스트의 상세 기준은 [개발 규약](./docs/development/)에서 확인합니다.
+
 ## 기술 스택
 
 - Java 21
@@ -14,12 +18,12 @@ PinLog 백엔드 애플리케이션입니다. Spring Boot와 Java 21을 기반�
 - PostgreSQL
 - Redis
 - Lombok
-- JUnit 5
+- JUnit 6
 
 ## 사전 준비
 
 - JDK 21
-- Docker Desktop 및 Docker Compose
+- Docker Desktop or Docker Engine with Docker Compose
 
 ## 로컬 인프라
 
@@ -34,7 +38,7 @@ PinLog 백엔드 애플리케이션입니다. Spring Boot와 Java 21을 기반�
 
 ```bash
 cp .env.example .env
-docker compose up -d
+docker compose up -d --wait
 docker compose ps
 ./gradlew bootRun
 ```
@@ -101,7 +105,13 @@ docker build --build-arg BUILD_SHA=sha-local -t pinlog-back:local .
 
 ## 테스트
 
-테스트는 Testcontainers로 `pgvector/pgvector:0.8.1-pg16` PostgreSQL 컨테이너를 실행하므로 Docker Desktop이 실행 중이어야 합니다.
+완료 전 공통 검증은 다음 명령입니다. 테스트는 Testcontainers로 `pgvector/pgvector:0.8.1-pg16` PostgreSQL 컨테이너를 실행하므로 Docker Desktop or Docker Engine with Docker Compose가 실행 중이어야 합니다.
+
+```bash
+./gradlew clean check --no-daemon
+```
+
+단위 또는 특정 테스트만 실행할 때는 아래 명령을 사용합니다.
 
 Windows:
 
@@ -137,8 +147,9 @@ pinlog-back/
 
 ## 설계·구현 문서
 
-백엔드 설계·구현 문서는 [`docs/`](./docs)에서 관리합니다. 현재는 AI 연동과 Feed를 다루며, 기능이 늘어남에 따라 도메인·인증·API 규약 등으로 확장합니다.
+백엔드 설계·구현 문서는 [`docs/`](./docs)에서 관리합니다. 공통 개발 규약은 아래에서, AI 연동 문서는 `docs/ai/`에서 확인합니다.
 
+- [`docs/development/`](./docs/development/) — 워크플로우, 코드 리뷰, 패키지 구조, API, 에러 처리, 로깅, 설정, 데이터베이스, 테스트 상세 규약
 - [`docs/ai/`](./docs/ai) — FastAPI 연동, Context AI State 동기화, 재스캔 Scheduler, 삭제·취소 처리, Keyword 응답 조립
 - Feed 문서는 [`docs/ai/spec/`](./docs/ai/spec)에 포함되어 있습니다.
 
