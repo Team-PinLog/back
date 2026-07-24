@@ -48,3 +48,6 @@ out/
 
 # Personal Claude Code permissions and environment settings
 .claude/settings.local.json
+
+# Local-only design docs (brainstorming specs/plans) — not shared in the repo
+.claude/superpowers/
