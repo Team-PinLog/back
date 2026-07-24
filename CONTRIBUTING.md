@@ -42,7 +42,7 @@ Compose가 PostgreSQL과 Redis가 `healthy` 상태가 될 때까지 기다립니
 
 ## 작업 추적과 Git 규칙
 
-일반 개발 작업에는 Jira가 필수이고 GitHub Issue 연결은 선택입니다. 작업을 시작하기 전에 Jira 키를 준비하고, 브랜치와 커밋에 같은 키를 사용합니다.
+일반 개발 작업에는 Jira가 필수이고 GitHub Issue 연결은 선택입니다. 작업을 시작하기 전에 Jira 키를 준비하고, 브랜치와 커밋에 같은 키를 사용합니다. Jira 운영 세부는 [Jira 운영 가이드](docs/development/jira-workflow.md)를 따릅니다(조직 공용 규칙으로, 추후 infra로 이관 예정).
 
 ```text
 브랜치: {type}/{jira-key}-{summary}
