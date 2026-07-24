@@ -19,6 +19,17 @@ back·front·ai가 동일하게 따르는 규칙은 `Team-PinLog/infra`가 원�
 
 이 문서(및 `docs/development/`)는 위 조직 표준을 전제로, **back 고유 규칙**(패키지 구조, Flyway 버전 구간, Testcontainers 등)만 다룹니다. 자연어로 Jira 티켓만 만들고 싶을 때는 별도 도구 `Team-PinLog/cowork`("할 일 올리기")를 사용합니다.
 
+## 처음 오셨다면 (읽는 순서)
+
+백엔드에 처음 합류했다면 이 순서로 읽으세요.
+
+1. [infra 온보딩](https://github.com/Team-PinLog/infra/blob/main/docs/onboarding.md) — 인프라 전체 그림, 배포·주소·로그 보는 법
+2. **이 문서(CONTRIBUTING)** — 시작 절차, Git·검증·PR 규칙
+3. [개발 워크플로우](docs/development/workflow.md) — 티켓 발급부터 병합까지의 순서
+4. 맡은 작업에 해당하는 [개발 규약](docs/development/) — 패키지·API·에러·로깅·설정·DB·테스트
+
+에이전트는 [CLAUDE.md](CLAUDE.md)가 이 순서를 따르게 합니다.
+
 ## 시작 전 준비
 
 - JDK 21
@@ -84,6 +95,12 @@ Compose가 PostgreSQL과 Redis가 `healthy` 상태가 될 때까지 기다립니
 | 인증·인가 | 성공, 401, 403 또는 확정된 리소스 은닉 404 테스트 |
 
 일반 PR은 [PR 템플릿](.github/pull_request_template.md)을 사용하고 Jira 키를 필수로 적으며, 관련 GitHub Issue가 있을 때만 선택적으로 연결합니다. foundation reset PR은 Issue #9를 참조하고 Jira 키 없이 제출할 수 있지만, 이 예외 때문에 일반 템플릿의 Jira 필수 규칙은 바뀌지 않습니다. 모든 PR에는 검증 명령과 결과, 범위 밖 항목, 리뷰가 필요한 판단을 남깁니다.
+
+## 브랜치·환경 한눈에
+
+- **브랜치**: 최신 `dev`에서 `{type}/{jira-key}-{summary}`로 분기합니다. `dev`·`main` 직접 push 금지, 병합은 squash + 기능 브랜치 자동 삭제. 상세는 [개발 워크플로우](docs/development/workflow.md).
+- **환경**: 로컬은 Compose(`localhost`), 운영은 클러스터 주소 + 환경변수 주입입니다. 상세는 [설정·프로파일 규약](docs/development/configuration.md).
+- **원본**: 머지·공급망·배포 등 조직 표준은 [infra git-governance](https://github.com/Team-PinLog/infra/blob/main/docs/git-governance.md)와 [backend-conventions](https://github.com/Team-PinLog/infra/blob/main/docs/backend-conventions.md)가 기준입니다.
 
 ## 문서의 역할
 
