@@ -5,8 +5,7 @@
 ## 시작과 팀 규칙
 
 - [`CONTRIBUTING.md`](../CONTRIBUTING.md) — 시작 절차, Jira 중심 작업 추적, 검증과 PR 규칙의 단일 원본
-- [`setup/backend-initial-setup.md`](setup/backend-initial-setup.md) — backend foundation reset의 배경과 현재 개발 시작 방법
-- [`development/`](development/) — [API](development/api-conventions.md), [데이터베이스](development/database-conventions.md), [테스트](development/testing-conventions.md) 상세 규약
+- [`development/`](development/) — [개발 워크플로우](development/workflow.md), [코드 리뷰](development/code-review.md), [패키지 구조](development/package-structure.md), [API](development/api-conventions.md), [에러 처리](development/error-handling.md), [로깅](development/logging.md), [설정·프로파일](development/configuration.md), [데이터베이스](development/database-conventions.md), [테스트](development/testing-conventions.md) 상세 규약
 
 ## AI 파트 문서
 

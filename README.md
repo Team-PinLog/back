@@ -4,7 +4,7 @@ PinLog 백엔드 애플리케이션입니다. Spring Boot와 Java 21을 기반�
 
 ## 기여와 개발 규칙
 
-시작 절차, Jira 중심 작업 추적, 검증과 PR 규칙의 단일 원본은 [CONTRIBUTING.md](./CONTRIBUTING.md)입니다. API, DB, 테스트의 상세 기준은 [개발 규약](./docs/development/)에서 확인합니다. 이번 기반 정리의 배경과 분리된 PR은 [Backend 초기 기반 정리](./docs/setup/backend-initial-setup.md)에 기록합니다.
+시작 절차, Jira 중심 작업 추적, 검증과 PR 규칙의 단일 원본은 [CONTRIBUTING.md](./CONTRIBUTING.md)입니다. API, DB, 테스트의 상세 기준은 [개발 규약](./docs/development/)에서 확인합니다.
 
 ## 기술 스택
 
@@ -147,10 +147,9 @@ pinlog-back/
 
 ## 설계·구현 문서
 
-백엔드 설계·구현 문서는 [`docs/`](./docs)에서 관리합니다. 공통 개발 규약과 이번 기반 정리 문서는 아래에서, AI 연동 문서는 `docs/ai/`에서 확인합니다.
+백엔드 설계·구현 문서는 [`docs/`](./docs)에서 관리합니다. 공통 개발 규약은 아래에서, AI 연동 문서는 `docs/ai/`에서 확인합니다.
 
-- [`docs/development/`](./docs/development/) — API, 데이터베이스, 테스트 상세 규약
-- [`docs/setup/backend-initial-setup.md`](./docs/setup/backend-initial-setup.md) — foundation reset의 배경, PR과 현재 시작 절차
+- [`docs/development/`](./docs/development/) — 워크플로우, 코드 리뷰, 패키지 구조, API, 에러 처리, 로깅, 설정, 데이터베이스, 테스트 상세 규약
 - [`docs/ai/`](./docs/ai) — FastAPI 연동, Context AI State 동기화, 재스캔 Scheduler, 삭제·취소 처리, Keyword 응답 조립
 - Feed 문서는 [`docs/ai/spec/`](./docs/ai/spec)에 포함되어 있습니다.
 

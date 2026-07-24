@@ -88,7 +88,6 @@ Compose가 PostgreSQL과 Redis가 `healthy` 상태가 될 때까지 기다립니
 ## 문서의 역할
 
 - [README.md](README.md): 기술 스택, 인프라와 운영 참고를 빠르게 안내합니다.
-- [docs/setup/backend-initial-setup.md](docs/setup/backend-initial-setup.md): 이번 backend foundation reset의 배경과 결과를 공유합니다.
 - [docs/development/](docs/development/): API, DB, 테스트의 상세 개발 규칙을 관리합니다.
 - [CLAUDE.md](CLAUDE.md): Claude Code가 이 문서와 상세 규칙을 실행 순서대로 읽게 하는 짧은 하네스입니다.
 - [AGENTS.md](AGENTS.md): AGENTS 지원 도구를 `CLAUDE.md`와 이 문서로 연결합니다.
