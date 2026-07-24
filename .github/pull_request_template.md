@@ -2,13 +2,17 @@
 제목: <type>(<JIRA-KEY>): <간결한 설명>
 예) feat(S15P11A705-14): 개인 검색 API 추가
 type: feat | fix | docs | refactor | chore | test | perf
+Jira 키는 필수입니다. 관련 GitHub Issue 링크는 선택입니다.
 -->
 
 ## 요약
 <!-- 이 PR이 무엇을, 왜 하는지 1~3줄. -->
 
-## Jira
-- S15P11A705-
+## Jira (필수)
+- 키 또는 URL:
+
+## 관련 GitHub Issue (선택)
+-
 
 ## 변경 사항
 -
