@@ -1,5 +1,6 @@
 # 작업 리포트 — Flyway 도입 + ai 스키마·feed_event 마이그레이션
 
+- **상태**: 완료
 - **날짜**: 2026-07-23
 - **PR**: [back#3](https://github.com/Team-PinLog/back/pull/3) — `feat: Flyway 도입 + ai 스키마·feed_event 마이그레이션 (V1/V100~102)`
 - **주요 커밋**: `946df11` (merge `23f1933`)
