@@ -1,6 +1,23 @@
 # PinLog Backend 기여 가이드
 
-이 문서는 PinLog Backend에서 사람이 사용하는 개발 계약의 단일 원본입니다. 에이전트도 이 규칙을 따릅니다. API, 데이터베이스, 테스트의 세부 규칙은 [docs/development](docs/development/)에서 확인합니다.
+이 문서는 PinLog Backend **고유** 개발 계약의 단일 원본입니다. 에이전트도 이 규칙을 따릅니다. API, 데이터베이스, 테스트, 패키지 구조의 세부 규칙은 [docs/development](docs/development/)에서 확인합니다.
+
+모든 서비스 레포에 공통으로 적용되는 조직 표준(Git/PR/머지 규칙, 배포·런타임 계약)은 이 레포가 복제하지 않고 `infra` 레포를 권위 문서로 참조합니다. 아래 "조직 표준"을 먼저 확인하세요.
+
+## 조직 표준 (권위 문서)
+
+back·front·ai가 동일하게 따르는 규칙은 `Team-PinLog/infra`가 원본입니다. 내용이 이 문서와 어긋나면 infra 문서를 기준으로 하고, 이 문서를 함께 고칩니다.
+
+- **Git / PR / 머지 규칙** — [infra/docs/git-governance.md](https://github.com/Team-PinLog/infra/blob/main/docs/git-governance.md)
+  - 병합은 **squash merge**, 머지 후 기능 브랜치 **자동 삭제**
+  - PR 본문에 **Jira 키 + TDD 증거(RED/GREEN/Regression)** 필요, `main`/`dev` 직접 push 금지
+  - 외부 GitHub Action은 **full commit SHA**로 고정
+- **배포 · 런타임 계약** — [infra/docs/backend-conventions.md](https://github.com/Team-PinLog/infra/blob/main/docs/backend-conventions.md)
+  - 서비스 `context-path`는 `/api/core` (컨트롤러 매핑에 prefix 중복 금지)
+  - 컨테이너 **UID 1000 non-root**, actuator 필수
+  - 이미지 태그 = **커밋 SHA**, GHCR + Argo CD GitOps로 배포
+
+이 문서(및 `docs/development/`)는 위 조직 표준을 전제로, **back 고유 규칙**(패키지 구조, Flyway 버전 구간, Testcontainers 등)만 다룹니다. 자연어로 Jira 티켓만 만들고 싶을 때는 별도 도구 `Team-PinLog/cowork`("할 일 올리기")를 사용합니다.
 
 ## 시작 전 준비
 
