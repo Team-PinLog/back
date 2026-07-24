@@ -86,7 +86,7 @@ Never push directly to `dev`. Submit changes as PRs that pass the branch protect
 - Do not add H2. Use PostgreSQL Testcontainers for DB-dependent tests.
 - Add authentication only in a dedicated auth PR that ships dependencies, the auth contract, security config, a local dev path, and tests together. See the [authentication PR contract](docs/development/authentication.md).
 
-The full path from starting a feature to merging is in the [development workflow](docs/development/workflow.md); review and merge criteria are in the [code review guide](docs/development/code-review.md). Detailed rules: [package structure](docs/development/package-structure.md), [API](docs/development/api-conventions.md), [API documentation](docs/development/api-documentation.md), [error handling](docs/development/error-handling.md), [logging](docs/development/logging.md), [configuration](docs/development/configuration.md), [database](docs/development/database-conventions.md), [testing](docs/development/testing-conventions.md).
+The full path from starting a feature to merging is in the [development workflow](docs/development/workflow.md); review and merge criteria are in the [code review guide](docs/development/code-review.md). Detailed rules: [package structure](docs/development/package-structure.md), [code style](docs/development/code-style.md), [API](docs/development/api-conventions.md), [API documentation](docs/development/api-documentation.md), [error handling](docs/development/error-handling.md), [logging](docs/development/logging.md), [configuration](docs/development/configuration.md), [database](docs/development/database-conventions.md), [testing](docs/development/testing-conventions.md).
 
 ## Verification and PR
 
