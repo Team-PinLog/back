@@ -46,4 +46,17 @@ class OpenApiDocsTests extends PostgresContainerSupport {
 		assertEquals(200, response.statusCode());
 		assertTrue(response.body().contains("\"openapi\""));
 	}
+
+	@Test
+	void openApiInfoHasServiceTitle() throws Exception {
+		HttpRequest request = HttpRequest.newBuilder()
+			.uri(URI.create("http://localhost:" + port + "/api/core/v3/api-docs"))
+			.GET()
+			.build();
+
+		HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+
+		assertEquals(200, response.statusCode());
+		assertTrue(response.body().contains("\"title\":\"PinLog Core API\""));
+	}
 }
