@@ -62,7 +62,7 @@ Compose가 PostgreSQL과 Redis가 `healthy` 상태가 될 때까지 기다립니
 - H2를 추가하지 않습니다. DB 의존 테스트에는 PostgreSQL Testcontainers를 사용합니다.
 - 인증 기능은 별도 인증 PR에서 의존성, 인증 계약, 보안 설정, 로컬 개발 방법과 테스트를 함께 제공할 때만 추가합니다. 그 PR이 만족해야 할 계약은 [인증 PR 계약](docs/development/authentication.md)에 있습니다.
 
-기능 하나를 시작해서 병합하기까지의 전체 순서는 [개발 워크플로우](docs/development/workflow.md)에 있습니다. 세부 기준은 [패키지 구조 규약](docs/development/package-structure.md), [API 규약](docs/development/api-conventions.md), [에러 처리 규약](docs/development/error-handling.md), [로깅 규약](docs/development/logging.md), [데이터베이스 규약](docs/development/database-conventions.md), [테스트 규약](docs/development/testing-conventions.md)을 따릅니다.
+기능 하나를 시작해서 병합하기까지의 전체 순서는 [개발 워크플로우](docs/development/workflow.md)에 있습니다. 세부 기준은 [패키지 구조 규약](docs/development/package-structure.md), [API 규약](docs/development/api-conventions.md), [에러 처리 규약](docs/development/error-handling.md), [로깅 규약](docs/development/logging.md), [설정·프로파일 규약](docs/development/configuration.md), [데이터베이스 규약](docs/development/database-conventions.md), [테스트 규약](docs/development/testing-conventions.md)을 따릅니다.
 
 ## 검증과 PR
 
