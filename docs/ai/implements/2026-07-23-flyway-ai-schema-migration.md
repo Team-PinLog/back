@@ -53,4 +53,4 @@
 ## 후속
 
 - 백엔드 `core` 도메인 마이그레이션(`V2~`) — 백엔드 파트.
-- 운영 postgres 이미지 pgvector화, `ai` 전용 DB role 분리 — infra 파트(`docs/static/06` §2).
+- 운영 postgres 이미지 pgvector화, `ai` 전용 DB role 분리 — infra 파트(`docs/static/05-1` §2).
