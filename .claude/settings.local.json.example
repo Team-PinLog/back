@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew bootRun)",
+      "Bash(./gradlew clean check --no-daemon)",
+      "Bash(docker compose config)",
+      "Bash(docker compose up -d --wait)",
+      "Bash(docker compose ps)"
+    ]
+  }
+}

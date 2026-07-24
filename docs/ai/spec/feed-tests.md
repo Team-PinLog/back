@@ -17,7 +17,7 @@ Feed 기능의 테스트 항목과, 공용 계약 §16 필수 검증 시나리�
 | 슬라이스 | 후보 채널 쿼리, 특징 집계 쿼리, 재검증 쿼리 | `@DataJpaTest` + PostgreSQL |
 | 통합 | Feed API 전체, Cache 폴백, 이벤트 수집 | `@SpringBootTest` + PostgreSQL + Redis |
 
-주의: 후보 채널 쿼리와 Keyword 집계 쿼리는 부분 인덱스, 크로스 스키마 조인, `FOR UPDATE SKIP LOCKED`를 사용하므로 **H2로 검증하지 않습니다.** Testcontainers 또는 로컬 `compose.yaml`의 PostgreSQL을 사용합니다. H2는 도메인 무관한 가벼운 실행에만 씁니다.
+주의: 후보 채널 쿼리와 Keyword 집계 쿼리는 부분 인덱스, 크로스 스키마 조인, `FOR UPDATE SKIP LOCKED`를 사용합니다. DB가 필요한 모든 테스트는 PostgreSQL Testcontainers를 사용하며, H2는 어떤 테스트에도 사용하지 않습니다.
 
 ## 3. 점수 계산 (단위)
 
