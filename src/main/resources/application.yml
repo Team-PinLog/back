@@ -19,6 +19,10 @@ spring:
 build:
   sha: ${BUILD_SHA:unknown}
 
+logging:
+  pattern:
+    level: "%5p [%X{traceId:-}]"
+
 management:
   endpoints:
     web:
