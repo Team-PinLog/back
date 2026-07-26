@@ -7,9 +7,10 @@
 - [`CONTRIBUTING.md`](../CONTRIBUTING.md) — 시작 절차, Jira 중심 작업 추적, 검증과 PR 규칙의 단일 원본
 - [`development/`](development/) — [개발 워크플로우](development/workflow.md), [코드 리뷰](development/code-review.md), [패키지 구조](development/package-structure.md), [코드 스타일](development/code-style.md), [API](development/api-conventions.md), [API 문서화](development/api-documentation.md), [에러 처리](development/error-handling.md), [로깅](development/logging.md), [설정·프로파일](development/configuration.md), [데이터베이스](development/database-conventions.md), [테스트](development/testing-conventions.md) 상세 규약
 
-## AI 파트 문서
+## 파트별 문서
 
-[`ai/`](ai/) — AI 연동·Feed 관련 **설계·결정·구현 기록** (AI 파트 소유). 하위 구조·문서는 AI 파트가 관리합니다.
+- [`backend/`](backend/) — 백엔드 도메인의 **설계·결정·구현 기록** (백엔드 파트 소유). spec/decisions/implements/troubleshooting + WORKLOG 구조이며, 결정은 `BD` 번호(ADR)로 기록합니다.
+- [`ai/`](ai/) — AI 연동·Feed 관련 **설계·결정·구현 기록** (AI 파트 소유). 하위 구조·문서는 AI 파트가 관리합니다.
 
 ### 현재 구현 기준
 
@@ -24,7 +25,7 @@
 
 ## 백엔드 공통 문서
 
-백엔드 공통 규약은 [`development/`](development/)에서 관리합니다. 도메인별 설계 문서는 해당 도메인 디렉터리에 추가하고, 시작·검증·PR 규칙은 중복하지 않고 [`CONTRIBUTING.md`](../CONTRIBUTING.md)를 참조합니다.
+백엔드 공통 규약은 [`development/`](development/)에서 관리합니다. 도메인별 설계 문서는 [`backend/spec/`](backend/spec/)에 추가하고, 시작·검증·PR 규칙은 중복하지 않고 [`CONTRIBUTING.md`](../CONTRIBUTING.md)를 참조합니다.
 
 ## 공용 계약 참조
 
