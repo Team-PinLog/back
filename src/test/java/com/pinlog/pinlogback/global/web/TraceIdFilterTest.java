@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.junit.jupiter.api.Test;
 import org.slf4j.MDC;
+import org.springframework.mock.web.MockFilterChain;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.mock.web.MockFilterChain;
 
 class TraceIdFilterTest {
 
@@ -17,7 +17,8 @@ class TraceIdFilterTest {
 		String[] captured = new String[1];
 		MockFilterChain chain = new MockFilterChain(new jakarta.servlet.http.HttpServlet() {
 			@Override
-			protected void service(jakarta.servlet.http.HttpServletRequest req, jakarta.servlet.http.HttpServletResponse res) {
+			protected void service(jakarta.servlet.http.HttpServletRequest req,
+					jakarta.servlet.http.HttpServletResponse res) {
 				captured[0] = MDC.get(TraceIdFilter.TRACE_ID);
 			}
 		});
@@ -37,7 +38,8 @@ class TraceIdFilterTest {
 		String[] captured = new String[1];
 		MockFilterChain chain = new MockFilterChain(new jakarta.servlet.http.HttpServlet() {
 			@Override
-			protected void service(jakarta.servlet.http.HttpServletRequest req, jakarta.servlet.http.HttpServletResponse res) {
+			protected void service(jakarta.servlet.http.HttpServletRequest req,
+					jakarta.servlet.http.HttpServletResponse res) {
 				captured[0] = MDC.get(TraceIdFilter.TRACE_ID);
 			}
 		});
