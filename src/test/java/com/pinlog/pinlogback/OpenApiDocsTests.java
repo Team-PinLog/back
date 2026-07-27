@@ -12,22 +12,15 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.pinlog.pinlogback.integration.PostgresContainerSupport;
 
-@Testcontainers
 @SpringBootTest(
 	webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
 	properties = "management.health.redis.enabled=false"
 )
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 class OpenApiDocsTests extends PostgresContainerSupport {
-
-	@Container
-	static final PostgreSQLContainer<?> postgres = POSTGRES;
 
 	private final HttpClient httpClient = HttpClient.newHttpClient();
 
