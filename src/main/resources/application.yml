@@ -1,11 +1,19 @@
 server:
   port: 8080
+  # SIGTERM을 받으면 새 요청을 막고 진행 중인 요청을 끝낸 뒤 종료한다.
+  # 이게 없으면 RollingUpdate 중 처리 중이던 요청이 잘린다.
+  shutdown: graceful
   servlet:
     context-path: /api/core
 
 spring:
   application:
     name: pinlog-back
+  lifecycle:
+    # Kubernetes terminationGracePeriodSeconds와 짝을 이루는 값이다.
+    # preStop sleep(5s) + 이 값(20s) < terminationGracePeriodSeconds(40s)를 지켜야
+    # 배수 도중 SIGKILL로 잘리지 않는다. 매니페스트 쪽은 Infra 소유(S15P11A705-47).
+    timeout-per-shutdown-phase: 20s
   jpa:
     hibernate:
       ddl-auto: validate

@@ -4,7 +4,16 @@
 
 ## 지원 데이터베이스
 
-PostgreSQL만 지원합니다. 로컬 실행, 통합 테스트와 CI는 `pgvector/pgvector:0.8.1-pg16` PostgreSQL을 기준으로 합니다. H2를 추가하거나 PostgreSQL 전용 migration의 대체 검증으로 사용하지 않습니다.
+PostgreSQL만 지원합니다. 로컬 실행, 통합 테스트와 CI는 `pgvector/pgvector:0.8.5-pg16` PostgreSQL을 기준으로 합니다. 운영 이미지(S15P11A705-46)와 같은 버전으로 맞춥니다. H2를 추가하거나 PostgreSQL 전용 migration의 대체 검증으로 사용하지 않습니다.
+
+`compose.yaml`은 digest까지 고정하고, Testcontainers(`PostgresContainerSupport`)는 같은 태그를 씁니다.
+
+> **이미지를 올려도 기존 volume의 extension은 따라 올라가지 않습니다.** `CREATE EXTENSION IF NOT EXISTS vector`는 이미 설치된 extension을 업그레이드하지 않으므로, 기존 `postgres-data`를 재사용하면 바이너리만 새 버전이고 `pg_extension.extversion`은 옛 버전으로 남습니다. 확인과 조치는 아래와 같습니다.
+>
+> ```sql
+> SELECT name, default_version, installed_version FROM pg_available_extensions WHERE name = 'vector';
+> ALTER EXTENSION vector UPDATE;
+> ```
 
 애플리케이션의 Hibernate 설정은 `ddl-auto=validate`입니다. schema 변경은 Hibernate 자동 생성이 아니라 Flyway migration으로 관리합니다.
 
@@ -26,6 +35,25 @@ PostgreSQL만 지원합니다. 로컬 실행, 통합 테스트와 CI는 `pgvecto
 - Repository, Flyway와 PostgreSQL 기능을 쓰는 테스트는 PostgreSQL Testcontainers를 사용합니다.
 - DB 변경 PR은 `./gradlew clean check --no-daemon`을 실행해 PostgreSQL 통합 테스트를 통과해야 합니다.
 - Docker가 실행되지 않으면 DB 테스트를 skip하지 않습니다. 원인을 표시해 실패하게 하고 Docker를 시작한 뒤 다시 실행합니다.
+
+## 무중단 배포와 backward-compatible migration
+
+RollingUpdate 중에는 **구 버전 Pod와 신 버전 Pod가 같은 DB를 동시에 봅니다.** migration은 신 Pod가 뜨는 시점에 적용되지만 구 Pod는 아직 살아 있으므로, 구 버전 코드가 계속 동작하는 형태로만 schema를 바꿉니다.
+
+한 번의 migration에서 하지 않습니다.
+
+- 컬럼·테이블 즉시 `DROP` — 구 Pod의 `SELECT`가 깨집니다
+- 컬럼 rename — `DROP` + `ADD`와 같습니다
+- 기존 컬럼에 `NOT NULL` 즉시 추가 — 해당 컬럼을 채우지 않는 구 Pod의 `INSERT`가 실패합니다
+- 타입 축소 변경(길이 축소, 범위가 좁은 타입으로 변경)
+
+제거가 필요하면 릴리스를 나눕니다.
+
+1. 추가 — 새 컬럼을 nullable로 추가하고 백필한다. 필요하면 신·구 컬럼에 함께 쓴다
+2. 배포 — 구 Pod가 모두 교체될 때까지 기다린다
+3. 제거 — **다음 릴리스의 새 migration**에서 구 컬럼을 지우고 `NOT NULL`을 건다
+
+CI의 `FlywayMigrationTests`는 **빈 DB에 전체 migration을 적용하는 것까지만** 검증합니다. 구 Pod 호환성은 자동으로 잡히지 않으므로 이 규약과 리뷰로 지킵니다. 근거: `S15P11A705-51`.
 
 ## 공통 컬럼과 BaseEntity
 

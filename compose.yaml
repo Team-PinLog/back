@@ -1,6 +1,8 @@
 services:
   postgres:
-    image: pgvector/pgvector:0.8.1-pg16
+    # 운영 PostgreSQL과 동일 이미지로 고정한다(digest 핀, S15P11A705-46).
+    # 테스트 컨테이너(PostgresContainerSupport)도 같은 태그를 쓴다.
+    image: pgvector/pgvector:0.8.5-pg16@sha256:1d533553fefe4f12e5d80c7b80622ba0c382abb5758856f52983d8789179f0fb
     labels:
       org.springframework.boot.service-connection: postgres
     environment:

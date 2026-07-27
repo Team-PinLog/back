@@ -18,4 +18,6 @@
 | BI-02 | Member 엔티티 + BaseEntity(soft delete) 구현 (S15P11A705-41) | ✅ 완료 | [BI-02](BI-02-2026-07-27-member-base-entity-soft-delete.md) |
 | BI-03 | 성공·오류 응답 공통 envelope(ApiResponse) 구현 (S15P11A705-53) | ✅ 완료 | [BI-03](BI-03-2026-07-27-api-response-envelope.md) |
 | BI-04 | 커서 기반 목록 응답 공용 타입(Cursor, CursorPage) 구현 (S15P11A705-42) | ✅ 완료 | [BI-04](BI-04-2026-07-27-cursor-pagination.md) |
+| BI-05 | SIGTERM graceful shutdown + liveness·readiness probe 계약 테스트 (S15P11A705-51) | ✅ 완료 | [BI-05](BI-05-2026-07-27-graceful-shutdown.md) |
+| BI-06 | Infra 배포 연동 체크리스트 검증 + pgvector `0.8.5-pg16` 정렬 (S15P11A705-51) | ✅ 완료 | [BI-06](BI-06-2026-07-27-deployment-contract-verification.md) |
 | BI-05 | 프레임워크 예외를 catch-all 500이 아니라 자체 상태 코드로 매핑 (S15P11A705-40) | ✅ 완료 | [BI-05](BI-05-2026-07-27-framework-error-mapping.md) |
