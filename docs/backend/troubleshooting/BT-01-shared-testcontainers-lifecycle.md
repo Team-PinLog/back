@@ -37,7 +37,9 @@ Testcontainers 공식 문서가 권하는 **싱글톤 컨테이너(singleton con
 
 싱글톤 컨테이너로 바뀌면서 이제 모든 테스트 클래스가 **하나의 DB를 프로세스 수명 동안 공유**한다. `FlywayMigrationTests`가 전제하는 "빈 DB에 전체 migration을 적용한다"는 조건은 더 이상 컨테이너 시작 시점에 보장되지 않고, 그 클래스가 실행 순서상 다른 데이터 삽입 테스트보다 먼저 실행되는가에 암묵적으로 의존한다. 지금은 Gradle의 기본 실행 순서에서 우연히 통과하지만, 다음 중 하나가 필요하다.
 
-- `member` 테스트들(및 향후 데이터를 삽입하는 테스트들)에 `@Transactional`을 붙여 각 테스트가 끝날 때 롤백하게 하거나,
 - `FlywayMigrationTests`의 "빈 DB" 전제를 실행 순서에 의존하지 않는 형태로 명시적으로 만든다(예: 별도 스키마·별도 컨테이너, 혹은 애초에 컬럼 존재만 확인하고 "빈 DB"를 전제하지 않도록 재작성).
+- 또는 각 테스트가 끝난 뒤 삽입한 행을 명시적으로 지우는 정리 코드(또는 `EntityManager#clear()` 후 재조회)를 추가한다.
+
+`member` 테스트들에 `@Transactional`을 붙이는 방법은 **여기서는 쓸 수 없다.** `MemberSoftDeleteTests.softDeleteHelperMarksEntityAsDeleted` 등 soft delete 제외 검증은 `repository.delete()`/`softDelete()` 이후 `findById`가 실제로 빈 결과를 반환하는지를 확인하는데, `@Transactional`을 붙이면 테스트 메서드 전체가 하나의 트랜잭션·영속성 컨텍스트를 공유하게 되어 엔티티가 1차 캐시에 계속 관리(managed) 상태로 남는다. 그러면 `findById(id)`가 SQL을 다시 실행하지 않고 1차 캐시에서 바로 응답해 `@SQLRestriction`이 아예 타지 않으므로, 실제로는 걸러져야 할 삭제된 행이 조회되어 제외 검증 자체가 거짓양성으로 통과(또는 실패)하게 된다. 이 클래스들에는 `@Transactional`을 붙이지 않고, 위의 명시적 정리 또는 `EntityManager#clear()` 같은 대안을 쓴다.
 
 이 정리는 이번 태스크 범위 밖이며 후속 작업으로 남긴다.

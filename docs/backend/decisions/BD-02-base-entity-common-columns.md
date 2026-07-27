@@ -35,6 +35,8 @@
 
 **(c)를 채택한다.** `BaseEntity`는 `created_at`과 `deleted_at`만 갖는다. `updated_at`은 두지 않고, 필요한 엔티티가 직접 `@LastModifiedDate` 필드를 선언한다. `deleted_at`이 없는 `place`는 `BaseEntity`를 상속하지 않는다. `created_at`만 가진 상위 클래스(예: `place` 전용)는 실제로 필요해질 때 분리한다(YAGNI) — 지금은 `place` 하나뿐이라 분리 이득이 없다.
 
+`BaseEntity`를 상속하지 않으면 그 위에 붙은 `@EntityListeners(AuditingEntityListener.class)`도 함께 상속되지 않는다는 점에 주의해야 한다. `place`처럼 `BaseEntity`를 상속하지 않고 `@CreatedDate`/`@LastModifiedDate`를 쓰려면, 감사 리스너가 상속되지 않으므로 `@EntityListeners(AuditingEntityListener.class)`를 엔티티에 직접 선언해야 한다. 그렇지 않으면 `created_at`이 `null`인 채로 INSERT되어(DB `DEFAULT now()`는 Hibernate가 컬럼에 명시적으로 `NULL`을 쓰기 때문에 구제되지 않는다) `NOT NULL` 제약을 위반한다.
+
 soft delete의 실동작(`@SQLDelete`/`@SQLRestriction`)은 SQL에 테이블명이 필요해 상속으로 공유할 수 없으므로 엔티티마다 명시한다. `restore()`는 제공하지 않는다 — `@SQLRestriction`이 걸리면 삭제된 행을 애초에 로드할 수 없어 복원 메서드가 있어도 동작하지 않는다. 복원이 필요해지면 native 쿼리나 Hibernate filter opt-out(AOP)을 함께 도입한다.
 
 ## 결과
