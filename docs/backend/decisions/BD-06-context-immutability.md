@@ -54,13 +54,13 @@ ai.context_keyword.context_version
 **감수하는 것**
 
 - **응답 계약** — 수정 응답에 새 `contextId`를 반환한다. 구 `contextId`를 유지하는 계약은 허용되지 않으며 프론트가 이를 반영해야 한다([05-1_파트간_요구사항 §1.1](https://github.com/Team-PinLog/docs/blob/main/static/05-1_파트간_요구사항.md)).
-- **정렬·표시** — `created_at`이 새 행 기준으로 갱신된다(M2 A안, 백엔드 주도). 목록에서 수정한 맥락이 최신으로 올라오는 것은 **의도된 동작이며 버그가 아니다.**
+- **정렬·표시** — `created_at`이 새 행 기준으로 갱신된다(M2 A안, 백엔드 주도). 목록에서 수정한 맥락이 최신으로 올라오는 것은 **의도된 동작이며 버그가 아니다.** *(2026-07-27 [BD-24](BD-24-context-origin-created-at.md)로 대체 — `origin_created_at`이 최초 작성 시각을 승계하고 정렬·표시 기준이 된다)*
 - **AI 비용** — 구 Context의 Embedding·Keyword·State를 승계하지 않는다. 한 글자만 고쳐도 임베딩을 새로 생성한다.
 - **저장 증가** — 소프트 삭제된 Context 행이 누적된다. 보존 기간 정책은 아직 없다([06 §8](https://github.com/Team-PinLog/docs/blob/main/static/06_데이터모델_및_무결성.md)).
 - **일시적 공백** — 수정 직후 새 Context는 Keyword가 비어 있고, 재분석 중에는 자연어 검색에서 일시 제외된다.
 
 **재검토 트리거**
 
-- 최초 작성 시각 보존이나 수정 계보 추적 요구가 생기면 → `origin_context_id` 도입을 재검토한다.
+- 최초 작성 시각 보존이나 수정 계보 추적 요구가 생기면 → `origin_context_id` 도입을 재검토한다. *(2026-07-27 발동 — 프론트의 최초 작성 시각 보존·오래된순 정렬 요구. [BD-24](BD-24-context-origin-created-at.md)에서 `origin_context_id` 대신 `origin_created_at`을 채택)*
 - 소프트 삭제 Context 누적이 조회 성능이나 저장 비용에 실제 영향을 주면 → 하드 삭제 배치와 보존 기간 정책을 함께 결정한다([BD-07](BD-07-soft-delete-no-restore.md)).
 - 임베딩 재생성 비용이 문제가 되면 → 본문 해시 기반 재사용을 검토한다. 단, `context_id`와 본문의 1:1 불변식은 유지해야 한다.

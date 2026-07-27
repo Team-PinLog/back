@@ -78,3 +78,4 @@
 | [BD-20](BD-20-auth-token-model.md) | 인증 토큰 — JWT Access 30분 / Refresh 7일, Refresh는 Redis | Accepted | S15P11A705-76 |
 | [BD-21](BD-21-signup-commit-point.md) | 가입 확정 시점 — 약관 동의 전에는 `member`를 만들지 않는다 | Accepted | S15P11A705-76 |
 | [BD-22](BD-22-collection-auto-publish.md) | Collection 자동 발행 + `is_published` 컬럼 유지 | Accepted | S15P11A705-76 |
+| [BD-24](BD-24-context-origin-created-at.md) | Context 최초 작성 시각 보존 — `origin_created_at`, 목록은 오래된순 (BD-06 트리거 발동) | Accepted | docs#16 |
