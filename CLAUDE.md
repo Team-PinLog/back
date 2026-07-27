@@ -9,3 +9,5 @@
 7. Do not add Security until the authentication PR includes its full contract and tests.
 8. Run `./gradlew clean check --no-daemon` before reporting completion.
 9. If code and documentation conflict, stop and record the conflict in the PR.
+10. Document as you work, in your part's docs zone (backend: `docs/backend/`, AI: `docs/ai/` — follow each zone's `README.md`): decisions with their trade-offs as ADRs, implementation reports and troubleshooting as their own entries, plus one WORKLOG line per task.
+11. Decision, implement, and troubleshooting records are preservation zones: never delete, update the status instead. Only `spec/` is a living document to edit in place.
