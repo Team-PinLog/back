@@ -44,9 +44,9 @@ class MemberSoftDeleteTests extends PostgresContainerSupport {
 
 		memberRepository.delete(saved);
 		memberRepository.flush();
-		memberRepository.findAll();
 
 		assertThat(memberRepository.findById(id)).isEmpty();
+		assertThat(memberRepository.findAll()).noneMatch(member -> id.equals(member.getId()));
 	}
 
 	@Test
