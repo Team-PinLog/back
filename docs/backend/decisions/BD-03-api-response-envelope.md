@@ -27,8 +27,9 @@
 
 ## 결과
 
-- 감수하는 것: `success`가 HTTP 상태 코드와 의미상 중복(둘 다 성공/실패를 나타냄). `ApiResponseBodyAdvice`는 런타임에 응답을 감싸는 반면 springdoc은 컨트롤러의 선언된 반환 타입을 그대로 introspect하고 `OperationCustomizer`/`ModelConverter`는 추가하지 않았으므로(`global/config/OpenApiConfig.java`는 `Info`만 설정), springdoc이 생성하는 스키마에는 봉투가 반영되지 않는다 — 스키마가 한 단계 깊어지는 게 아니라 실제 응답과 문서가 어긋난다.
+- 감수하는 것: `success`가 HTTP 상태 코드와 의미상 중복(둘 다 성공/실패를 나타냄).
+- (Task 5, 2026-07-27) `ApiResponseBodyAdvice`는 런타임에 응답을 감싸는 반면 springdoc은 컨트롤러의 선언된 반환 타입을 그대로 introspect하므로, 처음에는 springdoc이 생성하는 스키마에 봉투가 반영되지 않아 실제 응답과 문서가 어긋났다. 이를 `global/config/ApiResponseOpenApiCustomizer`(`org.springdoc.core.customizers.OperationCustomizer`)로 해결했다 — Advice와 **동일한 판정**(컨트롤러 패키지가 `com.pinlog.pinlogback.domain` 이하 + 선언된 반환형이 이미 `ApiResponse`가 아님)으로 대상을 골라, 대상 operation의 2xx 응답 content 스키마를 `{success, data}` 객체로 감싼다. 원래 스키마가 `$ref`면 그 참조를 `data`에 그대로 넣어 스키마 중복 정의를 만들지 않는다. **여전히 범위 밖인 것**: 오류 응답(`error` 필드) 스키마 문서화 — `ApiResponse.error`/`ErrorResponse`는 성공 스키마를 감쌀 때 부수적으로 `components.schemas`에 나타날 수 있으나, 어떤 상태 코드가 어떤 오류 스키마를 반환하는지는 문서화하지 않는다.
 - 규약으로 승격: [`docs/development/api-conventions.md`](../../development/api-conventions.md) "공통 응답 봉투" 절, [`docs/development/error-handling.md`](../../development/error-handling.md) 오류 응답 계약 절.
 - 명세 동반 개정: `Team-PinLog/docs` PR #11 — §1.6(봉투 정의), §1.5(오류 shape + `traceId`), §11.0(`ApiResponse<T>`/`ApiError` TypeScript 타입). 이 백엔드 PR은 docs PR #11과 함께 머지되어야 한다.
 - 이번에 도입하지 않은 것: §5.6·§5.7이 명세하는 `error.impact`(409 `DELETE_CONFIRMATION_REQUIRED`)는 아직 구현하지 않았다. Record 삭제 티켓에서 `ErrorResponse`를 확장해 도입한다.
-- 재검토 트리거: `success` 필드의 중복이 실질적인 버그(상태 코드와 불일치하는 사례)로 이어지거나, 첫 도메인 엔드포인트가 추가될 때. 후자는 springdoc 스키마가 실제 응답(봉투 포함)과 어긋나 FE 코드 생성이 `{success, data}` 없는 타입을 만들게 되므로, 그 시점에 springdoc 커스터마이저(`OperationCustomizer`/`ModelConverter`)를 함께 도입해야 한다.
+- 재검토 트리거: `success` 필드의 중복이 실질적인 버그(상태 코드와 불일치하는 사례)로 이어질 때, 또는 오류 응답 스키마 문서화가 필요해질 때(FE가 코드 생성으로 오류 타입까지 얻어야 하는 시점).
