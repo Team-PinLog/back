@@ -3,6 +3,7 @@ package com.pinlog.pinlogback.domain.member;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -17,6 +18,7 @@ import com.pinlog.pinlogback.domain.member.repository.SocialAccountRepository;
 import com.pinlog.pinlogback.integration.PostgresContainerSupport;
 
 @SpringBootTest(properties = "management.health.redis.enabled=false")
+@DisplayName("SocialAccount 영속성")
 class SocialAccountPersistenceTests extends PostgresContainerSupport {
 
 	@Autowired
@@ -29,6 +31,7 @@ class SocialAccountPersistenceTests extends PostgresContainerSupport {
 	private JdbcTemplate jdbcTemplate;
 
 	@Test
+	@DisplayName("회원에 연결된 소셜 계정을 저장한다")
 	void savesSocialAccountLinkedToMember() {
 		Member member = memberRepository.save(Member.create());
 
@@ -42,6 +45,7 @@ class SocialAccountPersistenceTests extends PostgresContainerSupport {
 	}
 
 	@Test
+	@DisplayName("provider와 provider_user_id로 활성 계정을 조회한다")
 	void findsActiveAccountByProviderAndProviderUserId() {
 		Member member = memberRepository.save(Member.create());
 		socialAccountRepository.save(
@@ -54,17 +58,23 @@ class SocialAccountPersistenceTests extends PostgresContainerSupport {
 	}
 
 	@Test
+	@DisplayName("이메일 없이도 저장되고 컬럼에 null로 남는다")
 	void emailIsOptional() {
-		// 공급자가 미제공·미동의하면 null이다(06 2.2).
+		// 공급자가 이메일을 제공하지 않거나 사용자가 동의하지 않으면 null이다(06 2.2).
+		// email에 NOT NULL이 걸려 있으면 아래 flush에서 실패한다.
 		Member member = memberRepository.save(Member.create());
 
-		SocialAccount saved = socialAccountRepository.save(
+		SocialAccount saved = socialAccountRepository.saveAndFlush(
 			SocialAccount.create(member, SocialProvider.NAVER, "naver-7", null));
 
-		assertThat(saved.getEmail()).isNull();
+		Long rowsWithNullEmail = jdbcTemplate.queryForObject(
+			"SELECT count(*) FROM core.social_account WHERE id = ? AND email IS NULL", Long.class, saved.getId());
+
+		assertThat(rowsWithNullEmail).isEqualTo(1L);
 	}
 
 	@Test
+	@DisplayName("같은 공급자 계정이 이미 활성이면 저장을 거부한다")
 	void rejectsDuplicateActiveProviderAccount() {
 		Member first = memberRepository.save(Member.create());
 		Member second = memberRepository.save(Member.create());
@@ -77,6 +87,7 @@ class SocialAccountPersistenceTests extends PostgresContainerSupport {
 	}
 
 	@Test
+	@DisplayName("소프트 삭제 후에는 같은 공급자 계정으로 다시 가입할 수 있다")
 	void allowsReSignupWithSameProviderAccountAfterSoftDelete() {
 		Member first = memberRepository.save(Member.create());
 		SocialAccount account = socialAccountRepository.saveAndFlush(
@@ -97,6 +108,7 @@ class SocialAccountPersistenceTests extends PostgresContainerSupport {
 	}
 
 	@Test
+	@DisplayName("소프트 삭제한 계정은 물리 행으로 남고 조회에서만 제외된다")
 	void softDeletedAccountRemainsAsPhysicalRow() {
 		Member member = memberRepository.save(Member.create());
 		SocialAccount account = socialAccountRepository.saveAndFlush(

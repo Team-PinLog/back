@@ -11,6 +11,7 @@ import java.util.stream.Collectors;
 import javax.sql.DataSource;
 
 import org.flywaydb.core.Flyway;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -19,6 +20,7 @@ import org.springframework.test.annotation.DirtiesContext;
 
 @SpringBootTest
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
+@DisplayName("Flyway 마이그레이션")
 class FlywayMigrationTests extends PostgresContainerSupport {
 
 	@Autowired
@@ -31,6 +33,7 @@ class FlywayMigrationTests extends PostgresContainerSupport {
 	DataSource dataSource;
 
 	@Test
+	@DisplayName("빈 PostgreSQL에 모든 마이그레이션을 적용한다")
 	void appliesAllMigrationsToEmptyPostgres() {
 		Set<String> versions = java.util.Arrays.stream(flyway.info().applied())
 			.map(info -> info.getVersion().getVersion())
@@ -68,6 +71,7 @@ class FlywayMigrationTests extends PostgresContainerSupport {
 	}
 
 	@Test
+	@DisplayName("백엔드 마이그레이션이 core.member를 생성한다")
 	void memberTableIsCreatedByBackendMigration() throws Exception {
 		try (Connection connection = dataSource.getConnection();
 			ResultSet rs = connection.getMetaData().getColumns(null, "core", "member", null)) {
@@ -80,6 +84,7 @@ class FlywayMigrationTests extends PostgresContainerSupport {
 	}
 
 	@Test
+	@DisplayName("백엔드 마이그레이션이 core.social_account를 생성한다")
 	void socialAccountTableIsCreatedByBackendMigration() throws Exception {
 		try (Connection connection = dataSource.getConnection();
 			ResultSet rs = connection.getMetaData().getColumns(null, "core", "social_account", null)) {
@@ -93,6 +98,7 @@ class FlywayMigrationTests extends PostgresContainerSupport {
 	}
 
 	@Test
+	@DisplayName("소셜 계정 유니크 인덱스는 활성행에만 적용된다")
 	void socialAccountUniqueIndexAppliesToActiveRowsOnly() {
 		// 전체 유니크로 정의하면 탈퇴 후 같은 소셜 계정으로 재가입할 수 없다(07_ERD 4.1).
 		String indexDefinition = jdbcTemplate.queryForObject(
