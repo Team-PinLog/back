@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-22 (정책·데이터 모델 확립 시점. 단일 커밋으로 특정 불가)
-- **기록**: 소급 (2026-07-27 작성)
+- **작성 시점**: 2026-07-27 — 결정 이후에 정리
 - **관련**: S15P11A705-76
 - **공용 계약**: [02_정책_정의서 §7](https://github.com/Team-PinLog/docs/blob/main/static/02_정책_정의서.md) · [06_데이터모델_및_무결성 §2.6](https://github.com/Team-PinLog/docs/blob/main/static/06_데이터모델_및_무결성.md) · [10_MVP_기능범위 §2](https://github.com/Team-PinLog/docs/blob/main/static/10_MVP_기능범위.md)
 

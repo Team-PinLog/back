@@ -2,7 +2,6 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-27
-- **기록**: 당시 (S15P11A705-76에서 확정)
 - **관련**: S15P11A705-76
 - **공용 계약**: [08_API_명세 §2.3](https://github.com/Team-PinLog/docs/blob/main/static/08_API_명세.md)
 

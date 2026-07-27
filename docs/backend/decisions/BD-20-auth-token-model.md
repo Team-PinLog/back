@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-24 (API 명세 §1.1 확립 시점. 정확한 커밋 특정 불가)
-- **기록**: 소급 (2026-07-27 작성)
+- **작성 시점**: 2026-07-27 — 결정 이후에 정리
 - **관련**: S15P11A705-76
 - **공용 계약**: [08_API_명세 §1.1](https://github.com/Team-PinLog/docs/blob/main/static/08_API_명세.md) · [02_정책_정의서 §2](https://github.com/Team-PinLog/docs/blob/main/static/02_정책_정의서.md)
 

@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-24 (API 명세 §3.2~3.3 확립 시점. [06 §8](https://github.com/Team-PinLog/docs/blob/main/static/06_데이터모델_및_무결성.md)에 확정으로 기록됨)
-- **기록**: 소급 (2026-07-27 작성)
+- **작성 시점**: 2026-07-27 — 결정 이후에 정리
 - **관련**: S15P11A705-76
 - **공용 계약**: [08_API_명세 §3.2~3.3](https://github.com/Team-PinLog/docs/blob/main/static/08_API_명세.md) · [02_정책_정의서 §2](https://github.com/Team-PinLog/docs/blob/main/static/02_정책_정의서.md)
 
