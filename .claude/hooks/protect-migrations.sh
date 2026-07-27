@@ -9,8 +9,12 @@
 # 소유 구간(V2~V99 백엔드, V100~V199 AI)은 훅으로 강제하지 않는다 — 문서와 PR 리뷰가 담당.
 set -u
 
+# shellcheck source=lib/hook-input.sh
+. "$(dirname "$0")/lib/hook-input.sh"
+
 INPUT=$(cat)
-FILE_PATH=$(printf '%s' "$INPUT" | jq -r '.tool_input.file_path // empty')
+# Windows에서는 file_path가 백슬래시 경로로 오므로 반드시 정규화한 뒤 매칭한다.
+FILE_PATH=$(hook_normalize_path "$(hook_file_path "$INPUT")")
 
 [ -z "$FILE_PATH" ] && exit 0
 case "$FILE_PATH" in
@@ -41,11 +45,17 @@ if [ -n "$REPO_ROOT" ] && git -C "$REPO_ROOT" ls-files --error-unmatch "$FILE_PA
 fi
 
 # 2. 새 파일이라면, 같은 버전 번호가 이미 있는지 검사 (Flyway는 중복 버전에서 깨짐)
-for existing in "$MIGRATION_DIR"/V"$VERSION"__*.sql; do
+# 선행 0 차이(V2 와 V02)도 Flyway는 같은 버전으로 보므로 문자열이 아니라 10진수로 비교한다.
+for existing in "$MIGRATION_DIR"/V*__*.sql; do
   [ -e "$existing" ] || continue
-  [ "$(basename "$existing")" = "$BASENAME" ] && continue
-  echo "V$VERSION 은 이미 $(basename "$existing") 이 사용 중인 버전입니다. Flyway는 중복 버전에서 실패합니다. 다음 빈 번호를 사용하세요." >&2
-  exit 2
+  EXISTING_BASE=$(basename "$existing")
+  [ "$EXISTING_BASE" = "$BASENAME" ] && continue
+  EXISTING_VERSION=$(printf '%s' "$EXISTING_BASE" | sed -n 's/^V\([0-9][0-9]*\)__.*/\1/p')
+  [ -z "$EXISTING_VERSION" ] && continue
+  if [ "$((10#$EXISTING_VERSION))" -eq "$((10#$VERSION))" ]; then
+    echo "V$VERSION 은 이미 $EXISTING_BASE 이 사용 중인 버전입니다. Flyway는 중복 버전에서 실패합니다. 다음 빈 번호를 사용하세요." >&2
+    exit 2
+  fi
 done
 
 exit 0

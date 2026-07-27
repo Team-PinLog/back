@@ -5,17 +5,24 @@
 # 없거나 소스보다 오래됐으면 exit 2로 Claude에게 실행을 요구한다.
 set -u
 
+# shellcheck source=lib/hook-input.sh
+. "$(dirname "$0")/lib/hook-input.sh"
+
 INPUT=$(cat)
 # 무한 루프 방지: 이 훅의 차단으로 이미 계속된 턴이면 통과
-if [ "$(printf '%s' "$INPUT" | jq -r '.stop_hook_active // false')" = "true" ]; then
+if hook_stop_hook_active "$INPUT"; then
   exit 0
 fi
 
 cd "${CLAUDE_PROJECT_DIR:-$(pwd)}" || exit 0
 [ -f build.gradle ] || exit 0
 
-# 검증이 필요한 변경(소스·빌드 설정)이 없으면 통과 — 문서만 고친 세션은 check 불필요
-CHANGES=$(git status --porcelain -- src build.gradle settings.gradle config compose.yaml 2>/dev/null)
+# 검증이 필요한 변경(소스·빌드 설정) 목록 — 변경 감지와 최신성 검사가 같은 목록을 봐야 한다
+VERIFY_PATHS="src build.gradle settings.gradle config compose.yaml"
+
+# 커밋되지 않은 변경이 없으면 통과 — 문서만 고친 세션은 check 불필요
+# (알려진 한계: 검증 없이 커밋까지 마치고 종료하면 여기서 놓친다. 그 경우는 CI backend-ci/check가 잡는다.)
+CHANGES=$(git status --porcelain -- $VERIFY_PATHS 2>/dev/null)
 [ -z "$CHANGES" ] && exit 0
 
 BLOCK_MSG="소스 변경이 검증되지 않았습니다. Docker가 실행 중인지 확인한 뒤 './gradlew clean check --no-daemon'을 실행해 전체 통과를 확인하고 완료하세요. (CLAUDE.md 8번)"
@@ -27,7 +34,7 @@ if [ -z "$NEWEST_RESULT" ]; then
 fi
 
 # 마지막 테스트 실행 이후 소스가 또 바뀌었으면 재검증 필요
-STALE=$(find src build.gradle settings.gradle config -type f -newer "$NEWEST_RESULT" 2>/dev/null | head -1)
+STALE=$(find $VERIFY_PATHS -type f -newer "$NEWEST_RESULT" 2>/dev/null | head -1)
 if [ -n "$STALE" ]; then
   echo "테스트 실행 이후 소스가 변경되었습니다($STALE). $BLOCK_MSG" >&2
   exit 2

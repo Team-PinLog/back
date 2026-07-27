@@ -12,7 +12,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-migrations.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-migrations.sh"
           }
         ]
       }
@@ -22,7 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/verify-check.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/verify-check.sh"
           }
         ]
       }
