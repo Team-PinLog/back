@@ -33,3 +33,4 @@
 | [BD-02](BD-02-base-entity-common-columns.md) | BaseEntity는 created_at·deleted_at만 공유, updated_at 없음 | Accepted | S15P11A705-41 |
 | [BD-03](BD-03-api-response-envelope.md) | 성공·오류 응답을 공통 envelope(ApiResponse)로 통일 | Accepted | S15P11A705-53 |
 | [BD-04](BD-04-cursor-pagination.md) | 목록은 커서 기반 CursorPage + Base64(정렬키,id) 불투명 커서, size 기본 20·상한 100 | Accepted | S15P11A705-42 |
+| [BD-05](BD-05-framework-error-mapping.md) | GlobalExceptionHandler가 ResponseEntityExceptionHandler를 상속해 프레임워크 예외를 자체 상태로 매핑 | Accepted | S15P11A705-40 |

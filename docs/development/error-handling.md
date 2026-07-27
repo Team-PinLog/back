@@ -76,6 +76,22 @@ Bean Validation 실패는 [API 규약](api-conventions.md)대로 **HTTP 400**으
 | 도메인 규칙 위반(충돌 등) | `409` 등 상황에 맞는 4xx |
 | 처리되지 않은 예외 | `500` |
 
+### 프레임워크 예외 매핑
+
+| 상황 | 상태 | code |
+| --- | --- | --- |
+| 요청 body 파싱 실패(malformed JSON) | `400` | `INVALID_INPUT` |
+| 필수 query parameter 누락 | `400` | `INVALID_INPUT` |
+| 허용되지 않은 HTTP 메서드 | `405` | `METHOD_NOT_ALLOWED` |
+| 지원하지 않는 Content-Type | `415` | `UNSUPPORTED_MEDIA_TYPE` |
+
+`GlobalExceptionHandler`는 `ResponseEntityExceptionHandler`를 상속해 Spring이 이미 알고 있는
+프레임워크 예외 → 상태 코드 매핑을 그대로 재사용하고, `handleExceptionInternal`에서 body만 공통
+envelope로 교체한다. 상태 코드 자체는 바꾸지 않으므로 위 표에 열거하지 않은 프레임워크 예외도
+(예: Spring이 향후 버전에서 새로 던지는 예외) catch-all `500`으로 뭉개지지 않고, 부모가 정한 상태로
+응답한다 — 다만 그 상태에 대응하는 `ErrorCode`가 레지스트리에 없으면 4xx는 `INVALID_INPUT`, 5xx는
+`INTERNAL_ERROR`로 폴백한다(자세한 근거는 [BD-05](../backend/decisions/BD-05-framework-error-mapping.md)).
+
 ## 테스트
 
 오류 경로도 테스트합니다([테스트 규약](testing-conventions.md)).
