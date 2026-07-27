@@ -27,7 +27,11 @@ CHANGES=$(git status --porcelain -- $VERIFY_PATHS 2>/dev/null)
 
 BLOCK_MSG="소스 변경이 검증되지 않았습니다. Docker가 실행 중인지 확인한 뒤 './gradlew clean check --no-daemon'을 실행해 전체 통과를 확인하고 완료하세요. (CLAUDE.md 8번)"
 
-NEWEST_RESULT=$(find build/test-results -type f -name '*.xml' -print0 2>/dev/null | xargs -0 ls -t 2>/dev/null | head -1)
+# `find ... | xargs ls -t`를 쓰면 안 된다 — 입력이 비어도 xargs가 `ls -t`를 인자 없이
+# 한 번 실행해 현재 디렉터리 목록을 뱉는다. 그러면 "검증 흔적이 전혀 없음" 분기가
+# 영영 실행되지 않고, 엉뚱한 파일의 mtime과 소스를 비교하다 조용히 통과한다.
+# `-exec ... +`는 매치가 없으면 아예 실행되지 않는다.
+NEWEST_RESULT=$(find build/test-results -type f -name '*.xml' -exec ls -t {} + 2>/dev/null | head -1)
 if [ -z "$NEWEST_RESULT" ]; then
   echo "$BLOCK_MSG" >&2
   exit 2

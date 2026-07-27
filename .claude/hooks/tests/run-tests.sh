@@ -69,16 +69,33 @@ print(json.dumps({'tool_input': {'file_path': sys.argv[1]}}))
 " "$1"
 }
 
-# check <설명> <기대exit> <실제exit> [출력]
+# check <설명> <기대exit> <실제exit> [출력] [기대 메시지 접두사]
+#
+# 5번째 인자를 주면 출력이 그 문구로 시작하는지도 확인한다. 종료 코드만 보면
+# **맞는 답이 틀린 이유로 나와도 통과**한다. 실제로 그런 적이 있다 — 검증 흔적이
+# 전혀 없을 때 "흔적 없음" 분기가 아니라 "낡음" 분기가 돌면서 exit 2가 나왔고,
+# 코드만 보던 테스트는 이를 잡지 못했다. 차단 케이스는 분기를 특정할 것.
 check() {
-  if [ "$2" = "$3" ]; then
-    PASS=$((PASS + 1))
-    printf '  ok   %s (exit %s)\n' "$1" "$3"
-  else
+  local desc="$1" want="$2" got="$3" out="${4:-}" want_msg="${5:-}"
+  if [ "$want" != "$got" ]; then
     FAIL=$((FAIL + 1))
-    printf '  FAIL %s — 기대 exit %s, 실제 %s\n' "$1" "$2" "$3"
-    [ -n "${4:-}" ] && printf '       출력: %s\n' "$4"
+    printf '  FAIL %s — 기대 exit %s, 실제 %s\n' "$desc" "$want" "$got"
+    [ -n "$out" ] && printf '       출력: %s\n' "$out"
+    return
   fi
+  if [ -n "$want_msg" ]; then
+    case "$out" in
+      "$want_msg"*) ;;
+      *)
+        FAIL=$((FAIL + 1))
+        printf '  FAIL %s — exit는 맞지만 다른 분기가 실행됨\n' "$desc"
+        printf '       기대 시작: %s\n       실제 출력: %s\n' "$want_msg" "$out"
+        return
+        ;;
+    esac
+  fi
+  PASS=$((PASS + 1))
+  printf '  ok   %s (exit %s)\n' "$desc" "$got"
 }
 
 # ---------------------------------------------------------------------------
@@ -139,13 +156,20 @@ git config user.email t@t; git config user.name t
 echo 'class A {}' > src/main/java/A.java
 git add -A && git commit -qm init
 
+# run_verify_case <설명> <기대exit> <jqmode> [입력JSON] [기대 메시지 접두사]
 run_verify_case() {
-  local desc="$1" expected="$2" jqmode="$3" input="${4:-\{\}}"
+  local desc="$1" expected="$2" jqmode="$3" input="${4:-\{\}}" want_msg="${5:-}"
   local out rc
   out=$(printf '%s' "$input" | CLAUDE_PROJECT_DIR="$FIX" PATH="$WORK/$jqmode:$PATH" bash "$HOOKS_DIR/verify-check.sh" 2>&1)
   rc=$?
-  check "$desc" "$expected" "$rc" "$out"
+  check "$desc" "$expected" "$rc" "$out" "$want_msg"
 }
+
+# 차단 분기별 메시지 시작 문구 — 어느 분기가 돌았는지 특정하는 용도
+MSG_NO_EVIDENCE="소스 변경이 검증되지 않았습니다"
+MSG_STALE="테스트 실행 이후 소스가 변경되었습니다"
+MSG_FAILED_TEST="build/test-results에 실패한 테스트가 있습니다"
+MSG_CHECKSTYLE="Checkstyle 위반이 남아 있습니다"
 
 for JQMODE in withjq nojq; do
   echo "verify-check [jq=$JQMODE]"
@@ -156,7 +180,9 @@ for JQMODE in withjq nojq; do
   run_verify_case "변경 없음 → 통과" 0 "$JQMODE"
 
   echo 'class A { int x; }' > src/main/java/A.java
-  run_verify_case "미검증 src 변경 → 차단" 2 "$JQMODE"
+  # 검증 흔적이 아예 없는 상태 — 반드시 "흔적 없음" 분기여야 한다.
+  # (xargs 빈 입력 버그가 있으면 여기서 "낡음" 분기가 돌면서 exit 2만 맞고 통과했다)
+  run_verify_case "미검증 src 변경 → 차단" 2 "$JQMODE" '{}' "$MSG_NO_EVIDENCE"
   run_verify_case "stop_hook_active 루프 가드 → 통과" 0 "$JQMODE" '{"stop_hook_active":true}'
 
   mkdir -p build/test-results
@@ -166,17 +192,17 @@ for JQMODE in withjq nojq; do
 
   sleep 1
   touch compose.yaml
-  run_verify_case "검증 후 compose.yaml 변경 → 차단(재검증)" 2 "$JQMODE"
+  run_verify_case "검증 후 compose.yaml 변경 → 차단(재검증)" 2 "$JQMODE" '{}' "$MSG_STALE"
 
   sleep 1
   touch build/test-results/A.xml
   echo '<testsuite failures="2" errors="0"/>' > build/test-results/A.xml
-  run_verify_case "실패한 테스트 결과 → 차단" 2 "$JQMODE"
+  run_verify_case "실패한 테스트 결과 → 차단" 2 "$JQMODE" '{}' "$MSG_FAILED_TEST"
 
   echo '<testsuite failures="0" errors="0"/>' > build/test-results/A.xml
   mkdir -p build/reports/checkstyle
   echo '<file><error line="1"/></file>' > build/reports/checkstyle/main.xml
-  run_verify_case "checkstyle 위반 → 차단" 2 "$JQMODE"
+  run_verify_case "checkstyle 위반 → 차단" 2 "$JQMODE" '{}' "$MSG_CHECKSTYLE"
   rm -rf build/reports
 done
 
