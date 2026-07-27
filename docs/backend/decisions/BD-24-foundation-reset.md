@@ -1,4 +1,4 @@
-# BD-23. 파운데이션 리셋 — 초기 설정을 최신 `dev`에서 다시 구성
+# BD-24. 파운데이션 리셋 — 초기 설정을 최신 `dev`에서 다시 구성
 
 - **상태**: Accepted
 - **날짜**: 2026-07-23 (`7fb4e7e`, `fa6abf1`)
@@ -29,7 +29,7 @@
 
 이 리셋에서 함께 확정한 것:
 
-- 인증 PR이 병합되기 전까지 `dev`에서 Spring Security·OAuth 의존성, 임시 계정, `SecurityConfig`를 제거한다([BD-21](BD-21-signup-commit-point.md)에서 이어짐).
+- 인증 PR이 병합되기 전까지 `dev`에서 Spring Security·OAuth 의존성, 임시 계정, `SecurityConfig`를 제거한다([BD-22](BD-22-signup-commit-point.md)에서 이어짐).
 - H2와 H2 Console을 완전히 제거하고 PostgreSQL 16 + pgvector를 로컬·테스트·CI의 단일 기준으로 삼는다([BD-01](BD-01-h2-removal-testcontainers.md)).
 - 빈 패키지와 `.gitkeep`을 미리 만들지 않는다. 구현되지 않은 미래 구조를 선점하지 않는다.
 

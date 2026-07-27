@@ -1,4 +1,4 @@
-# BD-07. 소프트 삭제 + 복구 없음 + 활성행 부분 유니크
+# BD-08. 소프트 삭제 + 복구 없음 + 활성행 부분 유니크
 
 - **상태**: Accepted
 - **날짜**: 2026-07-22 (데이터 모델 확립 시점. 단일 커밋으로 특정 불가)
@@ -33,10 +33,10 @@
 파생되는 강제 사항:
 
 - 삭제 후 재저장은 기존 행의 재활성화가 아니라 **항상 새 INSERT**다.
-- 따라서 모든 유니크 제약은 **활성행 부분 유니크**(`WHERE deleted_at IS NULL`)로 정의한다. 예외는 `place`뿐이며, Place는 공용 데이터라 삭제하지 않으므로 전체 유니크다([BD-18](BD-18-place-snapshot.md)).
+- 따라서 모든 유니크 제약은 **활성행 부분 유니크**(`WHERE deleted_at IS NULL`)로 정의한다. 예외는 `place`뿐이며, Place는 공용 데이터라 삭제하지 않으므로 전체 유니크다([BD-19](BD-19-place-snapshot.md)).
 - 운영자 복구도 `deleted_at`을 `null`로 되돌리지 않고 데이터를 읽어 새로 INSERT한다. 정책과 구현이 한 경로만 갖게 하기 위함이다.
 
-AI 파생 데이터는 이 규칙에서 빠진다. 소프트 삭제하지 않고 즉시 파기한다([BD-15](BD-15-ai-derived-immediate-purge.md)).
+AI 파생 데이터는 이 규칙에서 빠진다. 소프트 삭제하지 않고 즉시 파기한다([BD-16](BD-16-ai-derived-immediate-purge.md)).
 
 ## 결과
 
@@ -44,7 +44,7 @@ AI 파생 데이터는 이 규칙에서 빠진다. 소프트 삭제하지 않고
 
 - **필터 누락 위험** — 모든 조회에 `deleted_at IS NULL`이 필요하다. 누락하면 삭제된 데이터가 Feed에 노출되는 사고로 직결된다. Collection과 Follow도 대상이라는 점을 놓치기 쉽다.
 - **무한 증식** — `collection_record`와 `follow`가 특히 빠르게 쌓인다. 보존 기간과 하드 삭제 배치 정책이 아직 없다([06 §8](https://github.com/Team-PinLog/docs/blob/main/static/06_데이터모델_및_무결성.md)).
-- **사용자 기대** — 실수로 지운 기록을 되돌릴 수 없다. 삭제 확인 UX가 그만큼 중요해진다([BD-10](BD-10-minimum-holding-invariants.md)).
+- **사용자 기대** — 실수로 지운 기록을 되돌릴 수 없다. 삭제 확인 UX가 그만큼 중요해진다([BD-11](BD-11-minimum-holding-invariants.md)).
 
 **재검토 트리거**
 

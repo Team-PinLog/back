@@ -1,4 +1,4 @@
-# BD-17. Keyword는 프리셋에서만 — 3등급 공개, 상위 집계는 저장하지 않음
+# BD-18. Keyword는 프리셋에서만 — 3등급 공개, 상위 집계는 저장하지 않음
 
 - **상태**: Accepted
 - **날짜**: 2026-07-22 (AI 설계·데이터 모델 확립 시점. 단일 커밋으로 특정 불가)
@@ -8,7 +8,7 @@
 
 ## 맥락
 
-Keyword는 타인에게 공개되는 유일한 Context 파생물이다. Context 본문은 절대 공개되지 않지만([BD-12](BD-12-public-boundary-query-dto-split.md)), Keyword는 Feed와 공개 Collection에 노출된다.
+Keyword는 타인에게 공개되는 유일한 Context 파생물이다. Context 본문은 절대 공개되지 않지만([BD-13](BD-13-public-boundary-query-dto-split.md)), Keyword는 Feed와 공개 Collection에 노출된다.
 
 **즉 Keyword를 공개한다는 것은 Context의 일부가 마스킹된 형태로 공개된다는 뜻이다.** LLM이 Keyword를 자유롭게 생성하면 사람 이름, 구체적 회사·학교, 정확한 일정, 식별 가능한 사건이 그대로 나갈 수 있다.
 
@@ -51,5 +51,5 @@ Keyword는 타인에게 공개되는 유일한 Context 파생물이다. Context 
 
 **재검토 트리거**
 
-- **자유 생성으로 바꾸려는 시도가 나오면 이 문서를 먼저 본다.** 그 순간 [BD-12](BD-12-public-boundary-query-dto-split.md)의 공개 경계 전제가 함께 무너진다. 두 결정은 반드시 같이 재검토한다.
+- **자유 생성으로 바꾸려는 시도가 나오면 이 문서를 먼저 본다.** 그 순간 [BD-13](BD-13-public-boundary-query-dto-split.md)의 공개 경계 전제가 함께 무너진다. 두 결정은 반드시 같이 재검토한다.
 - Feed 성능이 집계 때문에 문제가 되면 → Collection Keyword 읽기 전용 캐시를 추가한다. 원본을 Record 단위로 옮기지는 않는다. (c)를 버린 이유가 그대로 유효하기 때문이다.

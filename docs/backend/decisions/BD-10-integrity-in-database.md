@@ -1,4 +1,4 @@
-# BD-09. 무결성을 앱이 아닌 DB에 — `CHECK`·부분 유니크·서로게이트 키
+# BD-10. 무결성을 앱이 아닌 DB에 — `CHECK`·부분 유니크·서로게이트 키
 
 - **상태**: Accepted
 - **날짜**: 2026-07-22 (데이터 모델 확립 시점. 단일 커밋으로 특정 불가)
@@ -37,13 +37,13 @@
 | 본문·제목 공백만 금지 | `CHECK (length(btrim(...)) > 0)` |
 | 좌표 범위 | `CHECK (lat BETWEEN -90 AND 90)` 등 |
 
-유니크가 **모두 활성행 부분 유니크**인 것은 [BD-07](BD-07-soft-delete-no-restore.md)의 직접 귀결이다. 전체 유니크로 두면 삭제 후 재저장이 실패한다.
+유니크가 **모두 활성행 부분 유니크**인 것은 [BD-08](BD-08-soft-delete-no-restore.md)의 직접 귀결이다. 전체 유니크로 두면 삭제 후 재저장이 실패한다.
 
-**애플리케이션이 보장하는 것** — 활성 Context 최소 1개, 활성 CollectionRecord 최소 1개. 자식 개수를 세는 조건이라 제약으로 표현되지 않는다. 부모 행 잠금으로 처리한다([BD-10](BD-10-minimum-holding-invariants.md)).
+**애플리케이션이 보장하는 것** — 활성 Context 최소 1개, 활성 CollectionRecord 최소 1개. 자식 개수를 세는 조건이라 제약으로 표현되지 않는다. 부모 행 잠금으로 처리한다([BD-11](BD-11-minimum-holding-invariants.md)).
 
 **함께 확정한 두 가지**
 
-- **서로게이트 키를 쓴다.** 기본키는 `BIGINT GENERATED ALWAYS AS IDENTITY`이며 외부 시스템 식별자(`kakao_place_id`)를 기본키로 쓰지 않는다. 외부 id는 우리가 통제하지 못하고, 카카오 병합·재등록으로 바뀔 수 있다([BD-18](BD-18-place-snapshot.md)). 바뀌면 모든 FK가 함께 흔들린다.
+- **서로게이트 키를 쓴다.** 기본키는 `BIGINT GENERATED ALWAYS AS IDENTITY`이며 외부 시스템 식별자(`kakao_place_id`)를 기본키로 쓰지 않는다. 외부 id는 우리가 통제하지 못하고, 카카오 병합·재등록으로 바뀔 수 있다([BD-19](BD-19-place-snapshot.md)). 바뀌면 모든 FK가 함께 흔들린다.
 - **`user` 대신 `member`를 쓴다.** `user`는 PostgreSQL 예약어다. 도메인 용어는 User로 유지하되 물리 테이블만 `member`로 둔다.
 
 ## 결과

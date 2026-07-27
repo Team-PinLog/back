@@ -1,4 +1,4 @@
-# BD-13. 식별자 은닉 — `member.id` 비공개, `public_id` 없이 Collection id를 진입점으로
+# BD-14. 식별자 은닉 — `member.id` 비공개, `public_id` 없이 Collection id를 진입점으로
 
 - **상태**: Accepted
 - **날짜**: 2026-07-22 (데이터 모델 확립 시점. 단일 커밋으로 특정 불가)
@@ -10,7 +10,7 @@
 
 PinLog는 익명 서비스다. 실명·닉네임·소셜 계정 같은 신원 정보를 타인에게 공개하지 않는다. 그런데 타인의 Shelf를 팔로우하고 그 Collection을 보려면 **어떤 형태로든 "그 사용자"를 가리키는 값**이 오가야 한다.
 
-`member.id`는 `BIGINT IDENTITY` 순차 값이다([BD-09](BD-09-integrity-in-database.md)). 이걸 그대로 노출하면 두 가지가 샌다.
+`member.id`는 `BIGINT IDENTITY` 순차 값이다([BD-10](BD-10-integrity-in-database.md)). 이걸 그대로 노출하면 두 가지가 샌다.
 
 - **열거** — 1, 2, 3… 을 훑어 전체 사용자를 긁을 수 있다.
 - **가입 순번** — 작은 값이 초기 사용자다. 소규모 서비스에서는 그것만으로 신원 추론의 단서가 된다.
@@ -36,13 +36,13 @@ GET  /feed/collections/{collectionId}/shelf -- 같은 선반의 다른 공개 Co
 GET  /follows                               -- 서버가 follow 테이블로 조회
 ```
 
-- **개인 API는 사용자 ID를 Query나 Body로 받지 않는다.** 서버가 토큰으로 식별한다([BD-20](BD-20-auth-token-model.md)). 파라미터로 받으면 값을 바꿔 남의 데이터를 요청하는 경로가 열린다.
+- **개인 API는 사용자 ID를 Query나 Body로 받지 않는다.** 서버가 토큰으로 식별한다([BD-21](BD-21-auth-token-model.md)). 파라미터로 받으면 값을 바꿔 남의 데이터를 요청하는 경로가 열린다.
 
 ## 결과
 
 **감수하는 것**
 
-- **Shelf 전용 URL을 만들 수 없다.** 새로고침하거나 공유할 수 있는 "이 사람의 선반" 페이지가 없다. Shelf에 도달하려면 항상 Collection을 거쳐야 한다. Shelf가 물리 테이블도 아니라는 점과 맞물린다([BD-14](BD-14-shelf-not-a-table.md)).
+- **Shelf 전용 URL을 만들 수 없다.** 새로고침하거나 공유할 수 있는 "이 사람의 선반" 페이지가 없다. Shelf에 도달하려면 항상 Collection을 거쳐야 한다. Shelf가 물리 테이블도 아니라는 점과 맞물린다([BD-15](BD-15-shelf-not-a-table.md)).
 - **서버 역조회가 늘어난다.** 팔로우 생성이 `collectionId`를 받아 소유자를 찾는 단계를 거친다.
 - **Collection이 삭제되면 진입점이 사라진다.** 팔로우한 Shelf에 접근하던 경로가 그 Collection에 묶여 있었다면 다른 Collection을 통해 다시 들어가야 한다.
 

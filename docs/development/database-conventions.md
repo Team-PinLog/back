@@ -61,7 +61,7 @@ CI의 `FlywayMigrationTests`는 **빈 DB에 전체 migration을 적용하는 것
 
 `core` 테이블의 공통 컬럼은 세 가지이며, 테이블마다 조합이 다릅니다(근거: `docs/static/06_데이터모델_및_무결성.md` 2장).
 
-> 결정 배경: [BD-02](../backend/decisions/BD-02-base-entity-common-columns.md) BaseEntity가 `created_at`·`deleted_at`만 공유하는 이유 · [BD-07](../backend/decisions/BD-07-soft-delete-no-restore.md) 소프트 삭제·복구 없음과 활성행 부분 유니크 · [BD-09](../backend/decisions/BD-09-integrity-in-database.md) 무결성을 DB 제약에 둔 이유 · [BD-06](../backend/decisions/BD-06-context-immutability.md) `context`에 `updated_at`이 없는 이유
+> 결정 배경: [BD-02](../backend/decisions/BD-02-base-entity-common-columns.md) BaseEntity가 `created_at`·`deleted_at`만 공유하는 이유 · [BD-08](../backend/decisions/BD-08-soft-delete-no-restore.md) 소프트 삭제·복구 없음과 활성행 부분 유니크 · [BD-10](../backend/decisions/BD-10-integrity-in-database.md) 무결성을 DB 제약에 둔 이유 · [BD-07](../backend/decisions/BD-07-context-immutability.md) `context`에 `updated_at`이 없는 이유
 
 | 테이블 | `created_at` | `updated_at` | `deleted_at` |
 | --- | --- | --- | --- |

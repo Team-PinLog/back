@@ -1,4 +1,4 @@
-# BD-08. Record 수정 경로를 두지 않는다
+# BD-09. Record 수정 경로를 두지 않는다
 
 - **상태**: Accepted
 - **날짜**: 2026-07-27
@@ -32,8 +32,8 @@ Record 수정을 두고 공용 문서 넷이 서로 어긋나 있다.
 
 **(c)를 채택한다. 능동적 선택.**
 
-1. **[BD-06](BD-06-context-immutability.md)의 근거가 Record로 전이되지 않는다.** Context 불변은 "AI stale 판별 로직 제거"라는 구체적 이득이 있었다. Record에는 비동기 파생 데이터가 직접 달려 있지 않다 — Embedding과 Keyword는 Context에 달린다. 같은 이득이 없는데 형태만 맞추면 비용만 남는다.
-2. **재생성은 문제를 키운다.** 삭제된 Record 더미를 늘리는 쪽은 in-place 수정이 아니라 재생성이다([BD-07](BD-07-soft-delete-no-restore.md)).
+1. **[BD-07](BD-07-context-immutability.md)의 근거가 Record로 전이되지 않는다.** Context 불변은 "AI stale 판별 로직 제거"라는 구체적 이득이 있었다. Record에는 비동기 파생 데이터가 직접 달려 있지 않다 — Embedding과 Keyword는 Context에 달린다. 같은 이득이 없는데 형태만 맞추면 비용만 남는다.
+2. **재생성은 문제를 키운다.** 삭제된 Record 더미를 늘리는 쪽은 in-place 수정이 아니라 재생성이다([BD-08](BD-08-soft-delete-no-restore.md)).
 3. **기존 경로로 덮인다.** 장소를 바꾸려면 `GET /records/by-place`로 확인하고 `POST /records`로 새로 만들면 된다. 잘못 고른 Record는 `DELETE`한다.
 
 ## 결과
@@ -41,7 +41,7 @@ Record 수정을 두고 공용 문서 넷이 서로 어긋나 있다.
 **감수하는 것**
 
 - **공용 문서 정정이 남는다.** `02_정책_정의서`의 원칙 6·7과 §4「수정」, `10_MVP_기능범위`의 두 줄이 현재 계약과 어긋난 채 남아 있다. 이 문서들은 `Team-PinLog/docs` 소유라 백엔드가 단독으로 고칠 수 없다. **후속 조치로 제기해야 한다.**
-- **사용자 경험** — 장소를 잘못 선택하면 수정이 아니라 삭제 후 재저장이다. 그 Record가 Collection의 마지막이면 연쇄 삭제 확인까지 거치게 된다([BD-10](BD-10-minimum-holding-invariants.md)).
+- **사용자 경험** — 장소를 잘못 선택하면 수정이 아니라 삭제 후 재저장이다. 그 Record가 Collection의 마지막이면 연쇄 삭제 확인까지 거치게 된다([BD-11](BD-11-minimum-holding-invariants.md)).
 
 **재검토 트리거**
 

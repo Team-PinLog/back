@@ -1,4 +1,4 @@
-# BD-11. Collection에 중복 Record 추가는 실패가 아닌 멱등
+# BD-12. Collection에 중복 Record 추가는 실패가 아닌 멱등
 
 - **상태**: Accepted
 - **날짜**: 2026-07-24 (API 상세 명세 확립 시점. 정확한 커밋 특정 불가)
@@ -10,7 +10,7 @@
 
 `POST /collections/{collectionId}/records`는 Record 여러 개를 한 번에 받는다. 사용자가 목록에서 다중 선택할 때 이미 담긴 Record가 섞여 들어올 수 있다.
 
-DB에는 `(collection_id, record_id)` 활성 부분 유니크가 걸려 있어([BD-09](BD-09-integrity-in-database.md)), 중복 INSERT는 제약 위반으로 막힌다. 애플리케이션이 이 위반을 어떻게 응답으로 옮길지가 결정 대상이었다.
+DB에는 `(collection_id, record_id)` 활성 부분 유니크가 걸려 있어([BD-10](BD-10-integrity-in-database.md)), 중복 INSERT는 제약 위반으로 막힌다. 애플리케이션이 이 위반을 어떻게 응답으로 옮길지가 결정 대상이었다.
 
 ## 선택지
 
@@ -26,12 +26,12 @@ DB에는 `(collection_id, record_id)` 활성 부분 유니크가 걸려 있어([
 
 이유는 하나다 — **결과 상태가 같다.** 담는 것이 목적인데 이미 담겨 있다면 요청자가 원한 상태는 이미 달성되어 있다. 오류로 볼 이유가 없다. 같은 요청을 두 번 보내도 결과가 같으므로 재시도와 중복 클릭도 안전해진다.
 
-**[BD-10](BD-10-minimum-holding-invariants.md)과 정반대인 것이 의도적이다.** 마지막 Record 제거나 마지막 Context 삭제는 409로 멈춰 세우는데, 여기서는 조용히 통과시킨다. 기준은 **되돌릴 수 있는가**다.
+**[BD-11](BD-11-minimum-holding-invariants.md)과 정반대인 것이 의도적이다.** 마지막 Record 제거나 마지막 Context 삭제는 409로 멈춰 세우는데, 여기서는 조용히 통과시킨다. 기준은 **되돌릴 수 있는가**다.
 
 | | 반응 | 이유 |
 |---|---|---|
 | 중복 추가 (이 문서) | 멱등 통과 | 원하는 상태가 이미 달성됨. 잃는 것이 없음 |
-| 마지막 항목 제거 ([BD-10](BD-10-minimum-holding-invariants.md)) | 409 거절 | 연쇄 삭제가 일어나고 [복구가 없음](BD-07-soft-delete-no-restore.md) |
+| 마지막 항목 제거 ([BD-11](BD-11-minimum-holding-invariants.md)) | 409 거절 | 연쇄 삭제가 일어나고 [복구가 없음](BD-08-soft-delete-no-restore.md) |
 
 ## 결과
 

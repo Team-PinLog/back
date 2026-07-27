@@ -1,4 +1,4 @@
-# BD-22. Collection은 생성 즉시 자동 발행 — `is_published` 컬럼은 유지한다
+# BD-23. Collection은 생성 즉시 자동 발행 — `is_published` 컬럼은 유지한다
 
 - **상태**: Accepted
 - **날짜**: 2026-07-22 (정책·데이터 모델 확립 시점. 단일 커밋으로 특정 불가)
@@ -33,11 +33,11 @@ Collection은 생성 즉시 공개된다. MVP에서 비공개 전환과 발행 �
 
 - **죽은 값처럼 보인다.** `is_published`가 항상 `true`라 신규 참여자가 "왜 있지?"라고 묻게 된다. 이 문서가 그 답이다.
 - **무의미한 필터** — 모든 공개 조회에 `is_published = true`가 붙지만 지금은 아무것도 걸러내지 않는다. 그럼에도 붙여둔다. 비공개가 도입되는 순간 빠뜨린 곳이 곧 유출 지점이 되기 때문이다.
-- **되돌릴 수 없는 공개** — 사용자가 Collection을 만들면 즉시 타인에게 보인다. 실수로 만든 Collection을 비공개로 돌릴 방법이 없고, 삭제만 가능하며 복구도 없다([BD-07](BD-07-soft-delete-no-restore.md)).
+- **되돌릴 수 없는 공개** — 사용자가 Collection을 만들면 즉시 타인에게 보인다. 실수로 만든 Collection을 비공개로 돌릴 방법이 없고, 삭제만 가능하며 복구도 없다([BD-08](BD-08-soft-delete-no-restore.md)).
 
 **재검토 트리거**
 
 - 비공개 전환을 도입하면 세 가지를 함께 결정해야 한다.
-  1. Feed·타인 Shelf 조회·Collection 상세 **세 경로 모두**에 필터가 실제로 걸려 있는지 확인([BD-12](BD-12-public-boundary-query-dto-split.md)의 경로 통합이 여기서 값을 한다)
-  2. `record_count`의 정의 — 전체 연결 수인가 공개분만인가([BD-19](BD-19-selective-denormalization.md))
+  1. Feed·타인 Shelf 조회·Collection 상세 **세 경로 모두**에 필터가 실제로 걸려 있는지 확인([BD-13](BD-13-public-boundary-query-dto-split.md)의 경로 통합이 여기서 값을 한다)
+  2. `record_count`의 정의 — 전체 연결 수인가 공개분만인가([BD-20](BD-20-selective-denormalization.md))
   3. 이미 발행된 Collection을 비공개로 돌릴 때 팔로워의 Library에서 어떻게 사라지는가

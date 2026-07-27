@@ -1,4 +1,4 @@
-# BD-06. Context 불변 — 수정은 삭제+생성으로 처리
+# BD-07. Context 불변 — 수정은 삭제+생성으로 처리
 
 - **상태**: Accepted
 - **날짜**: 2026-07-22 (`Team-PinLog/docs` `c1b2869`)
@@ -45,7 +45,7 @@ ai.context_keyword.context_version
 동일한 context_id는 항상 동일한 Context 본문을 의미한다.
 ```
 
-**구현 순서 제약** — 신 Context INSERT를 구 Context 삭제보다 **먼저** 수행한다. 활성 Record는 활성 Context를 최소 한 개 가져야 하는데, 삭제를 먼저 하면 Context가 하나뿐인 Record에서 활성 수가 0이 되는 중간 상태가 생긴다. 추가를 먼저 하면 1 → 2 → 1로 움직여 한 번도 0이 되지 않으므로, 수정 경로를 위해 가드를 예외 처리할 필요가 없다. 가드와 잠금의 상세는 [BD-10](BD-10-minimum-holding-invariants.md)에 있다.
+**구현 순서 제약** — 신 Context INSERT를 구 Context 삭제보다 **먼저** 수행한다. 활성 Record는 활성 Context를 최소 한 개 가져야 하는데, 삭제를 먼저 하면 Context가 하나뿐인 Record에서 활성 수가 0이 되는 중간 상태가 생긴다. 추가를 먼저 하면 1 → 2 → 1로 움직여 한 번도 0이 되지 않으므로, 수정 경로를 위해 가드를 예외 처리할 필요가 없다. 가드와 잠금의 상세는 [BD-11](BD-11-minimum-holding-invariants.md)에 있다.
 
 수정은 삭제 API를 재사용하지 않고 **별도 유스케이스로 구현**한다. "마지막 Context는 삭제할 수 없다"는 삭제 유스케이스의 규칙이며 수정에는 적용되지 않기 때문이다.
 
@@ -62,5 +62,5 @@ ai.context_keyword.context_version
 **재검토 트리거**
 
 - 최초 작성 시각 보존이나 수정 계보 추적 요구가 생기면 → `origin_context_id` 도입을 재검토한다.
-- 소프트 삭제 Context 누적이 조회 성능이나 저장 비용에 실제 영향을 주면 → 하드 삭제 배치와 보존 기간 정책을 함께 결정한다([BD-07](BD-07-soft-delete-no-restore.md)).
+- 소프트 삭제 Context 누적이 조회 성능이나 저장 비용에 실제 영향을 주면 → 하드 삭제 배치와 보존 기간 정책을 함께 결정한다([BD-08](BD-08-soft-delete-no-restore.md)).
 - 임베딩 재생성 비용이 문제가 되면 → 본문 해시 기반 재사용을 검토한다. 단, `context_id`와 본문의 1:1 불변식은 유지해야 한다.

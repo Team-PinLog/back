@@ -56,7 +56,7 @@ com.pinlog.pinlogback
 - Flyway migration은 소스 패키지가 아니라 `src/main/resources/db/migration`에 두며, 버전 소유 구간은 [데이터베이스 규약](database-conventions.md)을 따릅니다.
 - **소유자용과 공개용 DTO는 상속 없이 별개로 정의합니다.** 리포지토리 메서드명에도 `ForOwner` / `Public`을 명시합니다. 상속이나 조건부 직렬화는 부모에 필드가 추가될 때 조용히 개인정보를 노출합니다.
 
-> 결정 배경: [BD-12](../backend/decisions/BD-12-public-boundary-query-dto-split.md) 공개 경계를 쿼리·DTO 분리로 강제한 이유 — 실수했을 때 유출이 아니라 컴파일 오류로 실패하게 만든다
+> 결정 배경: [BD-13](../backend/decisions/BD-13-public-boundary-query-dto-split.md) 공개 경계를 쿼리·DTO 분리로 강제한 이유 — 실수했을 때 유출이 아니라 컴파일 오류로 실패하게 만든다
 
 ## 인증·보안 경계
 

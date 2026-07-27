@@ -46,7 +46,7 @@
 
 새 오류를 추가할 때는 상태 코드, `code`, 발생 조건과 API 테스트를 함께 추가합니다. validation 오류도 이 공통 오류 계약을 지켜 HTTP 400으로 반환합니다.
 
-> 결정 배경: [BD-03](../backend/decisions/BD-03-api-response-envelope.md) 공통 응답 envelope · [BD-04](../backend/decisions/BD-04-cursor-pagination.md) 커서 페이지네이션 · [BD-12](../backend/decisions/BD-12-public-boundary-query-dto-split.md) 권한 실패에 403이 아닌 404를 쓰는 이유 · [BD-10](../backend/decisions/BD-10-minimum-holding-invariants.md) 409 `DELETE_CONFIRMATION_REQUIRED`와 `error.impact` · [BD-11](../backend/decisions/BD-11-duplicate-record-idempotent.md) 중복 추가를 오류로 보지 않는 이유
+> 결정 배경: [BD-03](../backend/decisions/BD-03-api-response-envelope.md) 공통 응답 envelope · [BD-04](../backend/decisions/BD-04-cursor-pagination.md) 커서 페이지네이션 · [BD-13](../backend/decisions/BD-13-public-boundary-query-dto-split.md) 권한 실패에 403이 아닌 404를 쓰는 이유 · [BD-11](../backend/decisions/BD-11-minimum-holding-invariants.md) 409 `DELETE_CONFIRMATION_REQUIRED`와 `error.impact` · [BD-12](../backend/decisions/BD-12-duplicate-record-idempotent.md) 중복 추가를 오류로 보지 않는 이유
 
 ## API 변경 검증
 

@@ -1,4 +1,4 @@
-# BD-19. 선택적 비정규화 — `record_count`는 두고 팔로워 수는 두지 않는다
+# BD-20. 선택적 비정규화 — `record_count`는 두고 팔로워 수는 두지 않는다
 
 - **상태**: Accepted
 - **날짜**: 2026-07-22 (데이터 모델 확립 시점. 단일 커밋으로 특정 불가)
@@ -38,9 +38,9 @@
 
 **감수하는 것**
 
-- **`record_count` 정확성이 트랜잭션 규율에 의존한다.** 연결을 바꾸면서 카운트 갱신을 빠뜨리면 조용히 어긋난다. DB가 잡아주지 않는다 — `CHECK (record_count >= 0)`은 음수만 막을 뿐 실제 개수와의 일치는 보장하지 않는다([BD-09](BD-09-integrity-in-database.md)).
+- **`record_count` 정확성이 트랜잭션 규율에 의존한다.** 연결을 바꾸면서 카운트 갱신을 빠뜨리면 조용히 어긋난다. DB가 잡아주지 않는다 — `CHECK (record_count >= 0)`은 음수만 막을 뿐 실제 개수와의 일치는 보장하지 않는다([BD-10](BD-10-integrity-in-database.md)).
 - **불일치 탐지 수단이 없다.** 어긋났을 때 알아차릴 방법이 현재 없다.
-- **`context.member_id`가 이중 소스가 된다.** `record`를 거쳐도 소유자를 알 수 있으므로 두 값이 어긋날 여지가 있다. Context가 불변이라([BD-06](BD-06-context-immutability.md)) 생성 후 바뀌지 않는 것이 실질적 방어다.
+- **`context.member_id`가 이중 소스가 된다.** `record`를 거쳐도 소유자를 알 수 있으므로 두 값이 어긋날 여지가 있다. Context가 불변이라([BD-07](BD-07-context-immutability.md)) 생성 후 바뀌지 않는 것이 실질적 방어다.
 - **팔로워 수 조회가 매번 집계다.** `follow (followee_member_id)` 인덱스에 의존한다.
 
 **재검토 트리거**

@@ -76,7 +76,7 @@ Bean Validation 실패는 [API 규약](api-conventions.md)대로 **HTTP 400**으
 | 도메인 규칙 위반(충돌 등) | `409` 등 상황에 맞는 4xx |
 | 처리되지 않은 예외 | `500` |
 
-> 결정 배경: [BD-12](../backend/decisions/BD-12-public-boundary-query-dto-split.md) 403 대신 404를 쓰는 이유와 공개 경계 · [BD-10](../backend/decisions/BD-10-minimum-holding-invariants.md) 409에 `error.impact`를 실어 연쇄 삭제 범위를 알리는 이유 · [BD-03](../backend/decisions/BD-03-api-response-envelope.md) 오류 응답 envelope
+> 결정 배경: [BD-13](../backend/decisions/BD-13-public-boundary-query-dto-split.md) 403 대신 404를 쓰는 이유와 공개 경계 · [BD-11](../backend/decisions/BD-11-minimum-holding-invariants.md) 409에 `error.impact`를 실어 연쇄 삭제 범위를 알리는 이유 · [BD-03](../backend/decisions/BD-03-api-response-envelope.md) 오류 응답 envelope
 
 ## 테스트
 

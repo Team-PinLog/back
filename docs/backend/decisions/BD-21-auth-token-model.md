@@ -1,4 +1,4 @@
-# BD-20. 인증 토큰 모델 — JWT Access 30분 / Refresh 7일, Refresh는 Redis
+# BD-21. 인증 토큰 모델 — JWT Access 30분 / Refresh 7일, Refresh는 Redis
 
 - **상태**: Accepted
 - **날짜**: 2026-07-24 (API 명세 §1.1 확립 시점. 정확한 커밋 특정 불가)
@@ -31,7 +31,7 @@ MVP 로그인은 Google·Kakao·Naver 소셜 로그인만 제공하고 자체 �
 함께 확정한 것:
 
 - 보호 Endpoint는 `Authorization: Bearer {accessToken}`을 요구한다.
-- **개인 API에서 사용자 ID를 Query나 Body로 받지 않는다.** 서버가 토큰으로 식별한다. 내부 `member.id`는 공개 응답에 넣지 않는다([BD-13](BD-13-identifier-concealment.md)).
+- **개인 API에서 사용자 ID를 Query나 Body로 받지 않는다.** 서버가 토큰으로 식별한다. 내부 `member.id`는 공개 응답에 넣지 않는다([BD-14](BD-14-identifier-concealment.md)).
 - Access 만료 시 401을 반환하고 클라이언트가 `POST /auth/refresh`로 재발급한다.
 
 ## 결과
