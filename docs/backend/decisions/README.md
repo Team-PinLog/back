@@ -61,7 +61,6 @@
 | [BD-03](BD-03-api-response-envelope.md) | 성공·오류 응답을 공통 envelope(ApiResponse)로 통일 | Accepted | S15P11A705-53 |
 | [BD-04](BD-04-cursor-pagination.md) | 목록은 커서 기반 CursorPage + Base64(정렬키,id) 불투명 커서, size 기본 20·상한 100 | Accepted | S15P11A705-42 |
 | [BD-05](BD-05-graceful-shutdown-timing.md) | graceful shutdown 타임아웃 20s, Kubernetes 쪽 값(`terminationGracePeriodSeconds` 40s·`preStop` 5s)은 Infra에 위임 | Accepted | S15P11A705-51 · [infra#33](https://github.com/Team-PinLog/infra/issues/33) |
-| [BD-05](BD-05-foundation-reset.md) | 파운데이션 리셋 — 초기 설정을 최신 `dev`에서 작은 PR로 다시 구성 | Accepted | Issue #9 |
 | [BD-06](BD-06-context-immutability.md) | Context 불변 — 수정은 삭제+생성. 버전 컬럼 제거, 수정 경합을 삭제 경합에 흡수 | Accepted | S15P11A705-76 |
 | [BD-07](BD-07-soft-delete-no-restore.md) | 소프트 삭제 + 복구 없음 + 활성행 부분 유니크 | Accepted | S15P11A705-76 |
 | [BD-08](BD-08-no-record-update-path.md) | Record 수정 경로를 두지 않는다 (공용 문서 정정 후속) | Accepted | S15P11A705-76 |
@@ -79,3 +78,4 @@
 | [BD-20](BD-20-auth-token-model.md) | 인증 토큰 — JWT Access 30분 / Refresh 7일, Refresh는 Redis | Accepted | S15P11A705-76 |
 | [BD-21](BD-21-signup-commit-point.md) | 가입 확정 시점 — 약관 동의 전에는 `member`를 만들지 않는다 | Accepted | S15P11A705-76 |
 | [BD-22](BD-22-collection-auto-publish.md) | Collection 자동 발행 + `is_published` 컬럼 유지 | Accepted | S15P11A705-76 |
+| [BD-23](BD-23-foundation-reset.md) | 파운데이션 리셋 — 초기 설정을 최신 `dev`에서 작은 PR로 다시 구성 | Accepted | Issue #9 |
