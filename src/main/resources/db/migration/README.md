@@ -23,6 +23,7 @@ Flyway 마이그레이션 위치입니다. 여러 파트가 각자 마이그레�
 
 ## 전제
 
-- `V1`의 `CREATE EXTENSION vector`는 pgvector가 있어야 성공합니다. 로컬은 `compose.yaml`의 `pgvector/pgvector:0.8.1-pg16`, 운영 이미지는 infra 소관입니다.
+- `V1`의 `CREATE EXTENSION vector`는 pgvector가 있어야 성공합니다. 로컬은 `compose.yaml`의 `pgvector/pgvector:0.8.5-pg16`, 운영 이미지는 infra 소관입니다.
+- `CREATE EXTENSION IF NOT EXISTS`는 **이미 설치된 extension을 업그레이드하지 않습니다.** 이미지 버전을 올려도 기존 volume에서는 옛 extension 버전이 유지되므로 `ALTER EXTENSION vector UPDATE`가 별도로 필요합니다([데이터베이스 규약](../../../../docs/development/database-conventions.md)).
 - `ai` 테이블의 데이터(Keyword Preset)는 SQL seed가 아니라 AI 서버 부트스트랩이 임베딩과 함께 적재합니다. Preset 소스는 `Team-PinLog/ai`의 `data/keyword_preset.yaml`입니다.
 - 통합 테스트의 마이그레이션·벡터 검증은 Testcontainers의 PostgreSQL(pgvector)에서 수행합니다.
