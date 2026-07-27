@@ -59,11 +59,15 @@ class MemberSoftDeleteTests extends PostgresContainerSupport {
 	@Test
 	void softDeleteHelperMarksEntityAsDeleted() {
 		Member saved = memberRepository.save(Member.create());
+		Long id = saved.getId();
 
 		saved.softDelete();
 		memberRepository.saveAndFlush(saved);
 
-		assertThat(saved.isDeleted()).isTrue();
-		assertThat(saved.getDeletedAt()).isNotNull();
+		Long deletedRows = jdbcTemplate.queryForObject(
+			"SELECT count(*) FROM core.member WHERE id = ? AND deleted_at IS NOT NULL", Long.class, id);
+
+		assertThat(deletedRows).isEqualTo(1L);
+		assertThat(memberRepository.findById(id)).isEmpty();
 	}
 }
