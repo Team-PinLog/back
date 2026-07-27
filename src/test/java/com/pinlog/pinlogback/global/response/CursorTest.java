@@ -60,9 +60,10 @@ class CursorTest {
 	}
 
 	@Test
-	void sortKeyMayContainNoCommaBeyondSeparator() {
-		Cursor cursor = Cursor.decode(Cursor.encode("2026-07-23T10:00:00Z", 1L));
+	void decodeSplitsOnLastCommaSoSortKeyMayContainCommas() {
+		Cursor cursor = Cursor.decode(Cursor.encode("a,b,2026-07-23T10:00:00Z", 8801L));
 
-		assertThat(cursor.id()).isEqualTo(1L);
+		assertThat(cursor.sortKey()).isEqualTo("a,b,2026-07-23T10:00:00Z");
+		assertThat(cursor.id()).isEqualTo(8801L);
 	}
 }

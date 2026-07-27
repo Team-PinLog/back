@@ -1,5 +1,6 @@
 package com.pinlog.pinlogback.global.response;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Base64;
 
@@ -16,7 +17,7 @@ public record Cursor(String sortKey, long id) {
 
 	public static String encode(String sortKey, long id) {
 		String raw = sortKey + SEPARATOR + id;
-		return Base64.getUrlEncoder().withoutPadding().encodeToString(raw.getBytes());
+		return Base64.getUrlEncoder().withoutPadding().encodeToString(raw.getBytes(StandardCharsets.UTF_8));
 	}
 
 	public static String encode(Instant sortKey, long id) {
@@ -44,7 +45,7 @@ public record Cursor(String sortKey, long id) {
 
 	private static String decodeBase64(String raw) {
 		try {
-			return new String(Base64.getUrlDecoder().decode(raw));
+			return new String(Base64.getUrlDecoder().decode(raw), StandardCharsets.UTF_8);
 		} catch (IllegalArgumentException e) {
 			throw new InvalidCursorException();
 		}
