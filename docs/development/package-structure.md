@@ -54,6 +54,9 @@ com.pinlog.pinlogback
 - DTO가 늘어나면 도메인 `dto` 아래를 `dto/request`·`dto/response`로 나눌 수 있습니다. 나눌 때는 도메인 전체에 일관되게 적용합니다.
 - 두 도메인이 함께 쓰는 코드는 어느 한 도메인에 두지 않고 `global/common`으로 올립니다. 다만 한 도메인에서만 쓰는 코드를 미리 `global`에 두지 않습니다.
 - Flyway migration은 소스 패키지가 아니라 `src/main/resources/db/migration`에 두며, 버전 소유 구간은 [데이터베이스 규약](database-conventions.md)을 따릅니다.
+- **소유자용과 공개용 DTO는 상속 없이 별개로 정의합니다.** 리포지토리 메서드명에도 `ForOwner` / `Public`을 명시합니다. 상속이나 조건부 직렬화는 부모에 필드가 추가될 때 조용히 개인정보를 노출합니다.
+
+> 결정 배경: [BD-13](../backend/decisions/BD-13-public-boundary-query-dto-split.md) 공개 경계를 쿼리·DTO 분리로 강제한 이유 — 실수했을 때 유출이 아니라 컴파일 오류로 실패하게 만든다
 
 ## 인증·보안 경계
 

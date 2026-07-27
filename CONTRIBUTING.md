@@ -28,7 +28,7 @@ Product and data contracts are owned by `Team-PinLog/docs` (`static/`). Referenc
 - [Data model & integrity](https://github.com/Team-PinLog/docs/blob/main/static/06_데이터모델_및_무결성.md) — tables, constraints, integrity rules
 - [Glossary](https://github.com/Team-PinLog/docs/blob/main/static/03_공식_용어사전.md) — official terms (use these names in code)
 - [AI design](https://github.com/Team-PinLog/docs/blob/main/static/05_AI_설계.md) — AI contract (status values, internal APIs, AI data structures)
-- [Cross-part requirements](https://github.com/Team-PinLog/docs/blob/main/static/06_파트간_요구사항.md) · [Policy](https://github.com/Team-PinLog/docs/blob/main/static/02_정책_정의서.md) · [MVP scope](https://github.com/Team-PinLog/docs/blob/main/static/10_MVP_기능범위.md) · [User flow](https://github.com/Team-PinLog/docs/blob/main/static/09_유저플로우.md)
+- [Cross-part requirements](https://github.com/Team-PinLog/docs/blob/main/static/05-1_파트간_요구사항.md) · [Policy](https://github.com/Team-PinLog/docs/blob/main/static/02_정책_정의서.md) · [MVP scope](https://github.com/Team-PinLog/docs/blob/main/static/10_MVP_기능범위.md) · [User flow](https://github.com/Team-PinLog/docs/blob/main/static/09_유저플로우.md)
 
 Implement domain names, statuses, and API shapes to match these specs. When a spec is ambiguous or missing, raise it with the owning part rather than inventing a contract.
 
@@ -85,6 +85,7 @@ Never push directly to `dev`. Submit changes as PRs that pass the branch protect
 - Do not create unused empty packages, `.gitkeep`, or speculative domain layers. Create a package only when a class lands in the location defined by the [package structure convention](docs/development/package-structure.md).
 - Do not add H2. Use PostgreSQL Testcontainers for DB-dependent tests.
 - Add authentication only in a dedicated auth PR that ships dependencies, the auth contract, security config, a local dev path, and tests together. See the [authentication PR contract](docs/development/authentication.md).
+- When your change makes a decision that is hard to undo — adding or removing a dependency, moving a schema boundary, choosing a protocol or response contract, overriding a framework default — write the decision record **before** the code. Backend decisions go to [docs/backend/decisions/](docs/backend/decisions/) as `BD-##`; cross-part agreements stay in `docs/ai/proposals/` as `P##`. Record the trade-off you accepted, not just the choice.
 
 The full path from starting a feature to merging is in the [development workflow](docs/development/workflow.md); review and merge criteria are in the [code review guide](docs/development/code-review.md). Detailed rules: [package structure](docs/development/package-structure.md), [code style](docs/development/code-style.md), [API](docs/development/api-conventions.md), [API documentation](docs/development/api-documentation.md), [error handling](docs/development/error-handling.md), [logging](docs/development/logging.md), [configuration](docs/development/configuration.md), [database](docs/development/database-conventions.md), [testing](docs/development/testing-conventions.md).
 
@@ -119,6 +120,7 @@ Normal PRs use the [PR template](.github/pull_request_template.md), require a Ji
 
 - [README.md](README.md): quick reference for tech stack, infra, and operations.
 - [docs/development/](docs/development/): detailed rules for workflow, review, API, DB, testing, and more. **This is the source of truth for rules.**
+- [docs/backend/](docs/backend/): the backend part's design, decision, and implementation records — spec / decisions / implements / troubleshooting plus a WORKLOG. `docs/development/` says **what the rule is**; [docs/backend/decisions/](docs/backend/decisions/) says **why it was decided and what we accepted in return**. Decision records are a preservation zone: never delete one, update its status instead.
 - [CLAUDE.md](CLAUDE.md): a short harness that makes Claude Code read this document and the detailed rules in order. Always loaded, so keep it short and declarative — no step-by-step procedures.
 - [AGENTS.md](AGENTS.md): links AGENTS-aware tools to `CLAUDE.md` and this document.
 - [`.claude/skills/`](.claude/skills/): on-demand procedures for recurring tasks, loaded only when invoked (for example `/pr`). A skill orders and executes existing rules; it never introduces a new rule. When it restates something from `docs/development/` or a template, the document stays authoritative and the skill must be updated with it.

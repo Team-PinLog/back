@@ -71,10 +71,12 @@ Bean Validation 실패는 [API 규약](api-conventions.md)대로 **HTTP 400**으
 | --- | --- |
 | 검증 실패 | `400` |
 | 미인증 | `401` (인증 도입 시, [인증 PR 계약](authentication.md)) |
-| 권한 부족 | `403` (또는 확정된 리소스 은닉 정책이면 `404`) |
+| 권한 부족 | `404` (리소스 은닉 정책 확정. 존재 여부를 노출하지 않습니다) |
 | 리소스 없음 | `404` |
 | 도메인 규칙 위반(충돌 등) | `409` 등 상황에 맞는 4xx |
 | 처리되지 않은 예외 | `500` |
+
+> 결정 배경: [BD-13](../backend/decisions/BD-13-public-boundary-query-dto-split.md) 403 대신 404를 쓰는 이유와 공개 경계 · [BD-11](../backend/decisions/BD-11-minimum-holding-invariants.md) 409에 `error.impact`를 실어 연쇄 삭제 범위를 알리는 이유 · [BD-03](../backend/decisions/BD-03-api-response-envelope.md) 오류 응답 envelope
 
 ### 프레임워크 예외 매핑
 
