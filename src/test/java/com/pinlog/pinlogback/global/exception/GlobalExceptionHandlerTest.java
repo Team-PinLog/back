@@ -2,6 +2,7 @@ package com.pinlog.pinlogback.global.exception;
 
 import static org.hamcrest.Matchers.blankOrNullString;
 import static org.hamcrest.Matchers.not;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -10,12 +11,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpMethod;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.pinlog.pinlogback.global.web.TraceIdFilter;
 
@@ -69,6 +73,58 @@ class GlobalExceptionHandlerTest {
 			.andExpect(jsonPath("$.data").doesNotExist());
 	}
 
+	@Test
+	void malformedJsonReturns400() throws Exception {
+		mockMvc.perform(post("/test/validate")
+				.contentType("application/json")
+				.content("{not json"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"))
+			.andExpect(jsonPath("$.error.traceId", not(blankOrNullString())));
+	}
+
+	@Test
+	void unsupportedMethodReturns405() throws Exception {
+		mockMvc.perform(delete("/test/business"))
+			.andExpect(status().isMethodNotAllowed())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("METHOD_NOT_ALLOWED"));
+	}
+
+	@Test
+	void unsupportedMediaTypeReturns415() throws Exception {
+		mockMvc.perform(post("/test/validate")
+				.contentType("text/plain")
+				.content("hello"))
+			.andExpect(status().isUnsupportedMediaType())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("UNSUPPORTED_MEDIA_TYPE"));
+	}
+
+	@Test
+	void missingRequiredParameterReturns400() throws Exception {
+		mockMvc.perform(get("/test/param"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+	}
+
+	/**
+	 * 미매핑 URL의 404 계약을 지키는 회귀 테스트. 이 예외는 이제 부모의
+	 * {@code handleNoResourceFoundException}을 타므로, 상태 코드 매핑이 깨지면 여기서 먼저 드러난다.
+	 * 실제 미매핑 URL로 재현하려면 정적 리소스 핸들러가 필요하므로 예외를 직접 던진다
+	 * (전체 경로 검증은 {@code DeploymentContractTests}).
+	 */
+	@Test
+	void noResourceFoundStillReturns404() throws Exception {
+		mockMvc.perform(get("/test/no-resource"))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("RESOURCE_NOT_FOUND"))
+			.andExpect(jsonPath("$.error.traceId", not(blankOrNullString())));
+	}
+
 	@RestController
 	static class ErrorTestController {
 
@@ -80,6 +136,16 @@ class GlobalExceptionHandlerTest {
 		@PostMapping("/test/validate")
 		void validate(@Valid @RequestBody SampleRequest request) {
 			// no-op; validation runs before body
+		}
+
+		@GetMapping("/test/param")
+		void param(@RequestParam String required) {
+			// no-op; the missing parameter fails during binding
+		}
+
+		@GetMapping("/test/no-resource")
+		void noResource() throws NoResourceFoundException {
+			throw new NoResourceFoundException(HttpMethod.GET, "/test/no-resource", "no-resource");
 		}
 
 		@GetMapping("/test/boom")
