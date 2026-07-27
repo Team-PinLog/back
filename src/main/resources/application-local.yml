@@ -1,0 +1,11 @@
+# 로컬 개발 override. compose.yaml이 띄운 Postgres/Redis에 접속한다.
+# 로컬 전용 값만 두고, 실제 비밀번호·토큰은 넣지 않는다(configuration.md).
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:15432/pinlog
+    username: pinlog
+    password: pinlog-local
+  data:
+    redis:
+      host: localhost
+      port: 16379

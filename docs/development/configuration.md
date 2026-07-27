@@ -69,19 +69,19 @@ spring:
 
 ## 로컬 프로파일 (`local`)
 
-로컬은 `dev/`의 Docker Compose가 띄운 PostgreSQL·Redis에 접속합니다([CONTRIBUTING.md](../../CONTRIBUTING.md)의 로컬 시작). 로컬 전용 개발값은 커밋해도 되지만, 실제 비밀번호는 넣지 않습니다.
+로컬은 저장소 루트의 `compose.yaml`이 띄운 PostgreSQL·Redis에 접속합니다([CONTRIBUTING.md](../../CONTRIBUTING.md)의 로컬 시작). 로컬 전용 개발값은 커밋해도 되지만, 실제 비밀번호는 넣지 않습니다.
 
 ```yaml
-# application-local.yml (예시)
+# application-local.yml
 spring:
   datasource:
-    url: jdbc:postgresql://localhost:5432/pinlog
+    url: jdbc:postgresql://localhost:15432/pinlog
     username: pinlog
-    password: pinlog            # 로컬 개발 전용 값
+    password: pinlog-local      # 로컬 개발 전용 값
   data:
     redis:
       host: localhost
-      port: 6379
+      port: 16379
 ```
 
 로컬 실행 주소는 context path가 붙어 `http://localhost:8080/api/core/...` 입니다.
