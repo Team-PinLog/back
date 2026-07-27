@@ -13,7 +13,7 @@ import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.responses.ApiResponses;
 
 /**
- * springdoc이 생성하는 OpenAPI 스키마에도 런타임 봉투(ApiResponse)를 반영한다(API 명세 1.6).
+ * springdoc이 생성하는 OpenAPI 스키마에도 런타임 envelope(ApiResponse)를 반영한다(API 명세 1.6).
  *
  * <p>springdoc은 컨트롤러의 선언된 반환 타입을 introspect하지만
  * {@link com.pinlog.pinlogback.global.web.ApiResponseBodyAdvice}는 런타임에 응답 바디를 감싼다. 두 판정이
