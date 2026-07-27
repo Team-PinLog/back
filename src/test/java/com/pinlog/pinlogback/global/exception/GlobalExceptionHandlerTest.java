@@ -1,5 +1,6 @@
 package com.pinlog.pinlogback.global.exception;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.blankOrNullString;
 import static org.hamcrest.Matchers.not;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -11,7 +12,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.converter.HttpMessageNotWritableException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +26,10 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import com.pinlog.pinlogback.global.web.TraceIdFilter;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 
@@ -125,6 +132,39 @@ class GlobalExceptionHandlerTest {
 			.andExpect(jsonPath("$.error.traceId", not(blankOrNullString())));
 	}
 
+	/**
+	 * 부모가 500으로 넘기는 프레임워크 예외(`handleHttpMessageNotWritable`)도 envelope + INTERNAL_ERROR로
+	 * 응답하고, 5xx이므로 ERROR로 로깅되는지 지킨다.
+	 *
+	 * <p>응답 본문만으로는 이 경로와 catch-all {@code handleUnexpected}를 구분할 수 없다(둘 다 500 +
+	 * INTERNAL_ERROR). 그래서 로그 이벤트로 경유 분기를 단정한다: {@code "framework error: status=500"}은
+	 * {@code handleExceptionInternal}에만 있는 문구이고 catch-all은 {@code "unhandled error"}를 남기므로,
+	 * 이벤트가 정확히 하나이고 그 문구라는 것이 곧 "부모 분기를 탔고 catch-all은 관여하지 않았다"는 뜻이다.
+	 */
+	@Test
+	void frameworkServerErrorReturns500AndLogsAtErrorLevel() throws Exception {
+		Logger handlerLogger = (Logger)LoggerFactory.getLogger(GlobalExceptionHandler.class);
+		ListAppender<ILoggingEvent> appender = new ListAppender<>();
+		appender.start();
+		handlerLogger.addAppender(appender);
+		try {
+			mockMvc.perform(get("/test/unwritable"))
+				.andExpect(status().isInternalServerError())
+				.andExpect(jsonPath("$.success").value(false))
+				.andExpect(jsonPath("$.error.code").value("INTERNAL_ERROR"))
+				.andExpect(jsonPath("$.error.message").value(not("unwritable boom")))
+				.andExpect(jsonPath("$.error.traceId", not(blankOrNullString())))
+				.andExpect(jsonPath("$.data").doesNotExist());
+		} finally {
+			handlerLogger.detachAppender(appender);
+		}
+
+		assertThat(appender.list).singleElement().satisfies(event -> {
+			assertThat(event.getLevel()).isEqualTo(Level.ERROR);
+			assertThat(event.getFormattedMessage()).isEqualTo("framework error: status=500");
+		});
+	}
+
 	@RestController
 	static class ErrorTestController {
 
@@ -146,6 +186,11 @@ class GlobalExceptionHandlerTest {
 		@GetMapping("/test/no-resource")
 		void noResource() throws NoResourceFoundException {
 			throw new NoResourceFoundException(HttpMethod.GET, "/test/no-resource", "no-resource");
+		}
+
+		@GetMapping("/test/unwritable")
+		void unwritable() {
+			throw new HttpMessageNotWritableException("unwritable boom");
 		}
 
 		@GetMapping("/test/boom")
