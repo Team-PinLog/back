@@ -1,14 +1,14 @@
-# BI-04. SIGTERM graceful shutdown과 probe 계약 테스트
+# BI-05. SIGTERM graceful shutdown과 probe 계약 테스트
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-27
-- **관련**: S15P11A705-51, [BD-04](../decisions/BD-04-graceful-shutdown-timing.md)
+- **관련**: S15P11A705-51, [BD-05](../decisions/BD-05-graceful-shutdown-timing.md)
 
 ## 산출
 
 - `src/main/resources/application.yml`
   - `server.shutdown: graceful` — SIGTERM 수신 시 새 요청을 막고 진행 중인 요청을 끝낸 뒤 종료한다. 이 값이 없으면 기본값 `immediate`로 동작해 진행 중인 요청이 버려진다.
-  - `spring.lifecycle.timeout-per-shutdown-phase: 20s` — 배수 대기 상한. Kubernetes `terminationGracePeriodSeconds`와 짝을 이루는 값이라 주석으로 관계식(`preStop 5s + 20s < 40s`)을 남겼다. 근거는 [BD-04](../decisions/BD-04-graceful-shutdown-timing.md).
+  - `spring.lifecycle.timeout-per-shutdown-phase: 20s` — 배수 대기 상한. Kubernetes `terminationGracePeriodSeconds`와 짝을 이루는 값이라 주석으로 관계식(`preStop 5s + 20s < 40s`)을 남겼다. 근거는 [BD-05](../decisions/BD-05-graceful-shutdown-timing.md).
 - `src/test/java/com/pinlog/pinlogback/DeploymentContractTests.java` — 테스트 4개 추가
   - `inFlightRequestsAreDrainedOnSigterm` — `ServerProperties.getShutdown() == Shutdown.GRACEFUL`
   - `shutdownTimeoutFitsInsideKubernetesTerminationGracePeriod` — `timeout-per-shutdown-phase == 20s`

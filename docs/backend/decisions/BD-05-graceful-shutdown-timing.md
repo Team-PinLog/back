@@ -1,8 +1,8 @@
-# BD-04. graceful shutdown 타임아웃을 20s로 두고 Kubernetes 쪽 값은 Infra에 위임한다
+# BD-05. graceful shutdown 타임아웃을 20s로 두고 Kubernetes 쪽 값은 Infra에 위임한다
 
 - **상태**: Accepted
 - **날짜**: 2026-07-27
-- **관련**: S15P11A705-51, [BI-04](../implements/BI-04-2026-07-27-graceful-shutdown.md), Infra 연계 S15P11A705-47
+- **관련**: S15P11A705-51, [BI-05](../implements/BI-05-2026-07-27-graceful-shutdown.md), Infra 연계 S15P11A705-47
 
 ## 맥락
 

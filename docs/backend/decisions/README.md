@@ -32,3 +32,5 @@
 | [BD-01](BD-01-h2-removal-testcontainers.md) | 테스트 런타임에서 H2 제거, PostgreSQL Testcontainers로 단일화 | Accepted | back#12 |
 | [BD-02](BD-02-base-entity-common-columns.md) | BaseEntity는 created_at·deleted_at만 공유, updated_at 없음 | Accepted | S15P11A705-41 |
 | [BD-03](BD-03-api-response-envelope.md) | 성공·오류 응답을 공통 envelope(ApiResponse)로 통일 | Accepted | S15P11A705-53 |
+| [BD-04](BD-04-cursor-pagination.md) | 목록은 커서 기반 CursorPage + Base64(정렬키,id) 불투명 커서, size 기본 20·상한 100 | Accepted | S15P11A705-42 |
+| [BD-05](BD-05-graceful-shutdown-timing.md) | graceful shutdown 타임아웃 20s, Kubernetes 쪽 값(`terminationGracePeriodSeconds` 40s·`preStop` 5s)은 Infra에 위임 | Accepted | S15P11A705-51 · [infra#33](https://github.com/Team-PinLog/infra/issues/33) |
