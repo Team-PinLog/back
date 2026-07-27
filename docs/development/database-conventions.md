@@ -4,7 +4,16 @@
 
 ## 지원 데이터베이스
 
-PostgreSQL만 지원합니다. 로컬 실행, 통합 테스트와 CI는 `pgvector/pgvector:0.8.1-pg16` PostgreSQL을 기준으로 합니다. H2를 추가하거나 PostgreSQL 전용 migration의 대체 검증으로 사용하지 않습니다.
+PostgreSQL만 지원합니다. 로컬 실행, 통합 테스트와 CI는 `pgvector/pgvector:0.8.5-pg16` PostgreSQL을 기준으로 합니다. 운영 이미지(S15P11A705-46)와 같은 버전으로 맞춥니다. H2를 추가하거나 PostgreSQL 전용 migration의 대체 검증으로 사용하지 않습니다.
+
+`compose.yaml`은 digest까지 고정하고, Testcontainers(`PostgresContainerSupport`)는 같은 태그를 씁니다.
+
+> **이미지를 올려도 기존 volume의 extension은 따라 올라가지 않습니다.** `CREATE EXTENSION IF NOT EXISTS vector`는 이미 설치된 extension을 업그레이드하지 않으므로, 기존 `postgres-data`를 재사용하면 바이너리만 새 버전이고 `pg_extension.extversion`은 옛 버전으로 남습니다. 확인과 조치는 아래와 같습니다.
+>
+> ```sql
+> SELECT name, default_version, installed_version FROM pg_available_extensions WHERE name = 'vector';
+> ALTER EXTENSION vector UPDATE;
+> ```
 
 애플리케이션의 Hibernate 설정은 `ddl-auto=validate`입니다. schema 변경은 Hibernate 자동 생성이 아니라 Flyway migration으로 관리합니다.
 
