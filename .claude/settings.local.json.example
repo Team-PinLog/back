@@ -7,5 +7,26 @@
       "Bash(docker compose up -d --wait)",
       "Bash(docker compose ps)"
     ]
-  }
+  },
+
+  "//hooks": [
+    "훅은 개인 영역입니다 — .claude/hooks/ 는 gitignore 됩니다.",
+    "규칙 강제는 CI가 담당하므로(CONTRIBUTING.md 'Where each rule is enforced'),",
+    "훅은 같은 문제를 CI보다 몇 분 먼저 알려주는 편의 도구로만 쓰세요.",
+    "훅이 조용히 죽어도 잃는 것이 편의뿐이어야 합니다 — 훅에만 의존하는 규칙은 만들지 마세요.",
+    "",
+    "쓰려면 아래처럼 이 파일(개인 설정)에 등록합니다.",
+    "공용 settings.json 에는 넣지 마세요. 스크립트가 없는 사람에게 오류가 납니다.",
+    "",
+    "\"hooks\": {",
+    "  \"PreToolUse\": [{",
+    "    \"matcher\": \"Edit|Write\",",
+    "    \"hooks\": [{ \"type\": \"command\", \"command\": \"bash $CLAUDE_PROJECT_DIR/.claude/hooks/my-check.sh\" }]",
+    "  }]",
+    "}",
+    "",
+    "셸로 직접 짜면 이식성 문제로 조용히 무력화되기 쉽습니다.",
+    "(Windows 백슬래시 경로 / jq 부재 / macOS BSD sed / xargs 빈 입력 등 — 전부 exit 0 으로 통과해 버립니다.)",
+    "검사 로직은 Gradle 태스크나 스크립트에 두고 훅은 그걸 호출만 하는 편이 안전합니다."
+  ]
 }
