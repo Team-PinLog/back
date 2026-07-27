@@ -23,6 +23,7 @@ Jira 키는 필수입니다. 관련 GitHub Issue 링크는 선택입니다.
 - [ ] DB 변경 시 PostgreSQL 통합 테스트
 - [ ] migration 변경 시 빈 DB migration 테스트
 - [ ] API 계약 변경 시 관련 문서 갱신
+- [ ] 되돌리기 어려운 결정을 포함하면 `docs/backend/decisions/`에 BD 추가 또는 기존 BD 링크
 
 <!--
 아래는 필요할 때만 (리팩토링·복잡한 결정 등). 단순 feat/fix면 지워도 됩니다.

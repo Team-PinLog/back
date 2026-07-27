@@ -60,3 +60,21 @@
 | [BD-02](BD-02-base-entity-common-columns.md) | BaseEntity는 created_at·deleted_at만 공유, updated_at 없음 | Accepted | S15P11A705-41 |
 | [BD-03](BD-03-api-response-envelope.md) | 성공·오류 응답을 공통 envelope(ApiResponse)로 통일 | Accepted | S15P11A705-53 |
 | [BD-04](BD-04-cursor-pagination.md) | 목록은 커서 기반 CursorPage + Base64(정렬키,id) 불투명 커서, size 기본 20·상한 100 | Accepted | S15P11A705-42 |
+| [BD-05](BD-05-foundation-reset.md) | 파운데이션 리셋 — 초기 설정을 최신 `dev`에서 작은 PR로 다시 구성 | Accepted | Issue #9 |
+| [BD-06](BD-06-context-immutability.md) | Context 불변 — 수정은 삭제+생성. 버전 컬럼 제거, 수정 경합을 삭제 경합에 흡수 | Accepted | S15P11A705-76 |
+| [BD-07](BD-07-soft-delete-no-restore.md) | 소프트 삭제 + 복구 없음 + 활성행 부분 유니크 | Accepted | S15P11A705-76 |
+| [BD-08](BD-08-no-record-update-path.md) | Record 수정 경로를 두지 않는다 (공용 문서 정정 후속) | Accepted | S15P11A705-76 |
+| [BD-09](BD-09-integrity-in-database.md) | 무결성을 앱이 아닌 DB에 — `CHECK`·부분 유니크·서로게이트 키 | Accepted | S15P11A705-76 |
+| [BD-10](BD-10-minimum-holding-invariants.md) | 최소 보유 불변식 — 자동 연쇄 대신 409 확인 후 force, 잠금은 부모에 | Accepted | S15P11A705-76 |
+| [BD-11](BD-11-duplicate-record-idempotent.md) | Collection 중복 Record 추가는 실패가 아닌 멱등 | Accepted | S15P11A705-76 |
+| [BD-12](BD-12-public-boundary-query-dto-split.md) | 공개 경계를 쿼리·DTO 분리로 강제, 403 대신 404 | Accepted | S15P11A705-76 |
+| [BD-13](BD-13-identifier-concealment.md) | 식별자 은닉 — `member.id` 비공개, Collection id를 진입점으로 | Accepted | S15P11A705-76 |
+| [BD-14](BD-14-shelf-not-a-table.md) | Shelf·Library를 물리 테이블로 두지 않는다 | Accepted | S15P11A705-76 |
+| [BD-15](BD-15-ai-derived-immediate-purge.md) | AI 파생 데이터 즉시 파기 + 백엔드의 `ai` 스키마 삭제 예외 | Accepted | S15P11A705-76 |
+| [BD-16](BD-16-async-without-message-queue.md) | 비동기 AI를 큐 없이 DB State + Scheduler로 | Accepted | S15P11A705-76 |
+| [BD-17](BD-17-keyword-preset-and-visibility.md) | Keyword는 프리셋에서만 · 3등급 공개 · 상위 집계 비저장 | Accepted | S15P11A705-76 |
+| [BD-18](BD-18-place-snapshot.md) | Place는 공용 스냅샷 — 갱신·자동 병합 금지, 검색은 프론트가 직접 | Accepted | S15P11A705-76 |
+| [BD-19](BD-19-selective-denormalization.md) | 선택적 비정규화 — `record_count`는 두고 팔로워 수는 두지 않는다 | Accepted | S15P11A705-76 |
+| [BD-20](BD-20-auth-token-model.md) | 인증 토큰 — JWT Access 30분 / Refresh 7일, Refresh는 Redis | Accepted | S15P11A705-76 |
+| [BD-21](BD-21-signup-commit-point.md) | 가입 확정 시점 — 약관 동의 전에는 `member`를 만들지 않는다 | Accepted | S15P11A705-76 |
+| [BD-22](BD-22-collection-auto-publish.md) | Collection 자동 발행 + `is_published` 컬럼 유지 | Accepted | S15P11A705-76 |

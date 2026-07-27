@@ -8,6 +8,8 @@ PostgreSQL만 지원합니다. 로컬 실행, 통합 테스트와 CI는 `pgvecto
 
 애플리케이션의 Hibernate 설정은 `ddl-auto=validate`입니다. schema 변경은 Hibernate 자동 생성이 아니라 Flyway migration으로 관리합니다.
 
+> 결정 배경: [BD-01](../backend/decisions/BD-01-h2-removal-testcontainers.md) H2 제거와 Testcontainers 단일화 · [P24](../ai/proposals/P24-flyway-schemas-unspecified.md) `flyway.schemas` 미지정과 `ddl-auto=validate`
+
 ## Flyway 버전과 소유 경계
 
 | 버전 | 소유 | 용도 |
@@ -30,6 +32,8 @@ PostgreSQL만 지원합니다. 로컬 실행, 통합 테스트와 CI는 `pgvecto
 ## 공통 컬럼과 BaseEntity
 
 `core` 테이블의 공통 컬럼은 세 가지이며, 테이블마다 조합이 다릅니다(근거: `docs/static/06_데이터모델_및_무결성.md` 2장).
+
+> 결정 배경: [BD-02](../backend/decisions/BD-02-base-entity-common-columns.md) BaseEntity가 `created_at`·`deleted_at`만 공유하는 이유 · [BD-07](../backend/decisions/BD-07-soft-delete-no-restore.md) 소프트 삭제·복구 없음과 활성행 부분 유니크 · [BD-09](../backend/decisions/BD-09-integrity-in-database.md) 무결성을 DB 제약에 둔 이유 · [BD-06](../backend/decisions/BD-06-context-immutability.md) `context`에 `updated_at`이 없는 이유
 
 | 테이블 | `created_at` | `updated_at` | `deleted_at` |
 | --- | --- | --- | --- |
