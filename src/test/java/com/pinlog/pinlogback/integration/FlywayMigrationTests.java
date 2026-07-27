@@ -79,6 +79,34 @@ class FlywayMigrationTests extends PostgresContainerSupport {
 		}
 	}
 
+	@Test
+	void socialAccountTableIsCreatedByBackendMigration() throws Exception {
+		try (Connection connection = dataSource.getConnection();
+			ResultSet rs = connection.getMetaData().getColumns(null, "core", "social_account", null)) {
+			Set<String> columns = new HashSet<>();
+			while (rs.next()) {
+				columns.add(rs.getString("COLUMN_NAME"));
+			}
+			assertThat(columns).containsExactlyInAnyOrder(
+				"id", "member_id", "provider", "provider_user_id", "email", "created_at", "deleted_at");
+		}
+	}
+
+	@Test
+	void socialAccountUniqueIndexAppliesToActiveRowsOnly() {
+		// 전체 유니크로 정의하면 탈퇴 후 같은 소셜 계정으로 재가입할 수 없다(07_ERD 4.1).
+		String indexDefinition = jdbcTemplate.queryForObject(
+			"SELECT indexdef FROM pg_indexes WHERE schemaname = 'core' AND indexname = ?",
+			String.class,
+			"ux_social_account_provider_user");
+
+		assertThat(indexDefinition)
+			.contains("UNIQUE")
+			.contains("provider")
+			.contains("provider_user_id")
+			.contains("deleted_at IS NULL");
+	}
+
 	private int count(String sql) {
 		Integer result = jdbcTemplate.queryForObject(sql, Integer.class);
 		return result == null ? 0 : result;
