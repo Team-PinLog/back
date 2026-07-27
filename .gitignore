@@ -46,5 +46,7 @@ out/
 .env
 !.env.example
 
-# Claude Code — settings.json·hooks·skills는 팀 공용(커밋), 개인 설정만 무시
+# Claude Code — settings.json(공용 deny)·skills는 커밋, 개인 영역은 무시.
+# 훅은 개인 편의 도구다(규칙 강제는 CI 담당). CONTRIBUTING.md "Where each rule is enforced" 참고.
 .claude/settings.local.json
+.claude/hooks/
