@@ -27,6 +27,25 @@ PostgreSQL만 지원합니다. 로컬 실행, 통합 테스트와 CI는 `pgvecto
 - DB 변경 PR은 `./gradlew clean check --no-daemon`을 실행해 PostgreSQL 통합 테스트를 통과해야 합니다.
 - Docker가 실행되지 않으면 DB 테스트를 skip하지 않습니다. 원인을 표시해 실패하게 하고 Docker를 시작한 뒤 다시 실행합니다.
 
+## 무중단 배포와 backward-compatible migration
+
+RollingUpdate 중에는 **구 버전 Pod와 신 버전 Pod가 같은 DB를 동시에 봅니다.** migration은 신 Pod가 뜨는 시점에 적용되지만 구 Pod는 아직 살아 있으므로, 구 버전 코드가 계속 동작하는 형태로만 schema를 바꿉니다.
+
+한 번의 migration에서 하지 않습니다.
+
+- 컬럼·테이블 즉시 `DROP` — 구 Pod의 `SELECT`가 깨집니다
+- 컬럼 rename — `DROP` + `ADD`와 같습니다
+- 기존 컬럼에 `NOT NULL` 즉시 추가 — 해당 컬럼을 채우지 않는 구 Pod의 `INSERT`가 실패합니다
+- 타입 축소 변경(길이 축소, 범위가 좁은 타입으로 변경)
+
+제거가 필요하면 릴리스를 나눕니다.
+
+1. 추가 — 새 컬럼을 nullable로 추가하고 백필한다. 필요하면 신·구 컬럼에 함께 쓴다
+2. 배포 — 구 Pod가 모두 교체될 때까지 기다린다
+3. 제거 — **다음 릴리스의 새 migration**에서 구 컬럼을 지우고 `NOT NULL`을 건다
+
+CI의 `FlywayMigrationTests`는 **빈 DB에 전체 migration을 적용하는 것까지만** 검증합니다. 구 Pod 호환성은 자동으로 잡히지 않으므로 이 규약과 리뷰로 지킵니다. 근거: `S15P11A705-51`.
+
 ## 공통 컬럼과 BaseEntity
 
 `core` 테이블의 공통 컬럼은 세 가지이며, 테이블마다 조합이 다릅니다(근거: `docs/static/06_데이터모델_및_무결성.md` 2장).
