@@ -118,10 +118,28 @@ Normal PRs use the [PR template](.github/pull_request_template.md), require a Ji
 ## Documentation roles
 
 - [README.md](README.md): quick reference for tech stack, infra, and operations.
-- [docs/development/](docs/development/): detailed rules for workflow, review, API, DB, testing, and more.
-- [CLAUDE.md](CLAUDE.md): a short harness that makes Claude Code read this document and the detailed rules in order.
+- [docs/development/](docs/development/): detailed rules for workflow, review, API, DB, testing, and more. **This is the source of truth for rules.**
+- [CLAUDE.md](CLAUDE.md): a short harness that makes Claude Code read this document and the detailed rules in order. Always loaded, so keep it short and declarative — no step-by-step procedures.
 - [AGENTS.md](AGENTS.md): links AGENTS-aware tools to `CLAUDE.md` and this document.
+- [`.claude/skills/`](.claude/skills/): on-demand procedures for recurring tasks, loaded only when invoked (for example `/pr`). A skill orders and executes existing rules; it never introduces a new rule. When it restates something from `docs/development/` or a template, the document stays authoritative and the skill must be updated with it.
+
+## Where each rule is enforced
+
+Every rule has exactly one **authoritative** enforcement point. Anything else that repeats the rule is a convenience copy and must never be the only thing standing behind it.
+
+| Rule | Authoritative enforcement | Convenience copies |
+| --- | --- | --- |
+| Tests and static analysis pass | `backend-ci / check` (required by branch protection) | `CLAUDE.md` rule 8 tells the agent to run it locally first |
+| Applied Flyway migrations are never modified | `backend-ci / check` — "Verify applied migrations were not modified" | [database convention](docs/development/database-conventions.md), PR review |
+| Duplicate migration versions | `FlywayMigrationTests` (Flyway fails on duplicate versions) | migration [README](src/main/resources/db/migration/README.md) |
+| Jira key in branch, commit, PR | PR review + [Jira automation](docs/development/jira-workflow.md) | `/pr` skill |
+| Approval, conversation resolution, squash merge | Branch protection on `dev` | [workflow](docs/development/workflow.md) |
+| Migration version ranges per part (V2–V99, V100–V199) | PR review — deliberately not automated (a wrong-range file is still valid SQL, and false blocks cost more than the rule is worth) | migration README |
+
+Before adding a new rule, decide its enforcement point first. Prefer CI: it runs in one known environment and fails loudly. Local mechanisms (Claude Code hooks, git hooks) fail **open and silently** — when they break, nothing tells you, and an invisible safety net is worse than none because people rely on it.
 
 ## Claude settings boundary
 
 Keep shared, repo-wide protections in [`.claude/settings.json`](.claude/settings.json) only. Put per-person permissions and environment settings in `.claude/settings.local.json` (Git-ignored); copy the [example file](.claude/settings.local.json.example) to start. Do not commit personal settings or add personal permissions to the team settings.
+
+**Hooks are personal, not shared.** `.claude/hooks/` is Git-ignored. Set one up if you want the same failure reported a few minutes before CI does, and register it in your own `settings.local.json` — never in the shared `settings.json`, which would error for everyone who does not have your scripts. Keep the rule itself in CI so a dead hook costs you convenience and nothing more. The example file explains the portability traps that make hand-written shell hooks fail silently.
