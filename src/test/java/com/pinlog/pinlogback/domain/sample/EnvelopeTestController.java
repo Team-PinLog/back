@@ -1,5 +1,6 @@
 package com.pinlog.pinlogback.domain.sample;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -24,5 +25,10 @@ public class EnvelopeTestController {
 
 	@GetMapping("/test-envelope/void")
 	public void noContent() {
+	}
+
+	@GetMapping("/test-envelope/no-content")
+	public ResponseEntity<Void> noContentEntity() {
+		return ResponseEntity.noContent().build();
 	}
 }
