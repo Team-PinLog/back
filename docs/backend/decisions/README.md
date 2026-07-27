@@ -14,6 +14,8 @@
 | 백엔드 도메인 내부 결정 | BD |
 | 합의의 수용과 백엔드 구현 경계 | BD (원본은 링크) |
 
+번호는 `dev`에 머지된 기록을 기준으로 다음 값을 씁니다. 미머지 브랜치가 파일명으로 선점한 번호는 예약이 아니며, 머지 순서대로 확정됩니다.
+
 ## 보존 원칙
 
 이 폴더는 결정 이력을 기록합니다. **폐기·대체된 결정도 삭제하지 않고 상태만 갱신합니다.** 회고에서 "왜 그때 그렇게 정했고, 왜 바꿨는가"를 추적하기 위함입니다.
@@ -65,6 +67,7 @@
 | [BD-03](BD-03-api-response-envelope.md) | 성공·오류 응답을 공통 envelope(ApiResponse)로 통일 | Accepted | S15P11A705-53 |
 | [BD-04](BD-04-cursor-pagination.md) | 목록은 커서 기반 CursorPage + Base64(정렬키,id) 불투명 커서, size 기본 20·상한 100 | Accepted | S15P11A705-42 |
 | [BD-05](BD-05-graceful-shutdown-timing.md) | graceful shutdown 타임아웃 20s, Kubernetes 쪽 값(`terminationGracePeriodSeconds` 40s·`preStop` 5s)은 Infra에 위임 | Accepted | S15P11A705-51 · [infra#33](https://github.com/Team-PinLog/infra/issues/33) |
+| [BD-06](BD-06-framework-error-mapping.md) | GlobalExceptionHandler가 ResponseEntityExceptionHandler를 상속해 프레임워크 예외를 자체 상태로 매핑 | Accepted | S15P11A705-40 |
 | [BD-07](BD-07-context-immutability.md) | Context 불변 — 수정은 삭제+생성. 버전 컬럼 제거, 수정 경합을 삭제 경합에 흡수 | Accepted | S15P11A705-76 |
 | [BD-08](BD-08-soft-delete-no-restore.md) | 소프트 삭제 + 복구 없음 + 활성행 부분 유니크 | Accepted | S15P11A705-76 |
 | [BD-09](BD-09-no-record-update-path.md) | Record 수정 경로를 두지 않는다 (공용 문서 정정 후속) | Accepted | S15P11A705-76 |
@@ -74,7 +77,7 @@
 | [BD-13](BD-13-public-boundary-query-dto-split.md) | 공개 경계를 쿼리·DTO 분리로 강제, 403 대신 404 | Accepted | S15P11A705-76 |
 | [BD-14](BD-14-identifier-concealment.md) | 식별자 은닉 — `member.id` 비공개, Collection id를 진입점으로 | Accepted | S15P11A705-76 |
 | [BD-15](BD-15-shelf-not-a-table.md) | Shelf·Library를 물리 테이블로 두지 않는다 | Accepted | S15P11A705-76 |
-| [BD-16](BD-16-ai-derived-immediate-purge.md) | AI 파생 데이터 즉시 파기 + 백엔드의 `ai` 스키마 삭제 예외 | Accepted | S15P11A705-76 |
+| [BD-16](BD-16-ai-derived-immediate-purge.md) | AI 파생 데이터는 즉시 무효화 표시 — 백엔드가 `ai` 스키마에 직접 쓰는 좁은 예외 | Accepted | S15P11A705-76 |
 | [BD-17](BD-17-async-without-message-queue.md) | 비동기 AI를 큐 없이 DB State + Scheduler로 | Accepted | S15P11A705-76 |
 | [BD-18](BD-18-keyword-preset-and-visibility.md) | Keyword는 프리셋에서만 · 3등급 공개 · 상위 집계 비저장 | Accepted | S15P11A705-76 |
 | [BD-19](BD-19-place-snapshot.md) | Place는 공용 스냅샷 — 갱신·자동 병합 금지, 검색은 프론트가 직접 | Accepted | S15P11A705-76 |
