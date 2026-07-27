@@ -66,4 +66,29 @@ class CursorTest {
 		assertThat(cursor.sortKey()).isEqualTo("a,b,2026-07-23T10:00:00Z");
 		assertThat(cursor.id()).isEqualTo(8801L);
 	}
+
+	@Test
+	void decodeRejectsNullOrBlank() {
+		assertThatThrownBy(() -> Cursor.decode(null))
+			.isInstanceOf(InvalidCursorException.class);
+		assertThatThrownBy(() -> Cursor.decode(""))
+			.isInstanceOf(InvalidCursorException.class);
+		assertThatThrownBy(() -> Cursor.decode("   "))
+			.isInstanceOf(InvalidCursorException.class);
+	}
+
+	@Test
+	void sortKeyAsInstantParsesIsoUtcSortKey() {
+		Cursor cursor = Cursor.decode(Cursor.encode(Instant.parse("2026-07-23T10:00:00Z"), 8801L));
+
+		assertThat(cursor.sortKeyAsInstant()).isEqualTo(Instant.parse("2026-07-23T10:00:00Z"));
+	}
+
+	@Test
+	void sortKeyAsInstantRejectsNonInstantSortKey() {
+		Cursor cursor = Cursor.decode(Cursor.encode("not-an-instant", 8801L));
+
+		assertThatThrownBy(cursor::sortKeyAsInstant)
+			.isInstanceOf(InvalidCursorException.class);
+	}
 }

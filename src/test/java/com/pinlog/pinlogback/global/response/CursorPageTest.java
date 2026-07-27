@@ -45,6 +45,7 @@ class CursorPageTest {
 
 	@Test
 	void normalizeSizeCapsAtMax() {
+		assertThat(CursorPage.normalizeSize(CursorPage.MAX_SIZE)).isEqualTo(CursorPage.MAX_SIZE);
 		assertThat(CursorPage.normalizeSize(CursorPage.MAX_SIZE + 1)).isEqualTo(CursorPage.MAX_SIZE);
 	}
 

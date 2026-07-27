@@ -2,6 +2,7 @@ package com.pinlog.pinlogback.global.response;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.Base64;
 
 import com.pinlog.pinlogback.global.exception.InvalidCursorException;
@@ -28,7 +29,24 @@ public record Cursor(String sortKey, long id) {
 		return encode(sortKey, id);
 	}
 
+	/**
+	 * 정렬키를 {@link Cursor#encode(Instant, long)}로 인코딩했을 때의 짝이 되는 접근자다.
+	 * {@code sortKey()}를 호출부에서 직접 {@link Instant#parse(CharSequence)}하지 않고 이 메서드로만
+	 * 얻어야 한다 — 그래야 커서 위조로 인한 파싱 실패가 {@link InvalidCursorException}(400)으로 처리된다.
+	 */
+	public Instant sortKeyAsInstant() {
+		try {
+			return Instant.parse(sortKey);
+		} catch (DateTimeParseException e) {
+			throw new InvalidCursorException();
+		}
+	}
+
 	public static Cursor decode(String raw) {
+		if (raw == null || raw.isBlank()) {
+			throw new InvalidCursorException();
+		}
+
 		String decoded = decodeBase64(raw);
 
 		int separatorIndex = decoded.lastIndexOf(SEPARATOR);
