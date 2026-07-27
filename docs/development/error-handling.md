@@ -4,7 +4,7 @@
 
 ## 오류 응답 계약 (재확인)
 
-모든 오류 응답은 [API 규약](api-conventions.md)의 공통 필드를 지킵니다.
+모든 오류 응답은 [API 규약](api-conventions.md)의 공통 봉투를 지킵니다. 최상위는 `{ "success": false, "error": {…} }`이며, `error` 안의 필드는 다음과 같습니다.
 
 | 필드 | 의미 |
 | --- | --- |
@@ -12,6 +12,10 @@
 | `message` | 호출자가 이해할 수 있는 오류 설명 |
 | `fieldErrors` | 검증(Bean Validation) 실패 시 필드별 위반을 담는 배열, 그 외에는 빈 배열 |
 | `traceId` | 로그와 요청을 잇는 추적 식별자 |
+
+`success`/`error` 봉투는 `global/response/ApiResponse.fail(...)`이 생성하며, `global/exception/GlobalExceptionHandler`의 각 분기가 이를 반환합니다.
+
+> `Team-PinLog/docs`의 `static/08_API_명세.md` §5.6·§5.7은 409 충돌 응답에 `error.impact`(예: `DELETE_CONFIRMATION_REQUIRED`) 필드를 명세하지만, 이 필드는 **아직 구현하지 않았습니다**. Record 삭제 티켓에서 `ErrorResponse`를 확장해 도입할 예정입니다.
 
 이 문서는 이 계약을 **한 곳에서 일관되게** 생성하는 방법을 정의합니다. 컨트롤러마다 제각각 오류 응답을 만들지 않습니다.
 
