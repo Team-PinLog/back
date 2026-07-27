@@ -4,7 +4,7 @@
 
 ## 오류 응답 계약 (재확인)
 
-모든 오류 응답은 [API 규약](api-conventions.md)의 공통 필드를 지킵니다.
+모든 오류 응답은 [API 규약](api-conventions.md)의 공통 envelope를 지킵니다. 최상위는 `{ "success": false, "error": {…} }`이며, `error` 안의 필드는 다음과 같습니다.
 
 | 필드 | 의미 |
 | --- | --- |
@@ -12,6 +12,10 @@
 | `message` | 호출자가 이해할 수 있는 오류 설명 |
 | `fieldErrors` | 검증(Bean Validation) 실패 시 필드별 위반을 담는 배열, 그 외에는 빈 배열 |
 | `traceId` | 로그와 요청을 잇는 추적 식별자 |
+
+`success`/`error` envelope는 `global/response/ApiResponse.fail(...)`이 생성하며, `global/exception/GlobalExceptionHandler`의 각 분기가 이를 반환합니다.
+
+> `Team-PinLog/docs`의 `static/08_API_명세.md` §5.6·§5.7은 409 충돌 응답에 `error.impact`(예: `DELETE_CONFIRMATION_REQUIRED`) 필드를 명세하지만, 이 필드는 **아직 구현하지 않았습니다**. Record 삭제 티켓에서 `ErrorResponse`를 확장해 도입할 예정입니다.
 
 이 문서는 이 계약을 **한 곳에서 일관되게** 생성하는 방법을 정의합니다. 컨트롤러마다 제각각 오류 응답을 만들지 않습니다.
 
@@ -47,6 +51,8 @@
 - **도메인 베이스 예외** → 예외가 든 `code`와 상태로 응답을 만듭니다.
 - **검증 실패**(Bean Validation) → `400`, 같은 오류 계약을 사용합니다(아래).
 - **처리되지 않은 예외** → `500`, 일반 `code`(예: `INTERNAL_ERROR`)와 무해한 `message`만 반환하고, 원인은 `traceId`와 함께 로그에 남깁니다.
+
+`@RestControllerAdvice` 밖에서 직접 쓰여지는 응답 — Spring Security의 401/403 entry point·handler, Boot의 `/error` 폴백 — 은 이 공통 envelope를 거치지 않습니다. 인증 작업에서는 이런 컴포넌트도 `ApiResponse.fail(...)`을 직접 만들어 반환해야 합니다.
 
 ## 검증 오류 (400)
 

@@ -16,3 +16,4 @@
 |---|---|---|---|
 | BI-01 | PostgreSQL Testcontainers 마이그레이션 검증 + H2 제거 (back#12) | ✅ 완료 | [BI-01](BI-01-2026-07-23-postgres-testcontainers-migration-tests.md) |
 | BI-02 | Member 엔티티 + BaseEntity(soft delete) 구현 (S15P11A705-41) | ✅ 완료 | [BI-02](BI-02-2026-07-27-member-base-entity-soft-delete.md) |
+| BI-03 | 성공·오류 응답 공통 envelope(ApiResponse) 구현 (S15P11A705-53) | ✅ 완료 | [BI-03](BI-03-2026-07-27-api-response-envelope.md) |

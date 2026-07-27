@@ -31,3 +31,4 @@
 |---|---|---|---|
 | [BD-01](BD-01-h2-removal-testcontainers.md) | 테스트 런타임에서 H2 제거, PostgreSQL Testcontainers로 단일화 | Accepted | back#12 |
 | [BD-02](BD-02-base-entity-common-columns.md) | BaseEntity는 created_at·deleted_at만 공유, updated_at 없음 | Accepted | S15P11A705-41 |
+| [BD-03](BD-03-api-response-envelope.md) | 성공·오류 응답을 공통 envelope(ApiResponse)로 통일 | Accepted | S15P11A705-53 |

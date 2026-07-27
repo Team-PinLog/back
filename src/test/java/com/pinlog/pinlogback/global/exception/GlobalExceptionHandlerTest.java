@@ -38,8 +38,10 @@ class GlobalExceptionHandlerTest {
 	void businessExceptionMapsToContract() throws Exception {
 		mockMvc.perform(get("/test/business"))
 			.andExpect(status().isNotFound())
-			.andExpect(jsonPath("$.code").value("RESOURCE_NOT_FOUND"))
-			.andExpect(jsonPath("$.traceId", not(blankOrNullString())))
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("RESOURCE_NOT_FOUND"))
+			.andExpect(jsonPath("$.error.traceId", not(blankOrNullString())))
+			.andExpect(jsonPath("$.data").doesNotExist())
 			.andExpect(header().string(TraceIdFilter.HEADER, not(blankOrNullString())));
 	}
 
@@ -49,18 +51,22 @@ class GlobalExceptionHandlerTest {
 				.contentType("application/json")
 				.content("{\"name\":\"\"}"))
 			.andExpect(status().isBadRequest())
-			.andExpect(jsonPath("$.code").value("INVALID_INPUT"))
-			.andExpect(jsonPath("$.fieldErrors[0].field").value("name"))
-			.andExpect(jsonPath("$.traceId", not(blankOrNullString())));
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"))
+			.andExpect(jsonPath("$.error.fieldErrors[0].field").value("name"))
+			.andExpect(jsonPath("$.error.traceId", not(blankOrNullString())))
+			.andExpect(jsonPath("$.data").doesNotExist());
 	}
 
 	@Test
 	void unhandledExceptionReturns500WithoutLeakingInternals() throws Exception {
 		mockMvc.perform(get("/test/boom"))
 			.andExpect(status().isInternalServerError())
-			.andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
-			.andExpect(jsonPath("$.message").value(not("boom")))
-			.andExpect(jsonPath("$.traceId", not(blankOrNullString())));
+			.andExpect(jsonPath("$.success").value(false))
+			.andExpect(jsonPath("$.error.code").value("INTERNAL_ERROR"))
+			.andExpect(jsonPath("$.error.message").value(not("boom")))
+			.andExpect(jsonPath("$.error.traceId", not(blankOrNullString())))
+			.andExpect(jsonPath("$.data").doesNotExist());
 	}
 
 	@RestController
