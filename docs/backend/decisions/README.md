@@ -4,6 +4,8 @@
 
 파트 간 영향이 있는 결정은 여기가 아니라 [`docs/ai/proposals/`](../../ai/proposals/)의 P 번호 절차를 따릅니다.
 
+번호는 `dev`에 머지된 기록을 기준으로 다음 값을 씁니다. 미머지 브랜치가 파일명으로 선점한 번호는 예약이 아니며, 머지 순서대로 확정됩니다.
+
 ## 보존 원칙
 
 이 폴더는 결정 이력을 기록합니다. **폐기·대체된 결정도 삭제하지 않고 상태만 갱신합니다.** 회고에서 "왜 그때 그렇게 정했고, 왜 바꿨는가"를 추적하기 위함입니다.
@@ -34,4 +36,4 @@
 | [BD-03](BD-03-api-response-envelope.md) | 성공·오류 응답을 공통 envelope(ApiResponse)로 통일 | Accepted | S15P11A705-53 |
 | [BD-04](BD-04-cursor-pagination.md) | 목록은 커서 기반 CursorPage + Base64(정렬키,id) 불투명 커서, size 기본 20·상한 100 | Accepted | S15P11A705-42 |
 | [BD-05](BD-05-graceful-shutdown-timing.md) | graceful shutdown 타임아웃 20s, Kubernetes 쪽 값(`terminationGracePeriodSeconds` 40s·`preStop` 5s)은 Infra에 위임 | Accepted | S15P11A705-51 · [infra#33](https://github.com/Team-PinLog/infra/issues/33) |
-| [BD-05](BD-05-framework-error-mapping.md) | GlobalExceptionHandler가 ResponseEntityExceptionHandler를 상속해 프레임워크 예외를 자체 상태로 매핑 | Accepted | S15P11A705-40 |
+| [BD-06](BD-06-framework-error-mapping.md) | GlobalExceptionHandler가 ResponseEntityExceptionHandler를 상속해 프레임워크 예외를 자체 상태로 매핑 | Accepted | S15P11A705-40 |

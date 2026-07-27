@@ -1,8 +1,8 @@
-# BD-05. `GlobalExceptionHandler`가 `ResponseEntityExceptionHandler`를 상속해 프레임워크 예외를 자체 상태로 매핑한다
+# BD-06. `GlobalExceptionHandler`가 `ResponseEntityExceptionHandler`를 상속해 프레임워크 예외를 자체 상태로 매핑한다
 
 - **상태**: Accepted
 - **날짜**: 2026-07-27
-- **관련**: S15P11A705-40 (`1911dc9`, `cae552e`, `7e31e02`), [BI-05](../implements/BI-05-2026-07-27-framework-error-mapping.md)
+- **관련**: S15P11A705-40 (`1911dc9`, `cae552e`, `7e31e02`), [BI-07](../implements/BI-07-2026-07-27-framework-error-mapping.md)
 
 ## 맥락
 
@@ -71,7 +71,28 @@ catch-all `Exception` 분기는 그대로 남겼다.
     `fieldErrors`는 빈 배열이다(부모가 body를 null로 위임하고, 우리는 이 예외 전용 오버라이드를
     아직 추가하지 않았기 때문). 실제 도메인 컨트롤러가 파라미터 제약을 쓰기 시작하면
     `handleHandlerMethodValidationException`을 채우는 별도 티켓이 필요하다.
+  - **`code`와 HTTP 상태가 분리된다(의도된 것)**: `errorCodeOf`의 폴백(4xx→`INVALID_INPUT`,
+    5xx→`INTERNAL_ERROR`)은 레지스트리에 전용 항목이 없는 상태에 대해 **일부러 일반적인 `code`를
+    돌려준다**. 그래서 그런 상태에서는 응답의 HTTP 상태와 `error.code`가 선언한
+    `ErrorCode.getHttpStatus()`가 일치하지 않는다. `ErrorCode`가 선언하는 상태는 400·404·405·415·500
+    다섯 개뿐이므로, 부모가 만들어내는 그 밖의 상태 — 현재 **406·409·413·503** — 가 모두 여기
+    해당한다. 실측한 예: `AsyncRequestTimeoutException`은 503 + `INTERNAL_ERROR`(선언 500),
+    `MaxUploadSizeExceededException`은 413 + `INVALID_INPUT`(선언 400),
+    `ErrorResponseException(CONFLICT)`은 409 + `INVALID_INPUT`(선언 400).
+    이는 [`error-handling.md`](../../development/error-handling.md)의 "코드마다 HTTP 상태와 발생
+    조건을 기록합니다"가 전제하는 `code`↔상태 1:1을 위 상태들에서 깨뜨린다. 상태 자체는 정확하고
+    (이전의 catch-all 500보다 낫다) 예외의 `reason`은 폐기되어 정보 누출도 없으므로 지금은
+    감수한다. **도달 가능한 함정**: `ResponseStatusException extends ErrorResponseException`이라
+    표준 Spring 관용구인 `throw new ResponseStatusException(HttpStatus.CONFLICT, ...)`는 409 +
+    `INVALID_INPUT` + "잘못된 요청 형식입니다."를 낸다 — 409는 명세 §1.5 표에 자체 의미로 존재하는
+    상태라서 `code`로 분기하는 클라이언트가 오해할 수 있다. 지금은 살아 있는 경로가 아니다:
+    코드베이스에 async(`DeferredResult`/`SseEmitter`/`Callable`/`StreamingResponseBody`)·
+    multipart(`MultipartFile`)·`ResponseStatusException` 사용이 전무하다(grep으로 확인). 그래서
+    코드를 바꾸지 않고 이 사실만 기록한다.
 - 재검토 트리거(이 조건이 오면 다시 논의):
+  - **도메인 코드가 `ResponseStatusException`을 쓰기 시작할 때** — 또는 async·multipart를 도입해
+    406·409·413·503이 실제 응답 경로가 될 때. 그때는 해당 상태에 전용 `ErrorCode`를 추가해
+    `code`↔상태 1:1을 회복할지 재검토한다.
   - 명세 §1.5 개정이 이 프로젝트 범위로 들어올 때 405·415를 표에 반영.
   - 404 WARN 로그가 실제 운영 로그 볼륨 문제로 확인될 때.
   - 도메인 컨트롤러가 `@RequestParam`/`@PathVariable` 제약(`@Min` 등)을 쓰기 시작해

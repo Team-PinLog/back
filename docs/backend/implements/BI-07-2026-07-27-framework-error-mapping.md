@@ -1,8 +1,8 @@
-# BI-05. 프레임워크 예외를 catch-all 500이 아니라 자체 상태 코드로 매핑
+# BI-07. 프레임워크 예외를 catch-all 500이 아니라 자체 상태 코드로 매핑
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-27
-- **관련**: S15P11A705-40 (`1911dc9`, `cae552e`, `7e31e02`), [BD-05](../decisions/BD-05-framework-error-mapping.md)
+- **관련**: S15P11A705-40 (`1911dc9`, `cae552e`, `7e31e02`), [BD-06](../decisions/BD-06-framework-error-mapping.md)
 
 ## 산출
 
@@ -39,7 +39,7 @@
 `ExceptionHandlerMethodResolver`가 `IllegalStateException("Ambiguous @ExceptionHandler
 method mapped for ...")`을 던져 advice 초기화 자체가 실패한다. 두 분기를 남긴 중간 버전으로
 실제 테스트를 돌려 이를 재현했다 — advice 생성 단계에서 죽어 그 시점 전체 테스트가 실패하는
-것을 관찰했다. 이 이탈은 [BD-05](../decisions/BD-05-framework-error-mapping.md) "결정"에도
+것을 관찰했다. 이 이탈은 [BD-06](../decisions/BD-06-framework-error-mapping.md) "결정"에도
 근거와 함께 기록했다.
 
 ## 검증 — 실제 실행 결과
@@ -168,6 +168,20 @@ BUILD SUCCESSFUL in 1m 6s
    Spring 7 `ProblemDetail` 자동 생성 경로(`body == null`일 때만 도는 분기)가 애초에 실행될
    조건이 성립하지 않는다는 점을 실제 Spring 7.0.8 소스로 확인했다 — 이 전제를 지키려면
    `handleExceptionInternal`을 손댈 때 항상 body를 채워서 `super`에 넘겨야 한다.
+3. **406은 envelope가 아예 없다 — "모든 오류가 envelope를 갖는다"의 유일한 예외다.**
+   JSON 엔드포인트를 `Accept: application/pdf`로 호출하면 **406 + `Content-Type: null` + 빈 body**가
+   나온다(실측). Accept 헤더가 JSON을 배제하면 Spring이 우리 envelope를 직렬화할 미디어 타입을
+   협상할 수 없어 body를 조용히 버리기 때문이다. 상태 코드는 올바르지만
+   [`error-handling.md`](../../development/error-handling.md)의 "모든 오류 응답은 공통 envelope를
+   지킵니다"가 성립하지 않는 **유일한 프레임워크 경로**다. 오류 envelope를 단정하는 테스트를 쓸 때
+   Accept 헤더를 JSON으로 두지 않으면 body가 비어 혼란스러운 실패를 보게 된다.
+4. **`AsyncRequestNotUsableException`은 200 + 빈 body를 내고 우리 오버라이드를 완전히 우회한다.**
+   부모의 `handleAsyncRequestNotUsableException`은 `handleExceptionInternal`에 위임하지 않고
+   `null`을 반환한다. 그래서 우리 `handleExceptionInternal` 오버라이드에 **도달하지 않고** 로그도
+   남지 않으며, 상태는 200으로 남는다(이전에는 catch-all에 걸려 500이었다). 클라이언트가 이미
+   연결을 끊은 뒤에만 발생하는 예외이므로 실질적으로 무해하지만, **부모가 처리하는 예외 중 우리
+   오버라이드를 통째로 우회하는 유일한 케이스**라는 점을 알고 있어야 한다 — "모든 프레임워크 예외가
+   우리 envelope를 지난다"고 가정하면 틀린다.
 
 ## 우려사항 (후속 과제 후보)
 
