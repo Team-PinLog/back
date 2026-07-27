@@ -26,13 +26,13 @@
 
 #### 커서 페이지네이션 구현 사실
 
-명세 §1.4가 정한 `cursor`·`size` 계약을 아래 타입으로 구현했다(결정 배경은 [BD-04](../backend/decisions/BD-04-cursor-pagination.md) 참고).
+명세 §1.4가 정한 `cursor`·`size` 계약을 아래 타입으로 구현했습니다(결정 배경은 [BD-04](../backend/decisions/BD-04-cursor-pagination.md) 참고).
 
-- 목록 응답 타입은 `global/response/CursorPage<T>`이며 `ApiResponse`의 `data`에 담긴다.
-- 커서는 `global/response/Cursor`가 만든다 — `Base64(정렬키,id)`, URL-safe·패딩 없음. **클라이언트는 해석하지 않는다.**
-- `size` 기본값은 `CursorPage.DEFAULT_SIZE`(20), 서버 방어 상한은 `CursorPage.MAX_SIZE`(100)이다. 범위 밖 값은 `CursorPage.normalizeSize(Integer)`가 보정한다(`null`·0·음수 → 기본값, 상한 초과 → 상한).
-- 잘못된 커서(Base64가 아님·구분자 없음·id가 숫자가 아님)는 `400`(`INVALID_INPUT`)으로 거절된다.
-- 마지막 페이지에서도 `nextCursor`는 키가 사라지지 않고 명시적으로 `null`로 노출된다.
+- 목록 응답 타입은 `global/response/CursorPage<T>`이며 `ApiResponse`의 `data`에 담깁니다.
+- 커서는 `global/response/Cursor`가 만듭니다 — `Base64(정렬키,id)`, URL-safe·패딩 없음. **클라이언트는 해석하지 않습니다.**
+- `size` 기본값은 `CursorPage.DEFAULT_SIZE`(20), 서버 방어 상한은 `CursorPage.MAX_SIZE`(100)입니다. 범위 밖 값은 `CursorPage.normalizeSize(Integer)`가 보정합니다(`null`·0·음수 → 기본값, 상한 초과 → 상한).
+- 잘못되거나(Base64가 아님·구분자 없음·id가 숫자가 아님) 비어 있는(`null`·빈 문자열) 커서는 `400`(`INVALID_INPUT`)으로 거절됩니다.
+- 마지막 페이지에서도 `nextCursor`는 키가 사라지지 않고 명시적으로 `null`로 노출됩니다.
 
 ## 오류 계약
 
