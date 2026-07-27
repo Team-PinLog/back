@@ -15,6 +15,24 @@ trap 'rm -rf "$WORK"' EXIT
 
 PASS=0
 FAIL=0
+SKIPPED=""
+
+# 테스트 입력 JSON 생성용 인터프리터.
+# macOS·대부분의 Linux에는 `python`이 없고 `python3`만 있다. 반대로 Windows에는
+# 실행하면 스토어 안내만 출력하는 가짜 `python3`(앱 실행 별칭)이 PATH에 있다.
+# 그래서 "존재하는가"가 아니라 "실제로 동작하는가"로 고른다.
+PY=""
+for CAND in python3 python py; do
+  if command -v "$CAND" >/dev/null 2>&1 && "$CAND" -c 'import json' >/dev/null 2>&1; then
+    PY=$(command -v "$CAND")
+    break
+  fi
+done
+if [ -z "$PY" ]; then
+  echo "동작하는 python3/python이 필요합니다(테스트 입력 JSON 생성에 사용)." >&2
+  exit 1
+fi
+export PY
 
 # jq가 없는 환경을 재현하기 위한 빈 PATH 디렉터리 + jq가 있는 환경을 재현하기 위한 shim
 mkdir -p "$WORK/nojq" "$WORK/withjq"
@@ -26,7 +44,7 @@ else
 #!/bin/bash
 EXPR=""
 for a in "$@"; do case "$a" in -r) ;; *) EXPR="$a";; esac; done
-python -c "
+"$PY" -c "
 import json,sys
 expr = sys.argv[1]
 try:
@@ -45,7 +63,7 @@ fi
 
 # json_input <file_path> — PreToolUse 입력 JSON 생성 (백슬래시를 올바로 이스케이프)
 json_input() {
-  python -c "
+  "$PY" -c "
 import json,sys
 print(json.dumps({'tool_input': {'file_path': sys.argv[1]}}))
 " "$1"
@@ -67,8 +85,21 @@ check() {
 # protect-migrations.sh
 # ---------------------------------------------------------------------------
 MIG_POSIX="$REPO_ROOT/src/main/resources/db/migration"
-# 같은 경로의 Windows 표기 (C:\Users\...\migration). Windows가 아니면 POSIX 경로 그대로 쓴다.
-MIG_WIN=$(printf '%s' "$MIG_POSIX" | sed 's#^/\([a-zA-Z]\)/#\U\1:/#' | tr '/' '\\')
+
+# 같은 경로의 Windows 표기(C:\Users\...\migration)를 만든다.
+# GNU sed 전용 확장(\U)을 쓰지 않는다 — macOS(BSD sed)에서는 조용히 잘못된 값이 나온다.
+DRIVE=$(printf '%s' "$MIG_POSIX" | sed -n 's#^/\([a-zA-Z]\)/.*#\1#p')
+if [ -n "$DRIVE" ]; then
+  DRIVE_UPPER=$(printf '%s' "$DRIVE" | tr 'a-z' 'A-Z')
+  REST=$(printf '%s' "$MIG_POSIX" | sed 's#^/[a-zA-Z]/##')
+  MIG_WIN=$(printf '%s:/%s' "$DRIVE_UPPER" "$REST" | tr '/' '\\')
+  PATH_STYLES="posix win"
+else
+  # 드라이브 문자가 없는 환경(macOS·Linux)에는 백슬래시 경로가 애초에 오지 않는다
+  MIG_WIN="$MIG_POSIX"
+  PATH_STYLES="posix"
+  SKIPPED="${SKIPPED}- Windows 백슬래시 경로 축: 드라이브 문자 경로가 아니라 건너뜀(Windows에서 실행하면 검사됨)\n"
+fi
 
 run_migration_case() {
   local desc="$1" file="$2" expected="$3" jqmode="$4"
@@ -79,7 +110,7 @@ run_migration_case() {
 }
 
 for JQMODE in withjq nojq; do
-  for STYLE in posix win; do
+  for STYLE in $PATH_STYLES; do
     if [ "$STYLE" = posix ]; then DIR="$MIG_POSIX"; SEP=/; else DIR="$MIG_WIN"; SEP='\'; fi
     echo "protect-migrations [jq=$JQMODE, path=$STYLE]"
     run_migration_case "커밋된 V102 수정 → 차단"          "$DIR${SEP}V102__feed_event.sql"   2 "$JQMODE"
@@ -150,5 +181,9 @@ for JQMODE in withjq nojq; do
 done
 
 echo
+if [ -n "$SKIPPED" ]; then
+  echo "건너뛴 검사(이 환경에서 해당 없음):"
+  printf '%b' "$SKIPPED"
+fi
 echo "통과 $PASS · 실패 $FAIL"
 [ "$FAIL" -eq 0 ]

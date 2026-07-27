@@ -11,9 +11,13 @@ hook_file_path() {
     printf '%s' "$json" | jq -r '.tool_input.file_path // empty' 2>/dev/null
     return
   fi
-  # 폴백: "file_path": "<값>" 의 값만 뽑고 JSON 이스케이프(\\ · \")를 해제
+  # 폴백: "file_path": "<값>" 의 값만 뽑고 JSON 이스케이프(\\ 등)를 해제.
+  # POSIX BRE만 쓴다 — `\|` 같은 GNU sed 확장을 쓰면 macOS(BSD sed)에서 매칭이 실패해
+  # 빈 값이 되고, 훅이 조용히 무력화된다.
+  # 한계: 값에 이스케이프된 따옴표(\")가 있으면 거기서 잘린다. 경로에 따옴표가 오는
+  # 경우는 Windows에선 불가능하고 그 외에도 사실상 없어 감수한다.
   printf '%s' "$json" \
-    | sed -n 's/.*"file_path"[[:space:]]*:[[:space:]]*"\(\([^"\\]\|\\.\)*\)".*/\1/p' \
+    | sed -n 's/.*"file_path"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
     | sed 's/\\\(.\)/\1/g' \
     | head -1
 }

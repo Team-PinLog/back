@@ -118,10 +118,17 @@ Normal PRs use the [PR template](.github/pull_request_template.md), require a Ji
 ## Documentation roles
 
 - [README.md](README.md): quick reference for tech stack, infra, and operations.
-- [docs/development/](docs/development/): detailed rules for workflow, review, API, DB, testing, and more.
-- [CLAUDE.md](CLAUDE.md): a short harness that makes Claude Code read this document and the detailed rules in order.
+- [docs/development/](docs/development/): detailed rules for workflow, review, API, DB, testing, and more. **This is the source of truth for rules.**
+- [CLAUDE.md](CLAUDE.md): a short harness that makes Claude Code read this document and the detailed rules in order. Always loaded, so keep it short and declarative — no step-by-step procedures.
 - [AGENTS.md](AGENTS.md): links AGENTS-aware tools to `CLAUDE.md` and this document.
+- [`.claude/skills/`](.claude/skills/): on-demand procedures for recurring tasks, loaded only when invoked (for example `/pr`). A skill orders and executes existing rules; it never introduces a new rule. When it restates something from `docs/development/` or a template, the document stays authoritative and the skill must be updated with it.
+- [`.claude/hooks/`](.claude/hooks/): mechanical enforcement of rules that a machine can check, run by Claude Code at tool-call and stop time. See [`.claude/hooks/README.md`](.claude/hooks/README.md) for prerequisites and tests.
 
 ## Claude settings boundary
 
 Keep shared, repo-wide protections in [`.claude/settings.json`](.claude/settings.json) only. Put per-person permissions and environment settings in `.claude/settings.local.json` (Git-ignored); copy the [example file](.claude/settings.local.json.example) to start. Do not commit personal settings or add personal permissions to the team settings.
+
+Shared hooks and skills live in `.claude/hooks/` and `.claude/skills/` and are committed. Two things to know before relying on them:
+
+- **Open Claude Code at this repository root.** Hooks load only from the startup directory's `.claude/settings.json` and user-level settings; a `.claude/` in a subdirectory is ignored. If you clone several repositories side by side and start Claude Code in the parent folder, these hooks never register. Skills are still discovered there, but under a qualified name (`/back:pr` instead of `/pr`).
+- Changing a hook requires running `bash .claude/hooks/tests/run-tests.sh`.
