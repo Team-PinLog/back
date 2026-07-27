@@ -52,6 +52,8 @@
 - **검증 실패**(Bean Validation) → `400`, 같은 오류 계약을 사용합니다(아래).
 - **처리되지 않은 예외** → `500`, 일반 `code`(예: `INTERNAL_ERROR`)와 무해한 `message`만 반환하고, 원인은 `traceId`와 함께 로그에 남깁니다.
 
+`@RestControllerAdvice` 밖에서 직접 쓰여지는 응답 — Spring Security의 401/403 entry point·handler, Boot의 `/error` 폴백 — 은 이 공통 봉투를 거치지 않습니다. 인증 작업에서는 이런 컴포넌트도 `ApiResponse.fail(...)`을 직접 만들어 반환해야 합니다.
+
 ## 검증 오류 (400)
 
 Bean Validation 실패는 [API 규약](api-conventions.md)대로 **HTTP 400**으로, 공통 오류 계약을 지켜 반환합니다.

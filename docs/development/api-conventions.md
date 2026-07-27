@@ -13,7 +13,7 @@
 - JPA Entity를 request 또는 response DTO로 직접 노출하지 않습니다. Entity, request DTO, response DTO는 각각의 변경 이유에 맞게 분리합니다.
 - 시간 값은 ISO-8601 UTC 형식으로 주고받습니다. 예: `2026-07-23T14:06:24Z`.
 - Bean Validation 실패는 HTTP 400으로 응답합니다.
-- 목록 pagination의 query parameter 이름은 `page`, `size`, `sort`를 사용합니다.
+- 목록 pagination은 커서 기반이며, query parameter는 `cursor`·`size`를 사용합니다. `page`/`sort` 파라미터는 사용하지 않습니다.
 
 ### 공통 응답 봉투
 
@@ -21,7 +21,7 @@
 
 - 컨트롤러는 **DTO(또는 `void`)를 그대로 반환**합니다. `com.pinlog.pinlogback.domain` 이하 컨트롤러의 응답은 `global/web/ApiResponseBodyAdvice`가 자동으로 `ApiResponse`로 감쌉니다. 컨트롤러에서 직접 `ApiResponse.ok(...)`를 만들어 반환하지 않습니다.
 - 성공 응답에는 `message` 필드를 두지 않습니다. 사람이 읽을 문구가 필요하면 `data` 안의 도메인 필드로 표현합니다.
-- 목록 응답은 `data` 안에 `items`(배열)·`nextCursor`·`hasNext`를 담는 커서 기반 형태를 사용합니다. `page`/`size`/`sort` 쿼리 파라미터로 커서 목록을 요청하되, 응답 자체는 offset이 아니라 커서로 이어집니다.
+- 목록 응답은 `data` 안에 `items`(배열)·`nextCursor`·`hasNext`를 담는 커서 기반 형태를 사용합니다. 요청은 `cursor`·`size` 쿼리 파라미터로만 받으며, 응답도 offset이 아니라 커서(`nextCursor`)로 이어집니다.
 - `204 No Content`는 봉투를 포함해 본문이 전혀 없습니다.
 
 ## 오류 계약

@@ -27,8 +27,8 @@
 
 ## 결과
 
-- 감수하는 것: `success`가 HTTP 상태 코드와 의미상 중복(둘 다 성공/실패를 나타냄). 모든 성공 DTO가 `data` 아래 한 겹 더 중첩되어 OpenAPI 스키마 트리가 한 단계 깊어진다.
+- 감수하는 것: `success`가 HTTP 상태 코드와 의미상 중복(둘 다 성공/실패를 나타냄). `ApiResponseBodyAdvice`는 런타임에 응답을 감싸는 반면 springdoc은 컨트롤러의 선언된 반환 타입을 그대로 introspect하고 `OperationCustomizer`/`ModelConverter`는 추가하지 않았으므로(`global/config/OpenApiConfig.java`는 `Info`만 설정), springdoc이 생성하는 스키마에는 봉투가 반영되지 않는다 — 스키마가 한 단계 깊어지는 게 아니라 실제 응답과 문서가 어긋난다.
 - 규약으로 승격: [`docs/development/api-conventions.md`](../../development/api-conventions.md) "공통 응답 봉투" 절, [`docs/development/error-handling.md`](../../development/error-handling.md) 오류 응답 계약 절.
 - 명세 동반 개정: `Team-PinLog/docs` PR #11 — §1.6(봉투 정의), §1.5(오류 shape + `traceId`), §11.0(`ApiResponse<T>`/`ApiError` TypeScript 타입). 이 백엔드 PR은 docs PR #11과 함께 머지되어야 한다.
 - 이번에 도입하지 않은 것: §5.6·§5.7이 명세하는 `error.impact`(409 `DELETE_CONFIRMATION_REQUIRED`)는 아직 구현하지 않았다. Record 삭제 티켓에서 `ErrorResponse`를 확장해 도입한다.
-- 재검토 트리거: `success` 필드의 중복이 실질적인 버그(상태 코드와 불일치하는 사례)로 이어지거나, OpenAPI 스키마 중첩이 클라이언트 코드 생성 도구와 마찰을 일으킬 때.
+- 재검토 트리거: `success` 필드의 중복이 실질적인 버그(상태 코드와 불일치하는 사례)로 이어지거나, 첫 도메인 엔드포인트가 추가될 때. 후자는 springdoc 스키마가 실제 응답(봉투 포함)과 어긋나 FE 코드 생성이 `{success, data}` 없는 타입을 만들게 되므로, 그 시점에 springdoc 커스터마이저(`OperationCustomizer`/`ModelConverter`)를 함께 도입해야 한다.
