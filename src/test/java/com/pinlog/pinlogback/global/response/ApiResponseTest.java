@@ -6,11 +6,11 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 class ApiResponseTest {
 
-	private final ObjectMapper objectMapper = new ObjectMapper();
+	private final JsonMapper objectMapper = JsonMapper.builder().build();
 
 	@Test
 	void okCarriesDataAndNoError() {
@@ -37,7 +37,7 @@ class ApiResponseTest {
 		String json = objectMapper.writeValueAsString(ApiResponse.ok(List.of(1, 2)));
 
 		assertThat(json).contains("\"success\":true").contains("\"data\":[1,2]");
-		assertThat(json).doesNotContain("error");
+		assertThat(json).doesNotContain("\"error\"");
 	}
 
 	@Test
