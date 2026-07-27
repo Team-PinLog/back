@@ -1,63 +1,65 @@
-# BD-15. AI 파생 데이터는 즉시 파기 — 백엔드가 `ai` 스키마를 직접 삭제한다
+# BD-15. AI 파생 데이터는 물리 삭제 대신 즉시 무효화 표시 — 백엔드가 직접 쓴다
 
 - **상태**: Accepted
-- **날짜**: 2026-07-22 (데이터 모델 확립 시점. 단일 커밋으로 특정 불가)
+- **날짜**: 2026-07-27 (`Team-PinLog/docs` `a0c20c2` AI 계약 정합성 정정)
 - **작성 시점**: 2026-07-27 — 결정 이후에 정리
 - **관련**: S15P11A705-76
-- **공용 계약**: [06_데이터모델_및_무결성 §1.1·§1.3·§6.6·§7](https://github.com/Team-PinLog/docs/blob/main/static/06_데이터모델_및_무결성.md) · [05_AI_설계 §5.4](https://github.com/Team-PinLog/docs/blob/main/static/05_AI_설계.md)
+- **공용 계약**: [06_데이터모델_및_무결성 §1.1·§1.3·§6.6](https://github.com/Team-PinLog/docs/blob/main/static/06_데이터모델_및_무결성.md) · [05_AI_설계 §6.5~6.6·§9.4·§11](https://github.com/Team-PinLog/docs/blob/main/static/05_AI_설계.md)
 
 ## 맥락
 
-사용자 소유 데이터는 소프트 삭제한다([BD-07](BD-07-soft-delete-no-restore.md)). AI 파생 데이터(`ai.context_embedding`, `ai.context_keyword`)에도 같은 규칙을 적용할지 정해야 했다.
+Context가 삭제되거나 수정되면 그 Context의 임베딩·Keyword가 남는다. 두 가지를 정해야 했다.
 
-두 가지가 걸렸다.
+1. **파생 데이터를 어떻게 없애는가** — 사용자 데이터처럼 소프트 삭제할 것인가, 물리 삭제할 것인가, 다른 방식이 필요한가
+2. **누가 없애는가** — `ai` 스키마는 AI 파트 소유인데 Context를 지우는 트랜잭션은 백엔드가 연다
 
-1. **임베딩 인덱스는 HNSW다.** 삭제된 벡터를 인덱스에 남기면 인덱스가 부풀고 recall이 떨어진다. 소프트 삭제는 여기서 정합성 문제가 아니라 **성능 문제**가 된다.
-2. **`ai` 스키마는 AI 파트 소유다.** 그런데 Context를 지우는 트랜잭션은 백엔드가 연다. 파생 데이터 정리를 누가 할지가 파트 경계 문제가 된다.
+여기에 타이밍 문제가 겹친다. AI 워커가 처리 중일 때 사용자가 Context를 지우면 뒤늦게 도착한 결과가 고아 데이터로 남는다. Context는 불변이라 버전 컬럼이 없으므로([BD-06](BD-06-context-immutability.md)) 그것으로는 막을 수 없다.
 
 ## 선택지
 
-**파기 방식**
-
 | 안 | 장점 | 단점 |
 |---|---|---|
-| (a) `is_deleted` 소프트 삭제 | 사용자 데이터와 같은 규칙 | HNSW 인덱스가 부풀고 recall 저하. 모든 벡터 검색에 필터가 추가됨 |
-| **(b) 즉시 `DELETE`** | 인덱스가 실제 크기를 유지 | 되돌릴 수 없다. 재생성하려면 임베딩을 다시 만들어야 한다 |
-
-**삭제 주체**
-
-| 안 | 장점 | 단점 |
-|---|---|---|
-| (c) AI 워커에 삭제를 통지하고 위임 | 파트 경계가 깨끗함 | 통지 유실 시 고아 데이터가 남는다. 백엔드 트랜잭션과 원자성이 없다 |
-| **(d) 백엔드가 같은 트랜잭션에서 직접 `DELETE`** | Context 삭제와 파생 정리가 원자적 | 백엔드가 남의 스키마에 쓰기를 한다 |
+| (a) `core`와 동일한 소프트 삭제 | 규칙이 하나로 통일됨([BD-07](BD-07-soft-delete-no-restore.md)) | 진행 중인 AI 작업을 멈추지 못한다. 삭제 표시만으로는 워커가 계속 쓴다 |
+| (b) 즉시 물리 `DELETE` | 행이 남지 않아 개인정보가 즉시 사라진다 | 늦게 도착하는 결과를 막을 근거가 함께 사라진다. 물리 삭제 시점을 개인정보 정책과 분리해 정할 여지가 없다 |
+| **(c) 즉시 무효화 표시** | 진행 중 작업 취소와 조회 제외를 각각 담당하는 축을 둘 수 있다 | 행이 남는다. 물리 삭제 시점을 따로 정해야 한다 |
 
 ## 결정
 
-**(b)와 (d)를 채택한다. 능동적 선택.**
+**(c)를 채택한다. 능동적 선택.** 무효화는 **두 축**으로 표시한다. 하나로는 두 가지 일을 못 하기 때문이다.
 
-파기가 정합성뿐 아니라 **성능 요건**이라는 점이 (b)를 갈랐다. 그리고 `core`와 `ai`가 **동일 PostgreSQL 인스턴스의 스키마 분리**라 단일 트랜잭션이 가능하다는 점이 (d)를 갈랐다. 통지 방식은 원자성을 포기하는 대가로 경계만 지키는 선택이었다.
+```text
+ai.context_ai_state 의 두 status → CANCELLED   -- 진행 중인 AI 작업을 취소
+ai.context_embedding.is_deleted  → true        -- 검색 제외 + 물리 삭제 대상 식별
+```
 
-쓰기 권한은 이렇게 정리된다.
+**물리 삭제 시점은 이 결정의 범위가 아니다.** 별도 개인정보 정책을 따른다.
+
+**백엔드가 같은 트랜잭션에서 직접 쓴다.** `core`와 `ai`가 동일 PostgreSQL 인스턴스의 스키마 분리라 단일 트랜잭션이 가능하다. AI 워커에 통지하고 위임하면 통지가 유실될 때 원자성이 깨진다.
+
+쓰기 권한은 이렇게 나뉜다.
 
 | 테이블 | 백엔드 | AI 워커 |
 |---|---|---|
 | `core.*` | O | X |
-| `ai.context_embedding` | **삭제 시 DELETE만** | INSERT / UPDATE |
-| `ai.context_keyword` | **삭제 시 DELETE만** | INSERT / DELETE |
+| `ai.context_ai_state` | 최초 생성 · `PENDING` · `CANCELLED` · `retry_count` · 재시도 소진 Finalizer `FAILED` | `PROCESSING` · `COMPLETED` · 작업 중 오류 `FAILED` |
+| `ai.context_embedding` | **`is_deleted`만 UPDATE** | INSERT / UPDATE (`is_deleted` 제외) |
+| `ai.context_keyword` | **X** | INSERT / DELETE |
+| `ai.context_keyword_analysis` | X | INSERT / UPDATE |
 | `ai.keyword_preset` | X | O |
 
-백엔드는 `ai.context_keyword`를 **읽기 조인**할 권리도 갖는다. Record·Collection·Feed 조회에서 공개 Keyword를 제공해야 하기 때문이다([BD-17](BD-17-keyword-preset-and-visibility.md)).
+백엔드는 `ai.context_keyword`를 **읽기 조인**할 권리를 갖는다. Record·Collection·Feed 조회에서 공개 Keyword를 제공해야 하기 때문이다([BD-17](BD-17-keyword-preset-and-visibility.md)).
 
 ## 결과
 
 **감수하는 것**
 
-- **파트 경계에 의도된 구멍이 있다.** 백엔드가 `ai` 스키마에 쓰기(삭제)를 한다. 소유는 AI 파트인데 삭제만 예외다. 이 예외를 모르면 "왜 백엔드가 남의 테이블을 지우지?"가 된다.
-- **복구 불가** — 파기된 임베딩은 되살릴 수 없다. 필요하면 새로 생성해야 하고 그것은 비용이다([BD-06](BD-06-context-immutability.md)의 재생성 비용과 같은 성격).
-- **AI 워커에 방어 책임이 남는다.** 처리 중 Context가 삭제되면 결과가 고아로 남는다. 워커는 쓰기 직전 `context.deleted_at IS NULL`을 확인하고 같은 트랜잭션에서 INSERT해야 한다. Context가 불변이라 버전 컬럼이 없으므로([BD-06](BD-06-context-immutability.md)) **이것이 유일한 방어 지점**이다.
-- **영향 행 0이 정상이다.** 임베딩이 아직 생성되지 않은 Context를 지우면 `DELETE`가 0행을 지운다. 오류가 아니며, 늦게 도착하는 INSERT는 AI State의 `CANCELLED`가 막는다.
+- **파트 경계에 의도된 구멍이 있다.** 백엔드가 `ai` 스키마에 쓴다. 다만 범위는 좁다 — `context_ai_state`의 취소 전이와 `context_embedding.is_deleted`뿐이고 `context_keyword`에는 쓰지 않는다.
+- **행이 남는다.** 무효화 표시일 뿐 물리 삭제가 아니므로 개인정보가 DB에 남는다. 물리 삭제 시점 정책이 없으면 **무기한 남는다.** [BD-07](BD-07-soft-delete-no-restore.md)의 보존 기간 미정 문제와 같은 뿌리다.
+- **늦게 도착한 결과 차단이 State에 의존한다.** 워커는 대상 단계가 `PROCESSING`일 때만 결과를 저장한다. 백엔드가 `CANCELLED` 전이를 빠뜨리면 고아 데이터가 생긴다. 버전 컬럼을 대신하는 유일한 방어 지점이다.
+- **영향 행 0이 정상이다.** 임베딩이 아직 없는 Context를 지우면 `is_deleted` UPDATE가 0행을 갱신한다. 오류가 아니며 `CANCELLED`가 이후 INSERT를 막는다.
 
 **재검토 트리거**
 
-- `ai` 스키마가 별도 인스턴스로 분리되면 → 단일 트랜잭션 전제가 깨진다. (c) 통지 방식으로 옮기고 유실 대비 정리 배치를 함께 설계해야 한다.
-- 임베딩 재생성 비용이 파기 이득을 넘어서면 → 소프트 삭제 + 주기적 인덱스 재구축을 비교한다.
+- **MVP는 정확 cosine 검색이며 ANN 인덱스(HNSW 등)를 두지 않는다.** 검색 제외는 `is_deleted = false` 필터가 담당한다. ANN을 도입하면 무효화 행이 인덱스를 부풀리므로 **물리 삭제 주기를 그때 함께 정해야 한다.**
+- 물리 삭제 정책이 정해지면 → 삭제 주체와 주기를 이 문서에 연결한다.
+- `ai` 스키마가 별도 인스턴스로 분리되면 → 단일 트랜잭션 전제가 깨진다. 통지 방식으로 옮기고 유실 대비 정리 배치를 함께 설계해야 한다.
