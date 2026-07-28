@@ -90,3 +90,4 @@
 | [BD-26](BD-26-flyway-out-of-order.md) | 버전 구간 소유를 유지하고 Flyway `out-of-order`를 허용 (BT-02 해소) | Accepted | S15P11A705-86 |
 | [BD-27](BD-27-nullmarked-security-package.md) | `global/security`를 패키지 단위 `@NullMarked`로 선언(파라미터별 `@NonNull` 대신) | Accepted | S15P11A705-63 |
 | [BD-28](BD-28-authorization-request-in-cookie.md) | 인가 요청(state·PKCE verifier)을 `HttpSession` 대신 쿠키에 — 서명 없이 역직렬화 허용목록으로 | Accepted | S15P11A705-63 |
+| [BD-29](BD-29-jwt-rs256-key-management.md) | 세션 JWT를 RS256으로 서명, 키는 환경변수 주입 + 운영 fail-fast (`kid` 선반영, JWKS 없음) | Accepted | S15P11A705-63 |
