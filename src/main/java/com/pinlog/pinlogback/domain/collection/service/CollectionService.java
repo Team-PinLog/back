@@ -15,10 +15,15 @@ import com.pinlog.pinlogback.domain.collection.dto.CollectionAddRecordsRequest;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionCreateRequest;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionDetailResponse;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionSummaryResponse;
+import com.pinlog.pinlogback.domain.collection.dto.FollowStatusResponse;
+import com.pinlog.pinlogback.domain.collection.dto.PublicCollectionDetailResponse;
+import com.pinlog.pinlogback.domain.collection.dto.PublicRecordCardResponse;
 import com.pinlog.pinlogback.domain.collection.entity.Collection;
 import com.pinlog.pinlogback.domain.collection.entity.CollectionRecord;
 import com.pinlog.pinlogback.domain.collection.repository.CollectionRecordRepository;
 import com.pinlog.pinlogback.domain.collection.repository.CollectionRepository;
+import com.pinlog.pinlogback.domain.follow.repository.FollowRepository;
+import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
 import com.pinlog.pinlogback.domain.place.entity.Place;
 import com.pinlog.pinlogback.domain.place.repository.PlaceRepository;
 import com.pinlog.pinlogback.domain.record.dto.ContextResponse;
@@ -48,15 +53,20 @@ public class CollectionService {
 	private final RecordRepository recordRepository;
 	private final PlaceRepository placeRepository;
 	private final ContextRepository contextRepository;
+	private final MemberRepository memberRepository;
+	private final FollowRepository followRepository;
 
 	public CollectionService(CollectionRepository collectionRepository,
 		CollectionRecordRepository collectionRecordRepository, RecordRepository recordRepository,
-		PlaceRepository placeRepository, ContextRepository contextRepository) {
+		PlaceRepository placeRepository, ContextRepository contextRepository,
+		MemberRepository memberRepository, FollowRepository followRepository) {
 		this.collectionRepository = collectionRepository;
 		this.collectionRecordRepository = collectionRecordRepository;
 		this.recordRepository = recordRepository;
 		this.placeRepository = placeRepository;
 		this.contextRepository = contextRepository;
+		this.memberRepository = memberRepository;
+		this.followRepository = followRepository;
 	}
 
 	@Transactional
@@ -95,12 +105,47 @@ public class CollectionService {
 		return CursorPage.of(items, Cursor.encode(last.getCreatedAt(), last.getId()));
 	}
 
+	/**
+	 * Collection 상세 통합 조회(API 명세 7.3). 소유 여부를 서버가 판별해 소유자용·공개용
+	 * <b>서로 다른 DTO</b>를 반환한다(BD-13 — 상속·조건부 직렬화 금지).
+	 */
+	@Transactional(readOnly = true)
+	public Object getDetail(Long viewerMemberId, Long collectionId, String recordCursor, Integer recordSize) {
+		Collection collection = collectionRepository.findById(collectionId)
+			.orElseThrow(ResourceNotFoundException::new);
+		if (collection.isOwnedBy(viewerMemberId)) {
+			return getDetailForOwner(viewerMemberId, collectionId, recordCursor, recordSize);
+		}
+		return getDetailPublic(viewerMemberId, collection, recordCursor, recordSize);
+	}
+
 	@Transactional(readOnly = true)
 	public CollectionDetailResponse getDetailForOwner(Long memberId, Long collectionId,
 		String recordCursor, Integer recordSize) {
 		Collection collection = ownedCollection(memberId, collectionId);
 		return CollectionDetailResponse.forOwner(
-			collection, recordPage(collectionId, recordCursor, recordSize));
+			collection, recordPageForOwner(collectionId, recordCursor, recordSize));
+	}
+
+	/**
+	 * 타인 공개 조회(데이터모델 5.2·5.5). 진입 검사는 발행 여부·활성·소유자 미탈퇴이고, 실패는
+	 * 존재를 노출하지 않는 404다. 조립 경로가 ContextRepository를 호출하지 않으므로 Context
+	 * 원문은 구조적으로 나갈 수 없다.
+	 */
+	private PublicCollectionDetailResponse getDetailPublic(Long viewerMemberId, Collection collection,
+		String recordCursor, Integer recordSize) {
+		if (!collection.isPublished()) {
+			throw new ResourceNotFoundException();
+		}
+		if (memberRepository.findById(collection.getMemberId()).isEmpty()) {
+			throw new ResourceNotFoundException();
+		}
+		FollowStatusResponse follow = followRepository
+			.findByFolloweeMemberIdAndFollowerMemberId(collection.getMemberId(), viewerMemberId)
+			.map(found -> new FollowStatusResponse(true, found.getId(), found.getDisplayName()))
+			.orElseGet(() -> new FollowStatusResponse(false, null, null));
+		return PublicCollectionDetailResponse.of(
+			collection, follow, recordPagePublic(collection.getId(), recordCursor, recordSize));
 	}
 
 	@Transactional
@@ -199,8 +244,21 @@ public class CollectionService {
 		return collection;
 	}
 
-	private CursorPage<RecordDetailResponse> recordPage(Long collectionId, String recordCursor,
+	private CursorPage<RecordDetailResponse> recordPageForOwner(Long collectionId, String recordCursor,
 		Integer recordSize) {
+		LinkPage linkPage = linkPage(collectionId, recordCursor, recordSize);
+		List<RecordDetailResponse> items = toRecordDetailsForOwner(linkPage.links());
+		return linkPage.toCursorPage(items);
+	}
+
+	private CursorPage<PublicRecordCardResponse> recordPagePublic(Long collectionId, String recordCursor,
+		Integer recordSize) {
+		LinkPage linkPage = linkPage(collectionId, recordCursor, recordSize);
+		List<PublicRecordCardResponse> items = toRecordCardsPublic(linkPage.links());
+		return linkPage.toCursorPage(items);
+	}
+
+	private LinkPage linkPage(Long collectionId, String recordCursor, Integer recordSize) {
 		int pageSize = normalizeRecordSize(recordSize);
 		Pageable probe = PageRequest.of(0, pageSize + 1);
 		List<CollectionRecord> rows;
@@ -213,12 +271,18 @@ public class CollectionService {
 		}
 		boolean hasNext = rows.size() > pageSize;
 		List<CollectionRecord> page = hasNext ? rows.subList(0, pageSize) : rows;
-		List<RecordDetailResponse> items = toRecordDetails(page);
-		if (!hasNext) {
-			return CursorPage.last(items);
+		return new LinkPage(page, hasNext);
+	}
+
+	private record LinkPage(List<CollectionRecord> links, boolean hasNext) {
+
+		<T> CursorPage<T> toCursorPage(List<T> items) {
+			if (!hasNext) {
+				return CursorPage.last(items);
+			}
+			CollectionRecord last = links.get(links.size() - 1);
+			return CursorPage.of(items, Cursor.encode(last.getCreatedAt(), last.getId()));
 		}
-		CollectionRecord last = page.get(page.size() - 1);
-		return CursorPage.of(items, Cursor.encode(last.getCreatedAt(), last.getId()));
 	}
 
 	private int normalizeRecordSize(Integer requested) {
@@ -228,13 +292,10 @@ public class CollectionService {
 		return Math.min(requested, CursorPage.MAX_SIZE);
 	}
 
-	private List<RecordDetailResponse> toRecordDetails(List<CollectionRecord> links) {
+	private List<RecordDetailResponse> toRecordDetailsForOwner(List<CollectionRecord> links) {
 		List<Long> recordIds = links.stream().map(CollectionRecord::getRecordId).toList();
-		Map<Long, Record> records = recordRepository.findAllById(recordIds).stream()
-			.collect(Collectors.toMap(Record::getId, Function.identity()));
-		Map<Long, Place> places = placeRepository.findAllById(
-				records.values().stream().map(Record::getPlaceId).toList()).stream()
-			.collect(Collectors.toMap(Place::getId, Function.identity()));
+		Map<Long, Record> records = activeRecordsById(recordIds);
+		Map<Long, Place> places = placesOf(records);
 		Map<Long, List<Context>> contextsByRecord = recordIds.isEmpty()
 			? Map.of()
 			: contextRepository.findByRecordIdInOrderByOriginCreatedAtAscIdAsc(recordIds).stream()
@@ -253,5 +314,35 @@ public class CollectionService {
 					record, places.get(record.getPlaceId()), contexts, link.getCreatedAt());
 			})
 			.toList();
+	}
+
+	/**
+	 * 공개 조립 경로(데이터모델 5.5). ContextRepository를 호출하지 않는다 — Context 원문이
+	 * 이 경로로 나갈 방법이 없다. 소프트 삭제된 Record는 조회 자체에서 걸러진다(@SQLRestriction).
+	 */
+	private List<PublicRecordCardResponse> toRecordCardsPublic(List<CollectionRecord> links) {
+		List<Long> recordIds = links.stream().map(CollectionRecord::getRecordId).toList();
+		Map<Long, Record> records = activeRecordsById(recordIds);
+		Map<Long, Place> places = placesOf(records);
+
+		return links.stream()
+			.filter(link -> records.containsKey(link.getRecordId()))
+			.map(link -> {
+				Record record = records.get(link.getRecordId());
+				return PublicRecordCardResponse.of(
+					record, places.get(record.getPlaceId()), link.getCreatedAt());
+			})
+			.toList();
+	}
+
+	private Map<Long, Record> activeRecordsById(List<Long> recordIds) {
+		return recordRepository.findAllById(recordIds).stream()
+			.collect(Collectors.toMap(Record::getId, Function.identity()));
+	}
+
+	private Map<Long, Place> placesOf(Map<Long, Record> records) {
+		return placeRepository.findAllById(
+				records.values().stream().map(Record::getPlaceId).toList()).stream()
+			.collect(Collectors.toMap(Place::getId, Function.identity()));
 	}
 }
