@@ -144,4 +144,6 @@ Before adding a new rule, decide its enforcement point first. Prefer CI: it runs
 
 Keep shared, repo-wide protections in [`.claude/settings.json`](.claude/settings.json) only. Put per-person permissions and environment settings in `.claude/settings.local.json` (Git-ignored); copy the [example file](.claude/settings.local.json.example) to start. Do not commit personal settings or add personal permissions to the team settings.
 
+**Design docs stay local.** Brainstorming specs and plans go under `.claude/superpowers/`, which is Git-ignored — this repo deliberately excludes them (S15P11A705-28). What must outlive the branch goes to `docs/backend/` instead, where it is reviewed and preserved: decisions as `BD-##`, implementation reports and troubleshooting as their own entries.
+
 **Hooks are personal, not shared.** `.claude/hooks/` is Git-ignored. Set one up if you want the same failure reported a few minutes before CI does, and register it in your own `settings.local.json` — never in the shared `settings.json`, which would error for everyone who does not have your scripts. Keep the rule itself in CI so a dead hook costs you convenience and nothing more. The example file explains the portability traps that make hand-written shell hooks fail silently.

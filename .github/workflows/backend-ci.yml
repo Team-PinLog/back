@@ -30,9 +30,15 @@ jobs:
       # 근거: docs/development/database-conventions.md
       - name: Verify applied migrations were not modified
         if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          base='${{ github.event.pull_request.base.sha }}'
-          violations=$(git diff --diff-filter=MDR --name-only "$base" HEAD \
+          # base.sha는 대상 브랜치(dev)의 "현재 팁"이라 계속 움직인다. 그것과 직접 diff하면
+          # 이 PR이 바꾼 것뿐 아니라 "dev에는 있는데 이 브랜치에는 없는 것"까지 잡히고,
+          # 그건 삭제(D)로 보인다 — 즉 남이 dev에 넣은 마이그레이션 때문에 정상 PR이 막힌다.
+          # 분기점(merge-base)과 비교하면 이 PR이 실제로 건드린 것만 남는다.
+          merge_base=$(git merge-base "$BASE_SHA" HEAD)
+          violations=$(git diff --diff-filter=MDR --name-only "$merge_base" HEAD \
             -- src/main/resources/db/migration \
             | grep -E '/V[0-9]+__.*\.sql$' || true)
           if [ -n "$violations" ]; then
