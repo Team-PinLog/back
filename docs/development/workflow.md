@@ -12,7 +12,7 @@ Jira 티켓 발급
   → 로컬 검증               ./gradlew clean check --no-daemon
   → 커밋                    {type}({jira-key}): {summary}
   → push → PR              본문에 Jira 키 + RED/GREEN/Regression 증거
-  → backend-ci / check + 승인 1건 + 대화 해결
+  → backend-ci / check + 대화 해결
   → squash 병합 + 브랜치 자동삭제
   → 병합 후: dev 최신화, 티켓 상태 갱신
 ```
@@ -98,8 +98,9 @@ PR 본문에는 [PR 템플릿](../../.github/pull_request_template.md)에 따라
 `dev`는 보호되어 있어 다음을 모두 만족해야 병합됩니다(관리자 포함).
 
 - `backend-ci / check` 성공 (최신 `dev` 기준)
-- **승인 1건** — 작성자는 자기 PR을 승인할 수 없습니다.
 - 미해결 리뷰 **대화 해결**
+
+**승인 리뷰는 요구하지 않습니다(0건).** 단일 운영자 구조에서 형식적 self-approval은 의미가 없다는 조직 표준을 따릅니다([infra git-governance](https://github.com/Team-PinLog/infra/blob/main/docs/git-governance.md)). 리뷰를 하지 않는다는 뜻이 아니라, 리뷰가 병합 게이트가 아니라는 뜻입니다.
 
 브랜치가 최신 `dev`보다 뒤처지면 로컬에서 rebase로 따라잡고 다시 push합니다(공용 브랜치 히스토리를 깔끔하게 유지).
 
@@ -142,4 +143,4 @@ gh pr merge <번호> --auto --squash --delete-branch \
 | 검증 | `./gradlew clean check --no-daemon` (Docker 필요) |
 | 커밋 | `{type}({jira-key}): {summary}` |
 | PR | Jira 키 + RED/GREEN/Regression 증거 |
-| 병합 | CI + 승인 1 + 대화 해결 → squash + 브랜치 삭제 |
+| 병합 | CI + 대화 해결 → squash + 브랜치 삭제 (승인 0건) |
