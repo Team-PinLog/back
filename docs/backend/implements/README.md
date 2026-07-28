@@ -23,3 +23,4 @@
 | BI-05 | SIGTERM graceful shutdown + liveness·readiness probe 계약 테스트 (S15P11A705-51) | ✅ 완료 | [BI-05](BI-05-2026-07-27-graceful-shutdown.md) |
 | BI-06 | Infra 배포 연동 체크리스트 검증 + pgvector `0.8.5-pg16` 정렬 (S15P11A705-51) | ✅ 완료 | [BI-06](BI-06-2026-07-27-deployment-contract-verification.md) |
 | BI-07 | 프레임워크 예외를 catch-all 500이 아니라 자체 상태 코드로 매핑 (S15P11A705-40) | ✅ 완료 | [BI-07](BI-07-2026-07-27-framework-error-mapping.md) |
+| BI-08 | 쿠키 기반 세션 JWT — RS256 발급·검증 필터·Redis Refresh 회전 (S15P11A705-63) | ✅ 완료 | [BI-08](BI-08-2026-07-28-jwt-cookie-session.md) |
