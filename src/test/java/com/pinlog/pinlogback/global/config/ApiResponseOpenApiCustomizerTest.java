@@ -43,6 +43,52 @@ class ApiResponseOpenApiCustomizerTest extends PostgresContainerSupport {
 
 	@Test
 	void domainOperationResponseSchemaIsWrappedInEnvelope() throws Exception {
+		JsonNode root = fetchApiDocs();
+
+		JsonNode schema = resolveRef(root, successSchemaOf(root, "/test-envelope/dto"));
+
+		assertThat(schema.path("properties").has("success")).isTrue();
+		JsonNode data = resolveRef(root, schema.path("properties").path("data"));
+		assertThat(data.path("properties").has("name"))
+			.as("data에는 DTO(Payload)가 그대로 들어가야 한다")
+			.isTrue();
+	}
+
+	/**
+	 * 선언 타입이 {@code ResponseEntity<ApiResponse<T>>}인 경우. 런타임 advice는 실제 body가 이미
+	 * envelope이므로 감싸지 않는데, 문서 쪽이 선언 타입만 보고 "envelope 아님"으로 판정하면 한 번 더
+	 * 감싸서 {@code data.data}가 생긴다. 그러면 문서가 실제 응답과 다른 형태를 약속하게 된다.
+	 */
+	@Test
+	void responseEntityWrappedEnvelopeIsNotDocumentedTwice() throws Exception {
+		JsonNode root = fetchApiDocs();
+
+		JsonNode schema = resolveRef(root, successSchemaOf(root, "/test-envelope/entity-wrapped"));
+
+		assertThat(schema.path("properties").has("success"))
+			.as("envelope는 한 번은 적용돼 있어야 한다")
+			.isTrue();
+		JsonNode data = resolveRef(root, schema.path("properties").path("data"));
+		assertThat(data.path("properties").has("success"))
+			.as("data 안에 success가 또 있으면 envelope를 두 번 감싼 것이다")
+			.isFalse();
+		assertThat(data.path("properties").has("name"))
+			.as("data에는 DTO(Payload)가 들어가야 한다")
+			.isTrue();
+	}
+
+	@Test
+	void directEnvelopeReturnIsNotDocumentedTwice() throws Exception {
+		JsonNode root = fetchApiDocs();
+
+		JsonNode schema = resolveRef(root, successSchemaOf(root, "/test-envelope/already-wrapped"));
+
+		JsonNode data = resolveRef(root, schema.path("properties").path("data"));
+		assertThat(data.path("properties").has("success")).isFalse();
+		assertThat(data.path("properties").has("name")).isTrue();
+	}
+
+	private JsonNode fetchApiDocs() throws Exception {
 		HttpRequest request = HttpRequest.newBuilder()
 			.uri(URI.create("http://localhost:" + port + "/api/core/v3/api-docs"))
 			.GET()
@@ -50,27 +96,24 @@ class ApiResponseOpenApiCustomizerTest extends PostgresContainerSupport {
 
 		HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
 		assertThat(response.statusCode()).isEqualTo(200);
+		return jsonMapper.readTree(response.body());
+	}
 
-		JsonNode root = jsonMapper.readTree(response.body());
-		JsonNode content = root.path("paths").path("/test-envelope/dto").path("get")
+	/**
+	 * 해당 경로의 200 응답 스키마를 꺼낸다. 테스트 컨트롤러가 {@code produces}를 선언하지 않아
+	 * springdoc이 미디어 타입을 {@code "*&#47;*"}로 문서화하므로, 키를 가정하지 않고 첫 항목을 쓴다.
+	 */
+	private JsonNode successSchemaOf(JsonNode root, String path) {
+		JsonNode content = root.path("paths").path(path).path("get")
 			.path("responses").path("200")
 			.path("content");
+		assertThat(content.isMissingNode()).as("%s의 200 응답이 문서화되어야 한다", path).isFalse();
 
-		// EnvelopeTestController#dto()는 produces를 선언하지 않아 springdoc이 "*/*"로 문서화한다.
-		// 미디어 타입 키를 가정하지 않고 실제로 문서화된 첫 항목을 그대로 사용한다.
-		assertThat(content.isMissingNode()).isFalse();
 		Iterator<JsonNode> mediaTypes = content.values().iterator();
 		assertThat(mediaTypes.hasNext()).isTrue();
 		JsonNode schema = mediaTypes.next().path("schema");
-
 		assertThat(schema.isMissingNode()).isFalse();
-		// 스키마가 $ref로 표현될 수 있으므로, 참조라면 components.schemas까지 따라가서 검증한다
-		// (테스트를 약화시키지 않고 참조를 따라간다).
-		schema = resolveRef(root, schema);
-
-		String schemaText = schema.toString();
-		assertThat(schemaText).contains("success");
-		assertThat(schemaText).contains("data");
+		return schema;
 	}
 
 	private JsonNode resolveRef(JsonNode root, JsonNode schema) {

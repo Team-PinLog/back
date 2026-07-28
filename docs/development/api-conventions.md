@@ -28,6 +28,7 @@
 모든 API 응답은 최상위가 공통 envelope입니다. 성공은 `{ "success": true, "data": … }`, 오류는 `{ "success": false, "error": {…} }`이며 두 키는 동시에 나타나지 않습니다(오류 계약은 [에러 처리 규약](error-handling.md) 참고). 공용 명세 원본은 `Team-PinLog/docs`의 `static/08_API_명세.md` §1.6입니다.
 
 - 컨트롤러는 **DTO(또는 `void`)를 그대로 반환**합니다. `com.pinlog.pinlogback.domain` 이하 컨트롤러의 응답은 `global/web/ApiResponseBodyAdvice`가 자동으로 `ApiResponse`로 감쌉니다. 컨트롤러에서 직접 `ApiResponse.ok(...)`를 만들어 반환하지 않습니다.
+  - **감쌀 대상인지 판정하는 곳은 `global/web/EnvelopeTargets` 한 곳입니다.** 런타임(advice)과 문서 생성(springdoc customizer)이 같은 결론을 내야 하므로 판정을 각자 두지 않습니다 — 두 곳에 두었을 때 `ResponseEntity<ApiResponse<T>>`에서 결론이 갈려 **문서만 이중 래핑**된 적이 있습니다. 이미 envelope인 반환 타입은 양쪽 모두 감싸지 않습니다.
 - 성공 응답에는 `message` 필드를 두지 않습니다. 사람이 읽을 문구가 필요하면 `data` 안의 도메인 필드로 표현합니다.
 - 목록 응답은 `data` 안에 `items`(배열)·`nextCursor`·`hasNext`를 담는 커서 기반 형태를 사용합니다. 요청은 `cursor`·`size` 쿼리 파라미터로만 받으며, 응답도 offset이 아니라 커서(`nextCursor`)로 이어집니다.
 - `204 No Content`는 envelope를 포함해 본문이 전혀 없습니다.
