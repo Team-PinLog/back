@@ -6,8 +6,13 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestCustomizers;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.web.SecurityFilterChain;
 
+import com.pinlog.pinlogback.domain.auth.controller.SocialLoginController;
 import com.pinlog.pinlogback.global.security.RestAccessDeniedHandler;
 import com.pinlog.pinlogback.global.security.RestAuthenticationEntryPoint;
 
@@ -39,13 +44,35 @@ public class SecurityConfig {
 		"/swagger-ui/**"
 	};
 
+	/**
+	 * 인가 요청에 PKCE를 붙인다. RFC 9700이 Authorization Code 흐름에 요구한다.
+	 *
+	 * <p>기본 resolver는 client secret이 있는 confidential client에는 PKCE를 넣지 않으므로
+	 * 명시적으로 켠다. baseUri는 {@link SocialLoginController}가 넘겨주는 내부 경로다.
+	 */
+	@Bean
+	public OAuth2AuthorizationRequestResolver authorizationRequestResolver(
+		ClientRegistrationRepository clientRegistrationRepository
+	) {
+		DefaultOAuth2AuthorizationRequestResolver resolver = new DefaultOAuth2AuthorizationRequestResolver(
+			clientRegistrationRepository, SocialLoginController.AUTHORIZATION_BASE_URI);
+		resolver.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce());
+		return resolver;
+	}
+
 	@Bean
 	public SecurityFilterChain securityFilterChain(
 		HttpSecurity http,
 		RestAuthenticationEntryPoint authenticationEntryPoint,
-		RestAccessDeniedHandler accessDeniedHandler
+		RestAccessDeniedHandler accessDeniedHandler,
+		OAuth2AuthorizationRequestResolver authorizationRequestResolver
 	) throws Exception {
 		return http
+			.oauth2Login(oauth2 -> oauth2
+				.authorizationEndpoint(endpoint -> endpoint
+					.authorizationRequestResolver(authorizationRequestResolver))
+				// 콜백 경로. registrationId를 state에서 꺼내므로 마지막 세그먼트가 아니어도 된다.
+				.redirectionEndpoint(endpoint -> endpoint.baseUri("/v1/auth/*/callback")))
 			.authorizeHttpRequests(requests -> requests
 				.requestMatchers(PUBLIC_ACTUATOR).permitAll()
 				.requestMatchers(PUBLIC_AUTH).permitAll()

@@ -1,5 +1,9 @@
 server:
   port: 8080
+  # Traefik 뒤에서 동작하므로 X-Forwarded-* 를 신뢰해야 한다.
+  # 이게 없으면 OAuth redirect_uri가 파드 내부 주소(http://10.x:8080/...)로 만들어져
+  # 공급자 콘솔에 등록한 공개 주소와 달라지고 redirect_uri_mismatch가 난다.
+  forward-headers-strategy: framework
   # SIGTERM을 받으면 새 요청을 막고 진행 중인 요청을 끝낸 뒤 종료한다.
   # 이게 없으면 RollingUpdate 중 처리 중이던 요청이 잘린다.
   shutdown: graceful
@@ -7,6 +11,12 @@ server:
     context-path: /api/core
 
 spring:
+  # 로컬 .env를 프로퍼티로 올린다. Spring Boot는 .env를 자동으로 읽지 않아서,
+  # 이게 없으면 소셜 로그인 자격증명이 애플리케이션에 전달되지 않는다(compose만 읽는다).
+  # optional: 이므로 .env가 없는 CI·운영 컨테이너에서도 기동이 깨지지 않는다.
+  # [.properties]는 확장자 없는 파일을 properties 형식으로 읽으라는 지시다.
+  config:
+    import: optional:file:.env[.properties]
   application:
     name: pinlog-back
   lifecycle:
@@ -14,6 +24,21 @@ spring:
     # preStop sleep(5s) + 이 값(20s) < terminationGracePeriodSeconds(40s)를 지켜야
     # 배수 도중 SIGKILL로 잘리지 않는다. 매니페스트 쪽은 Infra 소유(S15P11A705-47).
     timeout-per-shutdown-phase: 20s
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            # 자격증명은 .env(로컬)·Kubernetes Secret(운영)에서 주입한다.
+            # 기본값 unset은 자격증명 없이도 컨텍스트가 뜨게 하려는 것이다. 인가 요청 URL을
+            # 만드는 데는 문자열만 필요해서, CI가 실제 키 없이 리다이렉트를 검증할 수 있다.
+            client-id: ${GOOGLE_CLIENT_ID:unset}
+            client-secret: ${GOOGLE_CLIENT_SECRET:unset}
+            # openid가 있어야 고유 식별자 sub를 받는다. profile은 저장할 곳이 없어 제외한다.
+            scope: openid,email
+            # {baseUrl}은 context-path(/api/core)까지 포함한다.
+            # registrationId가 마지막이 아니어도 된다 — 콜백은 state에서 값을 꺼내기 때문이다.
+            redirect-uri: "{baseUrl}/v1/auth/{registrationId}/callback"
   jpa:
     hibernate:
       ddl-auto: validate
