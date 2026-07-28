@@ -68,6 +68,37 @@ tasks.named('jacocoTestReport') {
     }
 }
 
+// main()만 있어 테스트가 밟을 수 없는 진입점은 집계에서 뺀다. 리포트와 검증에 같은 목록을
+// 적용해야 "리포트에 보이는 수치"와 "게이트가 판정하는 수치"가 어긋나지 않는다.
+def coverageExcludes = ['**/PinlogBackApplication.class']
+
+tasks.withType(JacocoReportBase).configureEach {
+    classDirectories.setFrom(files(sourceSets.main.output.classesDirs.collect {
+        fileTree(it) { exclude coverageExcludes }
+    }))
+}
+
+// 커버리지 하한선(S15P11A705-103). BUNDLE = 전체 합계 기준이며, 개별 클래스가 낮아도
+// 합계가 기준을 넘으면 통과한다. 근거와 감수하는 점은 BD-27에 있다.
+tasks.named('jacocoTestCoverageVerification') {
+    dependsOn tasks.named('test')
+    violationRules {
+        rule {
+            element = 'BUNDLE'
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.80
+            }
+            limit {
+                counter = 'BRANCH'
+                value = 'COVEREDRATIO'
+                minimum = 0.80
+            }
+        }
+    }
+}
+
 tasks.named('check') {
-    dependsOn tasks.named('jacocoTestReport')
+    dependsOn tasks.named('jacocoTestReport'), tasks.named('jacocoTestCoverageVerification')
 }
