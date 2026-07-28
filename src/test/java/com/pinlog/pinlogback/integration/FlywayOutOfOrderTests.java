@@ -33,7 +33,9 @@ import org.springframework.test.annotation.DirtiesContext;
 class FlywayOutOfOrderTests extends PostgresContainerSupport {
 
 	private static final String SCRATCH_DATABASE = "bt02_out_of_order";
-	private static final String BACKEND_VERSION = "2";
+	private static final String FIRST_BACKEND_VERSION = "2";
+	private static final int BACKEND_RANGE_START = 2;
+	private static final int BACKEND_RANGE_END = 99;
 
 	@Autowired
 	private Flyway flyway;
@@ -59,14 +61,14 @@ class FlywayOutOfOrderTests extends PostgresContainerSupport {
 			.load();
 
 		assertThatCode(asApplicationWouldRun::migrate)
-			.as("V100~V102가 적용된 DB에 V%s를 추가한 뒤 기동하면 Flyway가 거부하면 안 된다", BACKEND_VERSION)
+			.as("V100~V102가 적용된 DB에 V%s를 추가한 뒤 기동하면 Flyway가 거부하면 안 된다", FIRST_BACKEND_VERSION)
 			.doesNotThrowAnyException();
 
 		MigrateResult reapplied = asApplicationWouldRun.migrate();
 		assertThat(reapplied.migrationsExecuted)
 			.as("앞선 migrate가 이미 적용을 마쳤으므로 두 번째 호출은 아무것도 적용하지 않는다")
 			.isZero();
-		assertThat(appliedVersions(url)).contains("1", BACKEND_VERSION, "100", "101", "102");
+		assertThat(appliedVersions(url)).contains("1", FIRST_BACKEND_VERSION, "3", "100", "101", "102");
 		assertThat(memberTableExists(url))
 			.as("out-of-order로 적용된 백엔드 마이그레이션이 실제로 테이블을 만들었는지")
 			.isTrue();
@@ -75,7 +77,12 @@ class FlywayOutOfOrderTests extends PostgresContainerSupport {
 	/**
 	 * "AI 마이그레이션만 적용된 기존 DB"를 만든다. 전체를 적용한 뒤 백엔드 몫만 되돌리는 방식을 쓰는 이유는,
 	 * 특정 버전만 골라 적용하는 {@code cherryPick}이 Flyway 상용 기능이라 community 판에서는 쓸 수 없기 때문이다.
-	 * 되돌린 결과는 실제 상황과 같다 — 이력에 V1·V100~V102만 남고, 저장소의 V2는 아직 적용되지 않은 상태다.
+	 * 되돌린 결과는 실제 상황과 같다 — 이력에 V1·V100~V102만 남고, 저장소의 백엔드 구간(V2~V99)은
+	 * 아직 적용되지 않은 상태다.
+	 *
+	 * <p>백엔드 테이블은 이름을 나열하지 않고 "core 스키마에서 AI 소유(feed_event)가 아닌 전부"로
+	 * 걷어낸다 — 백엔드 마이그레이션이 늘 때마다 이 목록을 따라 고쳐야 하면 그 사이 이 테스트가 항상
+	 * 깨진다. 백엔드 테이블끼리 FK로 물려 있으므로 CASCADE로 지운다.
 	 */
 	private void seedDatabaseWithAiMigrationsOnly(String url) throws Exception {
 		Flyway.configure()
@@ -86,14 +93,31 @@ class FlywayOutOfOrderTests extends PostgresContainerSupport {
 
 		try (Connection connection = DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword());
 			Statement statement = connection.createStatement()) {
-			statement.execute("DROP TABLE core.member");
-			statement.execute("DELETE FROM public.flyway_schema_history WHERE version = '" + BACKEND_VERSION + "'");
+			for (String table : backendTables(connection)) {
+				statement.execute("DROP TABLE IF EXISTS core." + table + " CASCADE");
+			}
+			statement.execute("DELETE FROM public.flyway_schema_history"
+				+ " WHERE version IS NOT NULL AND version ~ '^[0-9]+$'"
+				+ " AND CAST(version AS int) BETWEEN " + BACKEND_RANGE_START + " AND " + BACKEND_RANGE_END);
 		}
 
 		assertThat(appliedVersions(url))
 			.as("재현 상태 전제: 백엔드 마이그레이션은 적용돼 있지 않아야 한다")
-			.doesNotContain(BACKEND_VERSION)
+			.doesNotContain(FIRST_BACKEND_VERSION)
 			.contains("1", "100", "101", "102");
+	}
+
+	private Set<String> backendTables(Connection connection) throws Exception {
+		Set<String> tables = new HashSet<>();
+		try (Statement statement = connection.createStatement();
+			ResultSet rs = statement.executeQuery(
+				"SELECT table_name FROM information_schema.tables"
+					+ " WHERE table_schema = 'core' AND table_name <> 'feed_event'")) {
+			while (rs.next()) {
+				tables.add(rs.getString("table_name"));
+			}
+		}
+		return tables;
 	}
 
 	private void recreateScratchDatabase() throws Exception {
