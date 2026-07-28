@@ -85,8 +85,8 @@ P3과 P4를 함께 검증해야 의미가 있습니다. 한쪽만 보면 "그냥
 |---|---|---|
 | E1 | Feed 응답 후 IMPRESSION 기록 | 응답 항목 수만큼, `position` 포함 |
 | E2 | IMPRESSION 기록 실패 | Feed 응답은 정상 |
-| E3 | `POST /feed/events`로 IMPRESSION 전송 | 400 거부 |
-| E4 | `POST /feed/events`의 `member_id` | 본문 값이 아니라 인증 컨텍스트 값이 저장됨 |
+| E3 | `POST /api/core/v1/feed/events`로 IMPRESSION 전송 | 400 거부 |
+| E4 | `POST /api/core/v1/feed/events`의 `member_id` | 본문 값이 아니라 인증 컨텍스트 값이 저장됨 |
 | E5 | 존재하지 않는 `collectionId` 포함 배열 | 해당 건만 버리고 나머지 저장, 204 |
 | E6 | 노출 누적된 Collection | 다음 요청에서 순위 하락 |
 | E7 | 노출이 cap을 넘어 누적됨 | 순위 하락이 상한에서 멈춤 (영구 배제 없음) |
@@ -98,10 +98,10 @@ P3과 P4를 함께 검증해야 의미가 있습니다. 한쪽만 보면 "그냥
 |---|---|---|
 | D1 | 한 소유자가 상위를 독점하는 상황 | 응답 내 동일 소유자 최대 2건 |
 | D2 | 소유자 상한으로 후보가 마름 | 상한을 완화해 개수를 채움, 빈 응답 아님 |
-| D3 | 10건 응답의 탐색 슬롯 | 2건이 무작위 채널에서 채워짐 |
+| D3 | 20건 응답의 탐색 슬롯 | 2건이 무작위 채널에서 채워짐 |
 | D4 | 탐색 후보 0건 | 점수 상위로 채움, 빈 자리 없음 |
 | D5 | Record 0건 신규 사용자 | Cold Start 경로, 최신·무작위 위주 응답 |
-| D6 | Record는 있으나 AI Keyword가 0건 | Cold Start 경로, region·category로 점수 산출 |
+| D6 | Record는 있으나 AI Keyword가 0건 | Cold Start 경로, 팔로우·최신·무작위로 응답 |
 | D7 | Profile 계산 실패 | Cold Start 폴백, 오류 아님 |
 
 ## 9. 성능 경계 (통합)

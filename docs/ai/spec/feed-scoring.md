@@ -15,13 +15,12 @@
 
 ### 2.1 다중 채널
 
-단일 채널로 후보를 만들면 필터 버블이나 최신순 나열 중 하나로 무너집니다. 성격이 다른 네 채널에서 뽑아 합집합을 만듭니다.
+단일 채널로 후보를 만들면 필터 버블이나 최신순 나열 중 하나로 무너집니다. 성격이 다른 세 채널에서 뽑아 합집합을 만듭니다.
 
 | 채널 | 목적 | 기본 배분 |
 |---|---|---|
-| 최신 발행 | 신규 Collection이 최소한 노출될 기회 | 60 |
-| 팔로우 | 이미 관심을 표현한 Shelf | 60 |
-| 지역·카테고리 | 본인 활동 반경과의 근접성 | 60 |
+| 최신 발행 | 신규 Collection이 최소한 노출될 기회 | 100 |
+| 팔로우 | 이미 관심을 표현한 Shelf | 80 |
 | 탐색용 무작위 | 필터 버블 이탈 | 20 |
 
 각 채널 쿼리는 서로 독립이며 병렬 실행할 필요는 없습니다. 인덱스가 있으면 순차 실행으로 충분합니다.
@@ -47,36 +46,34 @@ ORDER BY c.published_at DESC
 LIMIT :n;
 ```
 
-지역·카테고리 채널은 Profile의 상위 region·category를 조건으로 `collection → collection_record → record → place`를 조인해 뽑습니다. 무작위 채널은 최근 발행 구간에서 표본을 뽑되 `ORDER BY random()` 전체 스캔을 피하고 id 범위 기반 표본을 사용합니다.
+무작위 채널은 최근 발행 구간에서 표본을 뽑되 `ORDER BY random()` 전체 스캔을 피하고 id 범위 기반 표본을 사용합니다.
 
 `collection (is_published, published_at DESC) WHERE deleted_at IS NULL` 인덱스가 최신 발행 채널의 전제입니다.
 
 ### 2.3 합집합과 중복 제거
 
-- 네 채널 결과를 합치고 `collection_id` 기준으로 중복을 제거합니다.
+- 세 채널 결과를 합치고 `collection_id` 기준으로 중복을 제거합니다.
 - 중복은 페널티가 아니라 **신호**입니다. 여러 채널에 걸린 Collection은 그만큼 관련성이 높다는 뜻이므로, 제거하되 어느 채널에서 왔는지는 보존합니다. 팔로우 채널 출처 여부가 점수 공식의 `followSignal`이 됩니다.
 - 본인 소유 Collection은 모든 채널에서 제외합니다.
-- 최종 후보 풀 크기는 **약 200**입니다. 합집합이 이보다 크면 채널 우선순위(팔로우 → 지역·카테고리 → 최신 → 무작위) 순으로 잘라냅니다.
+- 최종 후보 풀 크기는 **약 200**입니다. 합집합이 이보다 크면 채널 우선순위(팔로우 → 최신 → 무작위) 순으로 잘라냅니다.
 
 ```yaml
 pinlog:
   feed:
     candidate:
       pool-size: 200
-      recent-limit: 60
-      follow-limit: 60
-      geo-category-limit: 60
+      recent-limit: 100
+      follow-limit: 80
       random-limit: 20
 ```
 
-200으로 잡은 근거는 최종 10건을 뽑는 데 20배의 여유를 두면 다양성 조정과 재검증 탈락을 흡수하고도 남기 때문입니다. 이보다 크게 잡으면 특징 조회 비용이 선형으로 늘고, 작게 잡으면 소유자 상한 적용 후 후보가 마릅니다.
+200으로 잡은 근거는 최종 20건을 뽑는 데 10배의 여유를 두면 다양성 조정과 재검증 탈락을 흡수하고도 남기 때문입니다. 이보다 크게 잡으면 특징 조회 비용이 선형으로 늘고, 작게 잡으면 소유자 상한 적용 후 후보가 마릅니다.
 
 ## 3. 점수 공식
 
 ```text
 score(c) =   w_follow   * followSignal(c)
            + w_keyword  * keywordAffinity(user, c)
-           + w_geo_cat  * geoCategoryAffinity(user, c)
            + w_recency  * recency(c)
            - impressionPenalty * min(impressions(user, c), cap)
 ```
@@ -117,17 +114,7 @@ keywordAffinity = Σ_k min(user[k], collection[k]) / Σ_k max(user[k], collectio
 - `BLOCKED`는 양쪽 모두에서 제외합니다.
 - 이 비대칭이 의도된 설계입니다. `PRIVATE_ONLY`가 collection 쪽에 들어가면 타인에게 감춰야 할 정보가 추천 결과를 통해 드러납니다.
 
-### 3.3 geoCategoryAffinity
-
-```text
-geoCategoryAffinity = 0.5 * regionOverlap + 0.5 * categoryOverlap
-```
-
-각 항은 Profile의 상위 분포와 Collection의 region/category 집합 사이의 가중 겹침 비율입니다. Keyword와 같은 weighted Jaccard 형태를 씁니다.
-
-region은 Place 주소에서 파생한 행정구역 단위(시·구)를 사용합니다. Keyword가 아니라 Place metadata이므로 AI 완료 여부와 무관하게 항상 계산할 수 있습니다. **AI가 미완료인 Collection도 이 항으로 점수를 얻습니다.**
-
-### 3.4 recency
+### 3.3 recency
 
 ```text
 recency = exp(-ageDays / halfLifeDays)
@@ -135,7 +122,7 @@ recency = exp(-ageDays / halfLifeDays)
 
 `published_at` 기준이며 기본 `halfLifeDays = 14`입니다. 선형 감쇠 대신 지수 감쇠를 쓰는 이유는 오래된 Collection이 완전히 0이 되어 영구히 배제되지 않게 하기 위해서입니다.
 
-### 3.5 impressionPenalty
+### 3.4 impressionPenalty
 
 ```text
 penalty = impressionPenalty * min(impressions(user, c), cap)
@@ -145,16 +132,15 @@ penalty = impressionPenalty * min(impressions(user, c), cap)
 - `cap`으로 상한을 두는 이유는, 상한이 없으면 한 번 상위에 올랐던 Collection이 노출 누적으로 영구히 하위에 고정되기 때문입니다. 회복 가능성을 남깁니다.
 - IMPRESSION의 의미는 서버 응답 전달이며 실제 viewport 노출이 아닙니다. [`feed-event.md`](feed-event.md) 3.1을 참조합니다.
 
-### 3.6 초기 가중치
+### 3.5 초기 가중치
 
 ```yaml
 pinlog:
   feed:
     scoring:
-      w-follow: 0.4
-      w-keyword: 0.3
-      w-geo-cat: 0.2
-      w-recency: 0.1
+      w-follow: 0.500
+      w-keyword: 0.375
+      w-recency: 0.125
       impression-penalty: 0.05
       impression-cap: 5
       impression-window: 7d
@@ -167,18 +153,19 @@ pinlog:
 - `w_keyword`가 두 번째인 이유는 AI 파생값이라 초기 데이터가 적을 때 신뢰도가 낮기 때문입니다. 데이터가 쌓이면 올릴 여지가 있습니다.
 - `w_recency`가 가장 작은 이유는 이 값을 키우면 Feed가 사실상 최신순 목록이 되어 개인화가 무의미해지기 때문입니다.
 - `impression_penalty = 0.05`, `cap = 5`이므로 최대 감점은 0.25입니다. 상위 항목을 뒤로 밀 정도는 되지만 완전히 배제하지는 않는 크기입니다.
+- 기존 가중치에서 `w_geo_cat`만 제거한 뒤 나머지 세 항을 비례 정규화해 상대 순서를 보존합니다.
 - 가중치 합이 1.0이 되도록 유지합니다. 합이 달라져도 상대 순서는 같지만, 점수 절대값을 로그로 비교할 때 해석이 어려워집니다.
 
-튜닝은 이벤트 집계(3.5의 IMPRESSION과 CLICK/SAVE 분포)를 보고 수동으로 수행합니다. 학습형 Ranking이나 Multi-Armed Bandit을 도입하지 않습니다.
+튜닝은 이벤트 집계(3.4의 IMPRESSION과 CLICK/SAVE 분포)를 보고 수동으로 수행합니다. 학습형 Ranking이나 Multi-Armed Bandit을 도입하지 않습니다.
 
 ## 4. 다양성 조정
 
-점수 상위 10개를 그대로 내보내면 같은 소유자·같은 지역이 몰립니다.
+점수 상위 20개를 그대로 내보내면 같은 소유자의 Collection이 몰릴 수 있습니다.
 
 | 규칙 | 기본값 |
 |---|---|
 | 한 응답 내 동일 소유자 Collection 최대 | 2 |
-| 10개 중 탐색 슬롯 | **2** |
+| 20개 중 탐색 슬롯 | **2** |
 
 ### 4.1 소유자 상한
 
@@ -186,7 +173,7 @@ pinlog:
 
 ### 4.2 탐색 슬롯
 
-10개 중 **2개**는 점수 순위와 무관하게 탐색용 무작위 채널 후보에서 채웁니다.
+20개 중 **2개**는 점수 순위와 무관하게 탐색용 무작위 채널 후보에서 채웁니다.
 
 - 순수 exploit만 하면 Profile이 자기 강화되어 새로운 취향을 발견할 수 없습니다.
 - 탐색 슬롯도 3장의 재검증과 소유자 상한을 동일하게 적용받습니다.
@@ -199,7 +186,7 @@ pinlog:
     diversity:
       max-per-owner: 2
       exploration-slots: 2
-      page-size: 10
+      page-size: 20
 ```
 
 역시 설정값입니다.
@@ -222,16 +209,14 @@ Cold Start에서는 가중치를 다르게 적용합니다.
 
 | 항 | 일반 | Cold Start |
 |---|---|---|
-| `w_follow` | 0.4 | 0.4 |
-| `w_keyword` | 0.3 | **0.0** |
-| `w_geo_cat` | 0.2 | **0.2** |
-| `w_recency` | 0.1 | **0.4** |
+| `w_follow` | 0.500 | 0.5 |
+| `w_keyword` | 0.375 | **0.0** |
+| `w_recency` | 0.125 | **0.5** |
 
 - `keywordAffinity`를 계산하지 않습니다. 입력이 없으므로 항상 0이고, 계산해봐야 모든 후보가 같은 점수를 받아 무의미합니다.
 - `w_recency`를 올려 최신 발행 위주로 구성합니다.
-- 지역·카테고리는 Record가 한 건이라도 있으면 즉시 사용할 수 있으므로 유지합니다. AI 완료를 기다리지 않는다는 점이 중요합니다.
 - 팔로우가 있으면 그 신호를 그대로 씁니다. 신규 사용자도 온보딩에서 팔로우할 수 있습니다.
-- Record가 0건이면 지역 신호도 없으므로 최신 발행 + 무작위 조합이 됩니다.
+- Record가 0건이면 최신 발행 + 팔로우 + 무작위 조합이 됩니다.
 - 탐색 슬롯은 Cold Start에서 오히려 늘립니다(기본 3). 취향을 모르는 상태이므로 탐색 가치가 큽니다.
 
 Cold Start는 Profile이 채워지고 AI가 완료되면 자동으로 해소됩니다. 별도 전환 처리가 없습니다.
@@ -240,12 +225,12 @@ Cold Start는 Profile이 채워지고 AI가 완료되면 자동으로 해소됩�
 
 ```text
 1. Profile 조회               Redis 1회 (miss 시 DB 집계)
-2. 후보 생성                  DB 4회 (채널별)
+2. 후보 생성                  DB 3회 (채널별)
 3. Collection 특징 조회        Redis MGET 1회 + miss분 DB 1회
 4. 노출 이벤트 집계            DB 1회
 5. 점수 계산                  메모리
 6. 다양성 조정                메모리
-7. Core 재검증                DB 1회 (최종 10건 대상)
+7. Core 재검증                DB 1회 (최종 20건 대상)
 8. 상세 조립                  DB 1~2회
 ```
 
