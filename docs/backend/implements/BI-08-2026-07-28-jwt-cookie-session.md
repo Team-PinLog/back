@@ -63,6 +63,16 @@ nimbus `DefaultJWTClaimsVerifier`의 기본 시계 오차다. 처음에 `-1초` 
 
 가장 값이 큰 테스트는 `hmacSignedTokenWithPublicKeyAsSecretIsRejected`다. 공개키를 HMAC 비밀로 삼아 HS256으로 서명한 토큰을 만들어 거부되는지 본다. 검증기가 토큰 헤더의 `alg`를 따라가는 순간 이게 통과하고, 그게 RFC 8725 §3.1이 막으라는 경로다.
 
+## 리팩터 (`b44a6fc`)
+
+동작을 바꾸지 않고 순증 −142줄. 131개 통과는 그대로다.
+
+**앞으로 인증 흐름을 테스트할 때는 `SocialLoginTestSupport`를 상속한다.** 스텁 공급자 기동·설정 덮어쓰기와 로그인 → 인가 → 콜백 리다이렉트 추적이 들어 있다. 이게 없던 동안 `AuthTokenContractTests`와 `GoogleLoginCallbackTests`가 같은 절차를 각자 복제하고 있었고, 콜백 경로나 state 전달 방식이 바뀌면 두 곳을 고쳐야 했다.
+
+다만 **`SocialLoginRedirectTests`는 이 base를 쓰지 않는다.** 그 테스트는 스텁이 아니라 실제 Google 설정으로 인가 URL을 검증하는 것이 목적이라, base를 물리면 스텁 설정이 강제돼 목적이 사라진다.
+
+나머지: `WebUtils.getCookie()`로 수동 쿠키 순회 대체, nimbus `keyIDFromThumbprint()`로 이중 빌드 제거, `sub` 이중 파싱 제거, 테스트의 JSON 정규식을 `SignedJWT.parse()`로, Refresh 쿠키 부재 판단을 컨트롤러에서 `AuthTokenService`로 이동(토큰의 의미는 서비스가 소유한다).
+
 ## 남은 것
 
 - **키 회전** — `kid`만 선반영했고 다중 키 검증은 없다. 지금 키를 바꾸면 전면 로그아웃이다.
