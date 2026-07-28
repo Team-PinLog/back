@@ -17,6 +17,10 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+    # 기본값 true는 서비스 계층 밖(컨트롤러·직렬화 시점)까지 영속성 컨텍스트를 열어 둔다.
+    # 그러면 DTO로 변환하기 전에 지연 로딩이 일어나 N+1이 조용히 생긴다. 트랜잭션 경계는
+    # service가 갖는다는 계층 규칙(package-structure.md)과도 맞지 않으므로 끈다.
+    open-in-view: false
   flyway:
     enabled: true
     locations: classpath:db/migration
