@@ -88,3 +88,4 @@
 | [BD-24](BD-24-foundation-reset.md) | 파운데이션 리셋 — 초기 설정을 최신 `dev`에서 작은 PR로 다시 구성 | Accepted | Issue #9 |
 | [BD-25](BD-25-context-origin-created-at.md) | Context 최초 작성 시각 보존 — `origin_created_at`, 목록은 오래된순 (BD-07 트리거 발동) | Accepted | docs#16 |
 | [BD-26](BD-26-flyway-out-of-order.md) | 버전 구간 소유를 유지하고 Flyway `out-of-order`를 허용 (BT-02 해소) | Accepted | S15P11A705-86 |
+| [BD-27](BD-27-nullmarked-security-package.md) | `global/security`를 패키지 단위 `@NullMarked`로 선언(파라미터별 `@NonNull` 대신) | Accepted | S15P11A705-63 |
