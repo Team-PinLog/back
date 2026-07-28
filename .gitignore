@@ -50,3 +50,5 @@ out/
 # 훅은 개인 편의 도구다(규칙 강제는 CI 담당). CONTRIBUTING.md "Where each rule is enforced" 참고.
 .claude/settings.local.json
 .claude/hooks/
+# 브레인스토밍 스펙·플랜은 레포에 넣지 않는다(S15P11A705-28). 로컬에만 둔다.
+.claude/superpowers/
