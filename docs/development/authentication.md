@@ -22,14 +22,20 @@
 | `403` | **CSRF 토큰 누락·불일치 전용** |
 | `404` | 리소스 없음 **또는 자원 접근 권한 실패**(존재 여부를 노출하지 않음, [BD-13](../backend/decisions/BD-13-public-boundary-query-dto-split.md)) |
 
-## 배경 — 인증은 실수로 빠진 것이 아니다
+## 배경 — 인증은 실수로 빠진 것이 아니었다
 
-backend foundation reset은 Spring Security, OAuth, 임시 계정, `SecurityConfig`를 **의도적으로 제거**했습니다. 인증 없이도 서비스가 실행·테스트·배포되도록 기반을 먼저 정리하기 위함입니다. 따라서 현재:
+backend foundation reset은 Spring Security, OAuth, 임시 계정, `SecurityConfig`를 **의도적으로 제거**했습니다. 인증 없이도 서비스가 실행·테스트·배포되도록 기반을 먼저 정리하기 위함이었고, 그동안 core 도메인은 **인증 스텁** 위에서 개발됐습니다(back#28 합의, S15P11A705-67).
 
-- 매핑되지 않은 URL은 `401/403`이 아니라 `404`를 반환합니다(`DeploymentContractTests`가 이를 검증).
-- `global/security`, `global/config/SecurityConfig`, `domain/auth` 패키지는 **아직 만들지 않습니다**([패키지 구조 규약](package-structure.md)).
+**인증은 S15P11A705-63에서 한 PR로 병합됐습니다.** 스텁은 그 PR에서 제거됐습니다 — 아래는 스텁이 고정해 둔 계약 중 **그대로 이어받은 것**입니다.
 
-인증은 준비되면 **하나의 PR**로 의존성·계약·설정·테스트·문서를 함께 병합합니다. 조각내어 병합하지 않습니다.
+- principal 타입은 `MemberPrincipal(Long memberId)` record이고, 컨트롤러는 `@LoginMember MemberPrincipal`로 받습니다. 이 시그니처는 바뀌지 않았습니다 — 도메인 컨트롤러가 수정 대상이 되지 않도록 스텁이 미리 고정해 둔 값이고, 그 판단이 실제로 값을 했습니다.
+- 서비스는 `Long memberId` 파라미터를 받습니다. `SecurityContext`를 서비스에서 직접 읽지 않습니다.
+- 테스트 인증 주입은 `support/AuthTestSupport.loginAs(memberId)` 한 곳에 모여 있습니다. 인증 PR은 **이 메서드 본문만** `spring-security-test` 지원으로 바꿨고, 이를 쓰는 도메인 테스트 7개 파일·110여 개 호출부는 그대로 남았습니다.
+
+제거된 것(**되살리지 마세요 — 운영 인증 우회 구멍이 됩니다**):
+
+- `X-Debug-Member-Id` 헤더 분기와 `pinlog.auth.stub.enabled` 프로퍼티
+- 순수 MVC 스텁 `LoginMemberArgumentResolver`. 실제 구현은 `global/security/authentication`에 있고 `SecurityContext`에서 principal을 꺼냅니다.
 
 ## 단일 PR 원칙
 
@@ -38,7 +44,7 @@ backend foundation reset은 Spring Security, OAuth, 임시 계정, `SecurityConf
 1. Spring Security와 OAuth2 Client 의존성
 2. principal 계약 — 인증 주체를 컨트롤러가 받는 방식
 3. 보안 설정 — 공개/보호 경로, 인가 규칙, 쿠키 속성, CSRF 검증
-4. envelope 경계 — 인증 엔드포인트의 opt-out과 Security entry point의 오류 envelope
+4. envelope 경계 — 인증 엔드포인트 성공 응답에 본문을 만들지 않는 것과, Security entry point의 오류 envelope
 5. 로컬 개발 방법 — 인증을 로컬에서 어떻게 통과시키는지
 6. 테스트 — 성공, `401` 미인증, `404` 권한, `403` CSRF, 쿠키 속성
 7. 문서 — 이 문서와 [API 규약](api-conventions.md)의 갱신
@@ -130,7 +136,7 @@ DB가 필요한 인증 테스트는 PostgreSQL Testcontainers를 사용합니다
 - [x] ~~envelope opt-out 장치~~ — 불필요함이 확인됐습니다(위 "공통 응답 envelope의 예외"). Security entry point의 오류 envelope는 `SecurityErrorWriter`가 만듭니다
 - [x] 로컬 개발·테스트에서 인증 통과 방법 문서화 (아래 §7)
 - [x] 성공 / 401 / 403(CSRF) / 공개 경로 / 쿠키 속성 / 본문 토큰 부재 테스트
-- [ ] **404(타인 자원 접근)** — 이 브랜치에는 소유자가 있는 도메인 리소스가 없어 검증할 대상이 없습니다. 도메인 API 티켓(S15P11A705-67~71)이 함께 가져옵니다
+- [x] **404(타인 자원 접근)** — 도메인 API(S15P11A705-67~71)가 `dev`에 병합되면서 검증 대상이 생겼습니다. `PublicCollectionApiTests`의 `withdrawnOwnersCollectionIsHiddenFromOthers`·`unpublishedCollectionIsHiddenFromOthers`가 실제 인증 위에서 404를 고정합니다([BD-13](../backend/decisions/BD-13-public-boundary-query-dto-split.md))
 - [x] `./gradlew clean check --no-daemon` 통과
 - [x] 이 문서와 API 규약 갱신
 - [ ] **공용 계약(`Team-PinLog/docs`) `static/08_API_명세.md` 개정** — 별도 저장소라 이 PR 밖입니다
@@ -141,7 +147,7 @@ DB가 필요한 인증 테스트는 PostgreSQL Testcontainers를 사용합니다
 
 ### 토큰과 키
 
-서명은 **RS256**이고 키 관리 근거는 [BD-29](../backend/decisions/BD-29-jwt-rs256-key-management.md)에 있습니다.
+서명은 **RS256**이고 키 관리 근거는 [BD-31](../backend/decisions/BD-31-jwt-rs256-key-management.md)에 있습니다.
 
 | | |
 | --- | --- |

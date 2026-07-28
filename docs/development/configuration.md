@@ -27,6 +27,7 @@
 - Hibernate는 **`ddl-auto=validate`** 입니다. 스키마는 Flyway가 관리합니다([데이터베이스 규약](database-conventions.md)).
 - **`open-in-view=false`** 입니다. 기본값 `true`는 서비스 계층 밖에서도 영속성 컨텍스트를 열어 두어, DTO로 변환하기 전에 지연 로딩이 일어나 N+1이 조용히 발생합니다. 트랜잭션 경계를 `service`가 갖는다는 [계층 규칙](package-structure.md)과도 맞지 않습니다. 엔티티 밖에서 연관을 읽어야 하면 `fetch join`이나 전용 조회 메서드로 명시합니다.
 - Actuator는 필수이며 `health`와 `prometheus`만 노출합니다. **둘 다 필수입니다** — `DeploymentContractTests`가 두 경로를 모두 검증하고, 어긋나면 배포와 모니터링이 함께 깨집니다.
+- **readiness 그룹은 `readinessState,db`** 입니다. Kubernetes probe는 집계 `/health`가 아니라 `/health/liveness`·`/health/readiness`를 씁니다. `probes.enabled`만 켜면 두 그룹의 구성원이 애플리케이션 내부 상태뿐이어서 DB가 죽어도 Ready로 남습니다. `include`는 기본 구성원을 대체하므로 `readinessState`를 함께 적습니다 — 빼면 기동 완료 전에도 UP이 됩니다. **`redis`는 넣지 않고 liveness 그룹은 기본값을 유지합니다**(외부 의존성을 넣으면 DB 순단이 Pod 재시작으로 번집니다). 인프라와 합의한 운영 정책이며 근거와 감수하는 점은 [BD-28](../backend/decisions/BD-28-readiness-includes-db.md)에 있습니다.
 
 ```yaml
 server:
@@ -49,6 +50,9 @@ management:
     health:
       probes:
         enabled: true
+      group:
+        readiness:
+          include: readinessState,db
 ```
 
 ## 비밀값과 자격증명 주입
@@ -81,7 +85,7 @@ spring:
 | `GOOGLE_CLIENT_ID` | 로그인에 필요 | `unset`으로 기동은 되고 인가 요청 URL 생성까지만 동작 |
 | `GOOGLE_CLIENT_SECRET` | 로그인에 필요 | 위와 같음 |
 
-`JWT_PRIVATE_KEY`는 RSA 2048 이상 PKCS#8 PEM입니다. 셋 중 **이것만 기동을 막습니다** — 임시 키를 만들면 파드마다 서명 키가 달라져 스케일아웃·재시작 때 전면 로그아웃이 되므로, 조용히 망가지는 것보다 뜨지 않는 편을 택했습니다([BD-29](../backend/decisions/BD-29-jwt-rs256-key-management.md)).
+`JWT_PRIVATE_KEY`는 RSA 2048 이상 PKCS#8 PEM입니다. 셋 중 **이것만 기동을 막습니다** — 임시 키를 만들면 파드마다 서명 키가 달라져 스케일아웃·재시작 때 전면 로그아웃이 되므로, 조용히 망가지는 것보다 뜨지 않는 편을 택했습니다([BD-31](../backend/decisions/BD-31-jwt-rs256-key-management.md)).
 
 ```yaml
 pinlog:
@@ -127,7 +131,7 @@ spring:
 ## 설정 변경 검증
 
 - 설정 변경은 애플리케이션 기동과 관련 통합 테스트로 검증합니다. DB가 필요한 테스트는 PostgreSQL Testcontainers를 사용합니다([테스트 규약](testing-conventions.md)).
-- 헬스체크·actuator 노출을 바꾸면 `DeploymentContractTests`가 여전히 통과하는지 확인합니다.
+- 헬스체크·actuator 노출을 바꾸면 `DeploymentContractTests`가 여전히 통과하는지 확인합니다. probe 그룹 구성은 `ReadinessProbeDatabaseOutageTests`(DB가 안 닿을 때 readiness가 UP이 아니고 liveness는 UP)와 `ReadinessProbeRedisOutageTests`(Redis가 안 닿아도 readiness는 UP)가 함께 감시합니다.
 
 ## 체크리스트
 
@@ -136,5 +140,6 @@ spring:
 - [ ] `ddl-auto=validate`이고 스키마는 Flyway가 관리한다
 - [ ] `open-in-view=false`이고, 연관 조회는 `fetch join`이나 전용 메서드로 명시한다
 - [ ] actuator는 `health`·`prometheus`만 노출한다 (둘 다 필수)
+- [ ] readiness 그룹은 `readinessState,db`이고, `redis`와 liveness 그룹은 건드리지 않았다
 - [ ] 비밀값은 `DB_PASSWORD`만 환경변수이고, 주소·사용자명은 프로파일 파일에 있다
 - [ ] 환경별 차이만 프로파일에 두고 공통값을 복제하지 않았다

@@ -25,7 +25,7 @@ import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 
 /**
- * 세션 JWT를 발급하고 검증한다(BD-21·BD-29).
+ * 세션 JWT를 발급하고 검증한다(BD-21·BD-31).
  *
  * <p><b>검증 알고리즘을 고정한다.</b> {@link JWSVerificationKeySelector}에 RS256만 넘기므로
  * 토큰 헤더의 {@code alg}가 무엇이든 그 값으로 검증하지 않는다. RFC 8725 §3.1이 요구하는 지점이며,

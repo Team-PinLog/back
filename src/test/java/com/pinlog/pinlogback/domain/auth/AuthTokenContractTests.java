@@ -18,7 +18,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import com.nimbusds.jwt.SignedJWT;
 
 /**
- * 토큰 발급·검증·회전 계약을 HTTP 경계에서 검증한다(인증 PR 계약 5, BD-21·BD-29).
+ * 토큰 발급·검증·회전 계약을 HTTP 경계에서 검증한다(인증 PR 계약 5, BD-21·BD-31).
  *
  * <p>쿠키를 {@code CookieManager}에 맡기지 않고 {@code Set-Cookie} 헤더를 직접 읽는다. 두 가지
  * 이유가 있다. 첫째, 검증 대상이 <b>속성 자체</b>(HttpOnly·Secure·SameSite·Path)라서 파싱된

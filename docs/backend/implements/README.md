@@ -23,4 +23,13 @@
 | BI-05 | SIGTERM graceful shutdown + liveness·readiness probe 계약 테스트 (S15P11A705-51) | ✅ 완료 | [BI-05](BI-05-2026-07-27-graceful-shutdown.md) |
 | BI-06 | Infra 배포 연동 체크리스트 검증 + pgvector `0.8.5-pg16` 정렬 (S15P11A705-51) | ✅ 완료 | [BI-06](BI-06-2026-07-27-deployment-contract-verification.md) |
 | BI-07 | 프레임워크 예외를 catch-all 500이 아니라 자체 상태 코드로 매핑 (S15P11A705-40) | ✅ 완료 | [BI-07](BI-07-2026-07-27-framework-error-mapping.md) |
-| BI-08 | 쿠키 기반 세션 JWT — RS256 발급·검증 필터·Redis Refresh 회전 (S15P11A705-63) | ✅ 완료 | [BI-08](BI-08-2026-07-28-jwt-cookie-session.md) |
+| BI-08 | core 스키마 마이그레이션과 도메인 엔티티·리포지토리 기반 구축 (S15P11A705-66) | ✅ 완료 | [BI-08](BI-08-2026-07-28-core-domain-foundation.md) |
+| BI-09 | Record·Context API와 인증 스텁, 지도 마커 (S15P11A705-67) | ✅ 완료 | [BI-09](BI-09-2026-07-28-record-context-api.md) |
+| BI-10 | Collection 생성·조회·편집 API (S15P11A705-68) | ✅ 완료 | [BI-10](BI-10-2026-07-28-collection-api.md) |
+| BI-11 | Follow와 Shelf 기반 Library 조회 API (S15P11A705-69) | ✅ 완료 | [BI-11](BI-11-2026-07-28-follow-library-api.md) |
+| BI-12 | Record/Context/Collection 삭제와 연쇄 트랜잭션 (S15P11A705-70) | ✅ 완료 | [BI-12](BI-12-2026-07-28-deletion-cascade.md) |
+| BI-13 | 타인 조회 공개 범위 필터와 식별자 은닉 (S15P11A705-71) | ✅ 완료 | [BI-13](BI-13-2026-07-28-public-scope-filter.md) |
+| BI-14 | 같은 장소 동시 저장을 충돌 없는 INSERT로 수렴 (S15P11A705-105) | ✅ 완료 | [BI-14](BI-14-2026-07-28-record-create-conflict-free-insert.md) |
+| BI-15 | 중복 팔로우 경합을 500이 아니라 409로 거절 (S15P11A705-104) | ✅ 완료 | [BI-15](BI-15-2026-07-28-duplicate-follow-race.md) |
+| BI-16 | 요청 입력 크기 상한 — recordIds 100개·Context 본문 500자 (S15P11A705-117) | ✅ 완료 | [BI-16](BI-16-2026-07-28-input-size-limits.md) |
+| BI-17 | 쿠키 기반 세션 JWT — RS256 발급·검증 필터·Redis Refresh 회전 (S15P11A705-63) | ✅ 완료 | [BI-17](BI-17-2026-07-28-jwt-cookie-session.md) |

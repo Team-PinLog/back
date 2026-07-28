@@ -32,7 +32,7 @@ class JwtKeyProviderTest {
 	@DisplayName("운영 프로파일에서 키가 없으면 기동에 실패한다")
 	void failsFastInProductionWithoutKey() {
 		// 임시 키를 만들면 파드마다 서명 키가 달라져 스케일아웃·재시작 때 전면 로그아웃이 된다.
-		// 조용히 망가지는 것보다 뜨지 않는 편이 낫다(BD-29).
+		// 조용히 망가지는 것보다 뜨지 않는 편이 낫다(BD-31).
 		MockEnvironment prod = new MockEnvironment();
 		prod.setActiveProfiles("prod");
 

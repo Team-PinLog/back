@@ -8,7 +8,7 @@
  * <p>패키지로 가른 이유는 이것이 <b>인증 로직이 아니라 응답 형식</b>의 관심사이기 때문이다.
  * 인증 방식이 바뀌어도 이 세 클래스는 그대로다.
  *
- * <p>{@link org.jspecify.annotations.NullMarked}로 선언한다(BD-27). <b>패키지 애노테이션은 하위
+ * <p>{@link org.jspecify.annotations.NullMarked}로 선언한다(BD-29). <b>패키지 애노테이션은 하위
  * 패키지로 상속되지 않으므로</b> 상위 {@code global.security}의 선언에 기대면 안 된다.
  */
 @NullMarked

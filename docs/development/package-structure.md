@@ -28,7 +28,7 @@ com.pinlog.pinlogback
    ├─ exception                # 공통 예외 정의·전역 핸들러
    ├─ response                 # 공통 응답 타입 (ApiResponse·ErrorResponse·CursorPage·Cursor)
    ├─ web                      # 서블릿·MVC 확장 (ResponseBodyAdvice·Filter)
-   └─ security                 # 인증·인가 (별도 인증 PR에서 생성)
+   └─ security                 # 인증·인가. 지금은 인증 스텁(@LoginMember·MemberPrincipal·리졸버)만 있다
 ```
 
 `response`와 `web`을 나눈 기준: `response`는 **직렬화되는 계약 타입**(응답 JSON의 형태 그 자체)이고, `web`은 그 계약을 **요청·응답 파이프라인에 적용하는 장치**입니다. 공통 응답 타입을 추가할 때는 `response`, advice·filter·interceptor·argument resolver는 `web`에 둡니다.
@@ -81,7 +81,7 @@ com.pinlog.pinlogback
   - `security/authentication/LoginMemberArgumentResolverConfig` — `@LoginMember` 리졸버를 MVC에 등록합니다. `WebMvcConfigurer`는 여러 개가 공존할 수 있으므로, 일반 MVC 설정이 필요해지면 `global/config`에 따로 만들면 됩니다. 하나의 거대한 configurer로 모으지 않습니다.
 - 어느 하위 패키지에도 속하지 않는 것은 `security` 루트에 둡니다(현재 `CsrfCookieFilter` 하나). **억지로 끼워 넣지 않습니다** — 이름이 거짓말이 되는 쪽이 더 비쌉니다.
 
-> **하위 패키지에 클래스를 추가할 때**: `@NullMarked`는 **하위 패키지로 상속되지 않습니다.** 새 하위 패키지를 만들면 `package-info.java`에 직접 선언해야 하고, 빠뜨리면 컴파일은 통과하지만 `@Nullable` 표기가 조용히 무의미해집니다([BD-27](../backend/decisions/BD-27-nullmarked-security-package.md)).
+> **하위 패키지에 클래스를 추가할 때**: `@NullMarked`는 **하위 패키지로 상속되지 않습니다.** 새 하위 패키지를 만들면 `package-info.java`에 직접 선언해야 하고, 빠뜨리면 컴파일은 통과하지만 `@Nullable` 표기가 조용히 무의미해집니다([BD-29](../backend/decisions/BD-29-nullmarked-security-package.md)).
 
 ## 테스트 패키지
 

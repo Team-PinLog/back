@@ -8,7 +8,7 @@
  * <p>세 클래스 모두 Spring Security OAuth2 Client의 확장점 구현이다. 경계가 프레임워크 쪽에
  * 이미 그어져 있어 응집이 자연스럽다.
  *
- * <p>{@link org.jspecify.annotations.NullMarked}로 선언한다(BD-27). <b>패키지 애노테이션은 하위
+ * <p>{@link org.jspecify.annotations.NullMarked}로 선언한다(BD-29). <b>패키지 애노테이션은 하위
  * 패키지로 상속되지 않으므로</b> 상위 {@code global.security}의 선언에 기대면 안 된다.
  */
 @NullMarked

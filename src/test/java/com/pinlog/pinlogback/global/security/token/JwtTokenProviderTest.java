@@ -38,14 +38,14 @@ class JwtTokenProviderTest {
 		JWSHeader header = SignedJWT.parse(tokenProvider.issueAccessToken(1L)).getHeader();
 
 		assertThat(header.getAlgorithm()).isEqualTo(JWSAlgorithm.RS256);
-		// kid가 없으면 나중에 키를 회전할 때 신·구 키를 구분할 수 없어 전면 로그아웃이 강제된다(BD-29).
+		// kid가 없으면 나중에 키를 회전할 때 신·구 키를 구분할 수 없어 전면 로그아웃이 강제된다(BD-31).
 		assertThat(header.getKeyID()).isNotBlank();
 	}
 
 	@Test
 	@DisplayName("kid는 키가 같으면 같은 값이다")
 	void keyIdIsDerivedFromTheKeyNotRandom() {
-		// 난수면 같은 키를 쓰는 파드끼리 kid가 달라져 회전 시 값이 없어진다(BD-29).
+		// 난수면 같은 키를 쓰는 파드끼리 kid가 달라져 회전 시 값이 없어진다(BD-31).
 		JwtKeyProvider sameKeyAgain = new JwtKeyProvider(properties, new MockEnvironment());
 
 		assertThat(keyProvider.rsaKey().getKeyID()).isEqualTo(keyProvider.rsaKey().getKeyID());

@@ -77,7 +77,7 @@ For example, on `feat/S15P11A705-14-member-search` a commit reads `feat(S15P11A7
 
 The backend foundation reset is an exception: it is tracked solely by [GitHub Issue #9](https://github.com/Team-PinLog/back/issues/9) without Jira, and that exception applies to its branch names, commit messages, and PRs. It does not apply to normal work, which keeps using Jira keys.
 
-Never push directly to `dev`. Submit changes as PRs that pass the branch protection rules: `backend-ci / check`, one approval, and conversation resolution. These rules apply to admins too.
+Never push directly to `dev`. Submit changes as PRs that pass the branch protection rules: `backend-ci / check` and conversation resolution. These rules apply to admins too. **Approving reviews are not required** — the org standard sets the count to 0 because a single-operator team gains nothing from a formal self-approval ([infra git-governance](https://github.com/Team-PinLog/infra/blob/main/docs/git-governance.md)). Review still happens; it just is not a merge gate.
 
 ## Before and during implementation
 
@@ -135,7 +135,7 @@ Every rule has exactly one **authoritative** enforcement point. Anything else th
 | Applied Flyway migrations are never modified | `backend-ci / check` — "Verify applied migrations were not modified" | [database convention](docs/development/database-conventions.md), PR review |
 | Duplicate migration versions | `FlywayMigrationTests` (Flyway fails on duplicate versions) | migration [README](src/main/resources/db/migration/README.md) |
 | Jira key in branch, commit, PR | PR review + [Jira automation](docs/development/jira-workflow.md) | `/pr` skill |
-| Approval, conversation resolution, squash merge | Branch protection on `dev` | [workflow](docs/development/workflow.md) |
+| Conversation resolution, squash merge | Branch protection on `dev` (approving reviews: 0) | [workflow](docs/development/workflow.md) |
 | Migration version ranges per part (V2–V99, V100–V199) | PR review — deliberately not automated (a wrong-range file is still valid SQL, and false blocks cost more than the rule is worth) | migration README |
 
 Before adding a new rule, decide its enforcement point first. Prefer CI: it runs in one known environment and fails loudly. Local mechanisms (Claude Code hooks, git hooks) fail **open and silently** — when they break, nothing tells you, and an invisible safety net is worse than none because people rely on it.

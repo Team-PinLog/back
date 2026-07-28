@@ -5,7 +5,7 @@
  * 모두 {@code global.security} 아래에 있다 — 설정과 그 설정이 조립하는 구현이 떨어져 있으면
  * 한쪽만 고치게 된다.
  *
- * <p>{@link org.jspecify.annotations.NullMarked}로 선언한다(BD-27). 마킹 시점에 전수 감사했고
+ * <p>{@link org.jspecify.annotations.NullMarked}로 선언한다(BD-29). 마킹 시점에 전수 감사했고
  * {@code ApiResponseOpenApiCustomizer}의 두 파라미터를 바로잡았다 — 이미 {@code null} 방어 분기를
  * 갖고 있었으나 표기가 없어 거짓 보증이던 자리다.
  */

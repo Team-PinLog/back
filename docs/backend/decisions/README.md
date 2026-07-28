@@ -88,6 +88,8 @@
 | [BD-24](BD-24-foundation-reset.md) | 파운데이션 리셋 — 초기 설정을 최신 `dev`에서 작은 PR로 다시 구성 | Accepted | Issue #9 |
 | [BD-25](BD-25-context-origin-created-at.md) | Context 최초 작성 시각 보존 — `origin_created_at`, 목록은 오래된순 (BD-07 트리거 발동) | Accepted | docs#16 |
 | [BD-26](BD-26-flyway-out-of-order.md) | 버전 구간 소유를 유지하고 Flyway `out-of-order`를 허용 (BT-02 해소) | Accepted | S15P11A705-86 |
-| [BD-27](BD-27-nullmarked-security-package.md) | `global/security`를 패키지 단위 `@NullMarked`로 선언(파라미터별 `@NonNull` 대신) | Accepted | S15P11A705-63 |
-| [BD-28](BD-28-authorization-request-in-cookie.md) | 인가 요청(state·PKCE verifier)을 `HttpSession` 대신 쿠키에 — 서명 없이 역직렬화 허용목록으로 | Accepted | S15P11A705-63 |
-| [BD-29](BD-29-jwt-rs256-key-management.md) | 세션 JWT를 RS256으로 서명, 키는 환경변수 주입 + 운영 fail-fast (`kid` 선반영, JWKS 없음) | Accepted | S15P11A705-63 |
+| [BD-27](BD-27-coverage-gate-bundle-80.md) | 커버리지 게이트를 BUNDLE 기준 LINE·BRANCH 80%로, 진입점은 집계 제외 | Accepted | S15P11A705-103 |
+| [BD-28](BD-28-readiness-includes-db.md) | readiness 그룹에 `db`를 넣고 `redis`는 넣지 않는다 | Accepted | S15P11A705-106 |
+| [BD-29](BD-29-nullmarked-security-package.md) | `global/security`를 패키지 단위 `@NullMarked`로 선언(파라미터별 `@NonNull` 대신) | Accepted | S15P11A705-63 |
+| [BD-30](BD-30-authorization-request-in-cookie.md) | 인가 요청(state·PKCE verifier)을 `HttpSession` 대신 쿠키에 — 서명 없이 역직렬화 허용목록으로 | Accepted | S15P11A705-63 |
+| [BD-31](BD-31-jwt-rs256-key-management.md) | 세션 JWT를 RS256으로 서명, 키는 환경변수 주입 + 운영 fail-fast (`kid` 선반영, JWKS 없음) | Accepted | S15P11A705-63 |

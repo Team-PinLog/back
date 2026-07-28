@@ -3,7 +3,7 @@
 - **상태**: Accepted
 - **날짜**: 2026-07-28
 - **관련**: S15P11A705-63
-- **관련 결정**: [BD-21](BD-21-auth-token-model.md)(토큰 모델의 원본) · [BD-28](BD-28-authorization-request-in-cookie.md)
+- **관련 결정**: [BD-21](BD-21-auth-token-model.md)(토큰 모델의 원본) · [BD-30](BD-30-authorization-request-in-cookie.md)
 
 ## 맥락
 

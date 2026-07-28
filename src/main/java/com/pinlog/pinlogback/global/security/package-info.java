@@ -32,7 +32,7 @@
  *
  * <p><b>하위 패키지에 클래스를 추가할 때</b>: 패키지 애노테이션은 상속되지 않으므로 이
  * 선언({@link org.jspecify.annotations.NullMarked})이 하위 패키지에 적용되지 않는다. 각
- * 하위 패키지가 자기 {@code package-info}에 따로 선언하고 있다(BD-27).
+ * 하위 패키지가 자기 {@code package-info}에 따로 선언하고 있다(BD-29).
  */
 @NullMarked
 package com.pinlog.pinlogback.global.security;

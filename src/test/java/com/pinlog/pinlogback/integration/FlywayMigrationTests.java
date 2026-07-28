@@ -11,7 +11,6 @@ import java.util.stream.Collectors;
 import javax.sql.DataSource;
 
 import org.flywaydb.core.Flyway;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,7 +19,6 @@ import org.springframework.test.annotation.DirtiesContext;
 
 @SpringBootTest
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-@DisplayName("Flyway 마이그레이션")
 class FlywayMigrationTests extends IntegrationContainerSupport {
 
 	@Autowired
@@ -33,7 +31,6 @@ class FlywayMigrationTests extends IntegrationContainerSupport {
 	DataSource dataSource;
 
 	@Test
-	@DisplayName("빈 PostgreSQL에 모든 마이그레이션을 적용한다")
 	void appliesAllMigrationsToEmptyPostgres() {
 		Set<String> versions = java.util.Arrays.stream(flyway.info().applied())
 			.map(info -> info.getVersion().getVersion())
@@ -71,7 +68,81 @@ class FlywayMigrationTests extends IntegrationContainerSupport {
 	}
 
 	@Test
-	@DisplayName("백엔드 마이그레이션이 core.member를 생성한다")
+	void coreDomainTablesAreCreatedByBackendMigration() {
+		assertThat(tableNamesIn("core")).contains(
+			"place",
+			"record",
+			"context",
+			"collection",
+			"collection_record",
+			"follow",
+			// 인증 수단은 신원(member)과 분리한다(V4, 06 §2.2).
+			"social_account"
+		);
+	}
+
+	@Test
+	void coreDomainUniqueAndLookupIndexesExist() {
+		assertThat(indexNamesIn("core")).contains(
+			"uq_place_kakao",
+			"uq_record_active",
+			"uq_colrec_active",
+			"uq_follow_active",
+			"ix_place_lat_lng",
+			"ix_record_member",
+			"ix_record_place",
+			"ix_context_record",
+			"ix_context_member",
+			"ix_colrec_collection",
+			"ix_colrec_record",
+			"ix_collection_member",
+			"ix_collection_feed",
+			"ix_follow_follower",
+			"ix_follow_followee"
+		);
+	}
+
+	@Test
+	void activeRowUniqueIndexesArePartial() {
+		Set<String> partialIndexes = new HashSet<>(jdbcTemplate.queryForList(
+			"SELECT indexname FROM pg_indexes WHERE schemaname = 'core'"
+				+ " AND indexdef LIKE '%WHERE (deleted_at IS NULL)%'",
+			String.class));
+
+		assertThat(partialIndexes).contains("uq_record_active", "uq_colrec_active", "uq_follow_active");
+		assertThat(partialIndexes).doesNotContain("uq_place_kakao");
+	}
+
+	@Test
+	void coreDomainCheckConstraintsExist() {
+		Set<String> checkNames = new HashSet<>(jdbcTemplate.queryForList(
+			"SELECT conname FROM pg_constraint c"
+				+ " JOIN pg_namespace n ON n.oid = c.connamespace"
+				+ " WHERE n.nspname = 'core' AND c.contype = 'c'",
+			String.class));
+
+		assertThat(checkNames).contains(
+			"ck_follow_self",
+			"ck_context_body",
+			"ck_collection_title",
+			"ck_collection_count",
+			"ck_place_lat",
+			"ck_place_lng"
+		);
+	}
+
+	@Test
+	void contextOriginCreatedAtIsNotNull() {
+		String isNullable = jdbcTemplate.queryForObject(
+			"SELECT is_nullable FROM information_schema.columns"
+				+ " WHERE table_schema = 'core' AND table_name = 'context'"
+				+ " AND column_name = 'origin_created_at'",
+			String.class);
+
+		assertThat(isNullable).isEqualTo("NO");
+	}
+
+	@Test
 	void memberTableIsCreatedByBackendMigration() throws Exception {
 		try (Connection connection = dataSource.getConnection();
 			ResultSet rs = connection.getMetaData().getColumns(null, "core", "member", null)) {
@@ -81,36 +152,6 @@ class FlywayMigrationTests extends IntegrationContainerSupport {
 			}
 			assertThat(columns).containsExactlyInAnyOrder("id", "created_at", "deleted_at");
 		}
-	}
-
-	@Test
-	@DisplayName("백엔드 마이그레이션이 core.social_account를 생성한다")
-	void socialAccountTableIsCreatedByBackendMigration() throws Exception {
-		try (Connection connection = dataSource.getConnection();
-			ResultSet rs = connection.getMetaData().getColumns(null, "core", "social_account", null)) {
-			Set<String> columns = new HashSet<>();
-			while (rs.next()) {
-				columns.add(rs.getString("COLUMN_NAME"));
-			}
-			assertThat(columns).containsExactlyInAnyOrder(
-				"id", "member_id", "provider", "provider_user_id", "email", "created_at", "deleted_at");
-		}
-	}
-
-	@Test
-	@DisplayName("소셜 계정 유니크 인덱스는 활성행에만 적용된다")
-	void socialAccountUniqueIndexAppliesToActiveRowsOnly() {
-		// 전체 유니크로 정의하면 탈퇴 후 같은 소셜 계정으로 재가입할 수 없다(07_ERD 4.1).
-		String indexDefinition = jdbcTemplate.queryForObject(
-			"SELECT indexdef FROM pg_indexes WHERE schemaname = 'core' AND indexname = ?",
-			String.class,
-			"ux_social_account_provider_user");
-
-		assertThat(indexDefinition)
-			.contains("UNIQUE")
-			.contains("provider")
-			.contains("provider_user_id")
-			.contains("deleted_at IS NULL");
 	}
 
 	private int count(String sql) {

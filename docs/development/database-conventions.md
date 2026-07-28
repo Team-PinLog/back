@@ -93,12 +93,25 @@ CI의 `FlywayMigrationTests`는 **빈 DB에 전체 migration을 적용하는 것
   - **주의**: `@EntityListeners(AuditingEntityListener.class)`는 `BaseEntity`에 선언되어 있고 **상속되지 않습니다.** `BaseEntity`를 상속하지 않는 엔티티(`place`)는 `@CreatedDate`(및 `@LastModifiedDate`)를 쓰려면 이 어노테이션을 엔티티에 직접 붙여야 합니다. 붙이지 않으면 감사 리스너가 동작하지 않아 `created_at`이 채워지지 않은 채(`null`) INSERT되고, DB의 `DEFAULT now()`는 Hibernate가 매핑 컬럼에 명시적으로 `NULL`을 쓰기 때문에 구제해주지 않아 `NOT NULL` 제약 위반으로 저장이 실패합니다.
 - soft delete의 실동작은 **엔티티마다** 명시합니다. 테이블명이 필요해 상속으로 공유할 수 없습니다.
 - **`@SQLDelete`는 엔티티 단위 삭제(`repository.delete(entity)` 등)에만 적용됩니다.** `deleteAllInBatch()`, `deleteAllByIdInBatch()`, bulk JPQL `delete` 쿼리는 `@SQLDelete`를 거치지 않고 `@SQLRestriction`도 덧붙지 않는 **물리 삭제**입니다. soft delete가 계약인 테이블(`member` 등)에서는 이 벌크 삭제 메서드들을 사용하지 않습니다 — 삭제되지 않은 행까지 포함해 물리적으로 지워질 수 있습니다.
-- **soft delete 쓰기 경로의 기준 시각이 둘로 갈립니다.** `Member`의 `@SQLDelete`는 DB 시각(`now()`)을, `BaseEntity.softDelete()`는 애플리케이션 시각(`Instant.now()`)을 씁니다. 또한 `repository.delete(entity)` 호출 후에도 메모리상의 `entity` 인스턴스는 다시 조회하기 전까지 `isDeleted() == false`를 반환합니다 — `@SQLDelete`는 DB 행만 갱신할 뿐 영속성 컨텍스트의 필드는 갱신하지 않기 때문입니다.
-
 ```java
 @SQLDelete(sql = "UPDATE core.member SET deleted_at = now() WHERE id = ?")
 @SQLRestriction("deleted_at IS NULL")
 ```
+
+### 삭제하는 방법은 `softDelete()`입니다 — `@SQLDelete`는 안전망입니다
+
+soft delete를 일으키는 경로가 둘 있습니다. **역할이 다르므로 골라 쓰는 것이 아닙니다.**
+
+| | 역할 | 언제 |
+| --- | --- | --- |
+| `BaseEntity.softDelete()` + `save` | **정식 경로.** 도메인 코드가 삭제할 때 쓴다 | 항상 이것을 씁니다 |
+| `@SQLDelete` | **안전망.** 실수로 물리 삭제가 나가는 것을 막는다 | 누가 `repository.delete()`나 cascade를 호출했을 때 |
+
+`softDelete()`를 정식 경로로 두는 이유는 **호출 직후 메모리의 엔티티가 이미 삭제된 상태로 보인다**는 것입니다. `repository.delete(entity)`는 DB 행만 갱신하므로 같은 인스턴스가 다시 조회되기 전까지 `isDeleted() == false`를 반환합니다 — 그 인스턴스를 보고 판단하는 코드가 조용히 틀립니다. 두 경로의 이 차이는 `MemberSoftDeleteTests`가 각각 고정하고 있습니다.
+
+`@SQLDelete`를 떼지 않는 이유는 그것이 유일한 안전망이기 때문입니다. 떼면 `repository.delete()`·`deleteById()`·`CascadeType.REMOVE`가 전부 **물리 삭제**로 돌아가고, 복원할 수 없는 테이블에서 행이 사라집니다.
+
+**감수하는 것: 기준 시각이 경로에 따라 갈립니다.** `@SQLDelete`는 DB 시각(`now()`)을, `softDelete()`는 애플리케이션 시각(`Instant.now()`)을 씁니다. 한 행에 두 시각이 섞이는 것은 아니고 행마다 출처가 다를 뿐이며, 정식 경로만 쓰면 항상 애플리케이션 시각입니다. 완전히 통일하려면 `repository.delete()`를 호출할 수 없게 만들어야(리포지토리에서 삭제 메서드를 노출하지 않아야) 하는데, 그건 모든 리포지토리가 `JpaRepository` 편의를 포기하는 큰 변경이라 택하지 않았습니다.
 
 - `@SQLRestriction`이 걸린 엔티티는 삭제된 행을 조회할 수 없으므로 **복원 기능을 제공하지 않습니다.** 복원이 필요해지면 native 쿼리 또는 Hibernate filter opt-out을 함께 도입합니다.
 - 엔티티는 `@Table(schema = "core")`로 스키마를 명시합니다. 전역 `default_schema` 설정을 쓰지 않습니다.

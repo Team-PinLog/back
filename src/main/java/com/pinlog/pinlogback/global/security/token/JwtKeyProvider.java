@@ -21,7 +21,7 @@ import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.RSAKey;
 
 /**
- * 세션 JWT 서명 키를 공급한다(BD-29).
+ * 세션 JWT 서명 키를 공급한다(BD-31).
  *
  * <p>키를 주입받지 못했을 때 동작이 프로파일에 따라 갈린다.
  *

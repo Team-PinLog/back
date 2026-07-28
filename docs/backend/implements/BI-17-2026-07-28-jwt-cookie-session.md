@@ -3,7 +3,7 @@
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-28
 - **관련**: S15P11A705-63
-- **근거 결정**: [BD-21](../decisions/BD-21-auth-token-model.md)(토큰 모델) · [BD-29](../decisions/BD-29-jwt-rs256-key-management.md)(알고리즘·키 관리)
+- **근거 결정**: [BD-21](../decisions/BD-21-auth-token-model.md)(토큰 모델) · [BD-31](../decisions/BD-31-jwt-rs256-key-management.md)(알고리즘·키 관리)
 - **계약**: [인증 PR 계약](../../development/authentication.md)
 
 ## 무엇을 만들었나
@@ -75,7 +75,7 @@ nimbus `DefaultJWTClaimsVerifier`의 기본 시계 오차다. 처음에 `-1초` 
 
 ## JSpecify 마킹 확대
 
-[BD-27](../decisions/BD-27-nullmarked-security-package.md)이 `global/security`만 `@NullMarked`로 선언해 둔 상태였다. 그 기준("전수 감사 비용이 작고 다른 파트 소유 파일이 안 섞일 것")을 그대로 적용해 `global/config`와 `domain/auth/{controller,dto,service,exception}`을 추가로 마킹했다.
+[BD-29](../decisions/BD-29-nullmarked-security-package.md)이 `global/security`만 `@NullMarked`로 선언해 둔 상태였다. 그 기준("전수 감사 비용이 작고 다른 파트 소유 파일이 안 섞일 것")을 그대로 적용해 `global/config`와 `domain/auth/{controller,dto,service,exception}`을 추가로 마킹했다.
 
 **마킹하지 않으면 `@Nullable`이 아무 의미도 없다.** `JwtProperties.privateKey`에 표기를 붙여 뒀지만 `global/config`가 미마킹이라 도구가 무시하고 있었다. 이 사실이 `JwtKeyProviderTest`에서 `properties(null)` 경고로 드러났다.
 

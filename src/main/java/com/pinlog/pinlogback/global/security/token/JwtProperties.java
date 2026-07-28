@@ -6,7 +6,7 @@ import org.jspecify.annotations.Nullable;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * 세션 JWT 설정(BD-29). 수명 값의 원본은 BD-21이다.
+ * 세션 JWT 설정(BD-31). 수명 값의 원본은 BD-21이다.
  *
  * @param privateKey RS256 개인키(PKCS#8 PEM). 비어 있으면 로컬·테스트는 임시 키쌍을 만들고
  *                   운영 프로파일은 기동에 실패한다 — 파드마다 다른 키가 생기면 스케일아웃 때
