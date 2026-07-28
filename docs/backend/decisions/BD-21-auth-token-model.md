@@ -56,7 +56,7 @@ MVP 로그인은 Google·Kakao·Naver 소셜 로그인만 제공한다. 소셜 �
 - **무효화 지연** — 로그아웃해도 발급된 Access는 최대 30분 유효하다. 즉시 차단하려면 별도 블랙리스트가 필요하다.
 - **Redis 의존** — 장애 시 재발급이 막혀 세션이 30분 안에 끊긴다. 인증 경로가 캐시 계층의 가용성에 묶인다.
 - **같은 오리진 전제** — 프론트와 API를 분리 배포하면 `SameSite`와 CORS 자격증명 설정을 다시 설계해야 한다.
-- **envelope 예외** — 인증 Endpoint만 응답 형식이 다르다. `ApiResponseBodyAdvice` 제외 대상 관리가 필요하다.
+- **envelope 예외** — 인증 Endpoint의 성공 응답만 형식이 다르다(봉투 없음). 다만 그 응답이 전부 본문 없는 `302`·`204`라서 `ApiResponseBodyAdvice`가 이미 통과시키므로 **제외 장치는 필요 없다.** 대신 "성공 응답에 본문을 만들지 않는다"가 계약이 되어, 나중에 본문을 추가하려면 봉투 적용 여부를 다시 판단해야 한다.
 - **`@RestControllerAdvice` 밖의 응답** — Security의 401·403 entry point는 공통 envelope를 거치지 않으므로 직접 `ApiResponse.fail(...)`을 만들어야 한다([BD-06](BD-06-framework-error-mapping.md)).
 
 **재검토 트리거**

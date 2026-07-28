@@ -76,9 +76,13 @@ testImplementation 'org.springframework.security:spring-security-test'
 
 ### 공통 응답 envelope의 예외
 
-인증 엔드포인트는 `Set-Cookie`로만 응답하고 본문에 토큰을 담지 않으므로 성공 응답에 공통 envelope가 적용되지 않습니다([BD-21](../backend/decisions/BD-21-auth-token-model.md)). 그런데 `global/web/ApiResponseBodyAdvice`는 `domain` 패키지 컨트롤러의 응답을 **무조건** 감쌉니다 — `domain/auth/controller`도 대상입니다. 인증 PR은 이 제외를 **advice의 판정 조건을 바꾸는 방식이 아니라 명시적인 opt-out 장치로** 처리하고, 그 장치를 [API 규약](api-conventions.md)에 함께 기록합니다. 판정 조건을 바꾸면 도메인 전체의 envelope 계약이 흔들립니다.
+인증 엔드포인트의 **성공 응답에는 envelope가 적용되지 않습니다.** 공용 계약이 정한 응답이 전부 본문이 없기 때문입니다 — 콜백은 `302`+`Set-Cookie`, 재발급과 로그아웃은 `204`입니다([08_API_명세 §3.2~3.4](https://github.com/Team-PinLog/docs/blob/main/static/08_API_명세.md)).
 
-오류 응답은 반대로 **envelope를 지켜야** 합니다. Spring Security의 401·403 entry point·handler는 `@RestControllerAdvice` 밖이라 `GlobalExceptionHandler`를 거치지 않으므로, 이 컴포넌트들이 `ApiResponse.fail(...)`을 직접 만들어 써야 합니다([에러 처리 규약](error-handling.md)).
+**그래서 제외 장치를 따로 만들 필요가 없습니다.** `global/web/ApiResponseBodyAdvice`는 `body == null`이면 그대로 `null`을 반환하므로, 본문 없는 응답은 `domain` 패키지 컨트롤러여도 감싸지지 않습니다(`ApiResponseBodyAdviceTest`의 `voidResponseHasEmptyBody`·`noContentEntityHasEmptyBody`가 이 동작을 고정합니다). advice의 판정 조건을 건드리지 마세요 — 도메인 전체의 envelope 계약이 흔들립니다.
+
+거꾸로 말하면 **인증 엔드포인트가 성공 응답에 본문을 만드는 순간 envelope가 적용됩니다.** 본문을 만들지 않는 것이 계약이고, 특히 토큰을 본문에 담지 않는 것은 쿠키를 택한 이유 그 자체입니다([BD-21](../backend/decisions/BD-21-auth-token-model.md)).
+
+오류 응답은 반대로 **envelope를 지켜야** 합니다(§1.5). `GlobalExceptionHandler`를 타는 예외는 자동으로 지켜지지만, Spring Security의 401·403 entry point·handler는 `@RestControllerAdvice` **밖**이라 핸들러를 거치지 않습니다. 이 컴포넌트들은 `ApiResponse.fail(...)`을 직접 만들어 써야 합니다([에러 처리 규약](error-handling.md)).
 
 ## 4. 로컬 개발 방법
 
