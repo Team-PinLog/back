@@ -16,7 +16,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 
-import com.pinlog.pinlogback.integration.PostgresContainerSupport;
+import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
 /**
  * 소셜 로그인 진입이 공급자 인가 페이지로 넘기는지 확인한다.
@@ -24,13 +24,10 @@ import com.pinlog.pinlogback.integration.PostgresContainerSupport;
  * <p>실제 자격증명이 없어도 검증된다. 인가 요청 URL을 만드는 데는 client-id 문자열만 필요하고
  * 공급자와 통신하지 않기 때문이다. CI에서도 그대로 돈다.
  */
-@SpringBootTest(
-	webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-	properties = "management.health.redis.enabled=false"
-)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @DisplayName("소셜 로그인 진입")
-class SocialLoginRedirectTests extends PostgresContainerSupport {
+class SocialLoginRedirectTests extends IntegrationContainerSupport {
 
 	private final HttpClient httpClient = HttpClient.newBuilder()
 		.followRedirects(HttpClient.Redirect.NEVER)

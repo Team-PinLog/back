@@ -17,23 +17,20 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import com.pinlog.pinlogback.domain.sample.EnvelopeTestController;
-import com.pinlog.pinlogback.integration.PostgresContainerSupport;
+import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * {@link PostgreSQLContainer}는 {@link PostgresContainerSupport}가 정적으로 시작해두므로 여기서는
+ * {@link PostgreSQLContainer}는 {@link IntegrationContainerSupport}가 정적으로 시작해두므로 여기서는
  * 직접 사용하지 않는다({@code @Testcontainers}는 다른 통합 테스트와의 관례를 맞추기 위해 유지).
  */
 @Testcontainers
 @Import(EnvelopeTestController.class)
-@SpringBootTest(
-	webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-	properties = "management.health.redis.enabled=false"
-)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-class ApiResponseOpenApiCustomizerTest extends PostgresContainerSupport {
+class ApiResponseOpenApiCustomizerTest extends IntegrationContainerSupport {
 
 	private final HttpClient httpClient = HttpClient.newHttpClient();
 	private final JsonMapper jsonMapper = JsonMapper.builder().build();

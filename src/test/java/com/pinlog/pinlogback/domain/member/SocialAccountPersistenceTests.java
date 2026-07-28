@@ -15,11 +15,11 @@ import com.pinlog.pinlogback.domain.member.entity.SocialAccount;
 import com.pinlog.pinlogback.domain.member.entity.SocialProvider;
 import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
 import com.pinlog.pinlogback.domain.member.repository.SocialAccountRepository;
-import com.pinlog.pinlogback.integration.PostgresContainerSupport;
+import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
-@SpringBootTest(properties = "management.health.redis.enabled=false")
+@SpringBootTest
 @DisplayName("SocialAccount 영속성")
-class SocialAccountPersistenceTests extends PostgresContainerSupport {
+class SocialAccountPersistenceTests extends IntegrationContainerSupport {
 
 	@Autowired
 	private MemberRepository memberRepository;

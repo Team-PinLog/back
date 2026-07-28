@@ -31,7 +31,7 @@ import org.springframework.test.annotation.DirtiesContext;
  */
 @SpringBootTest
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-class FlywayOutOfOrderTests extends PostgresContainerSupport {
+class FlywayOutOfOrderTests extends IntegrationContainerSupport {
 
 	private static final String SCRATCH_DATABASE = "bt02_out_of_order";
 

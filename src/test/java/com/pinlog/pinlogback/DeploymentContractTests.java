@@ -18,14 +18,11 @@ import org.springframework.boot.web.server.Shutdown;
 import org.springframework.boot.web.server.autoconfigure.ServerProperties;
 import org.springframework.test.annotation.DirtiesContext;
 
-import com.pinlog.pinlogback.integration.PostgresContainerSupport;
+import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
-@SpringBootTest(
-	webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-	properties = "management.health.redis.enabled=false"
-)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-class DeploymentContractTests extends PostgresContainerSupport {
+class DeploymentContractTests extends IntegrationContainerSupport {
 
 	private final HttpClient httpClient = HttpClient.newHttpClient();
 

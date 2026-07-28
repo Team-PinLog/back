@@ -14,7 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 
-import com.pinlog.pinlogback.integration.PostgresContainerSupport;
+import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
 /**
  * 인증 도입으로 생긴 경로·응답 계약을 검증한다.
@@ -22,13 +22,10 @@ import com.pinlog.pinlogback.integration.PostgresContainerSupport;
  * <p>Security 필터 체인은 {@code @RestControllerAdvice} 바깥에서 동작하므로
  * 401·403 응답이 공통 envelope를 따르는지 별도로 확인해야 한다.
  */
-@SpringBootTest(
-	webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-	properties = "management.health.redis.enabled=false"
-)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @DisplayName("인증 경로·응답 계약")
-class SecurityContractTests extends PostgresContainerSupport {
+class SecurityContractTests extends IntegrationContainerSupport {
 
 	private final HttpClient httpClient = HttpClient.newHttpClient();
 

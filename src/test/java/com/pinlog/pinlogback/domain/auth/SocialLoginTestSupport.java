@@ -14,7 +14,7 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.util.UriComponentsBuilder;
 
-import com.pinlog.pinlogback.integration.PostgresRedisContainerSupport;
+import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
 /**
  * 소셜 로그인 흐름을 실제로 한 번 돌아야 하는 테스트의 기반.
@@ -23,9 +23,10 @@ import com.pinlog.pinlogback.integration.PostgresRedisContainerSupport;
  * 콜백까지 리다이렉트를 따라가는 절차를 모은다. 이 절차가 테스트마다 복제되면 콜백 경로나
  * state 전달 방식이 바뀔 때 고쳐야 할 곳이 늘어난다.
  *
- * <p>Redis가 필요한 이유: 로그인 성공이 Refresh를 저장하므로 Postgres만으로는 콜백이 실패한다.
+ * <p>로그인 성공이 Refresh를 Redis에 저장하므로 콜백을 타려면 Redis가 떠 있어야 한다.
+ * {@link IntegrationContainerSupport}가 항상 띄우므로 여기서 따로 챙길 것은 없다.
  */
-public abstract class SocialLoginTestSupport extends PostgresRedisContainerSupport {
+public abstract class SocialLoginTestSupport extends IntegrationContainerSupport {
 
 	protected static StubOAuthProvider provider;
 

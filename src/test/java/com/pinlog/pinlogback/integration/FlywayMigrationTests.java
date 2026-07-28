@@ -21,7 +21,7 @@ import org.springframework.test.annotation.DirtiesContext;
 @SpringBootTest
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @DisplayName("Flyway 마이그레이션")
-class FlywayMigrationTests extends PostgresContainerSupport {
+class FlywayMigrationTests extends IntegrationContainerSupport {
 
 	@Autowired
 	JdbcTemplate jdbcTemplate;
