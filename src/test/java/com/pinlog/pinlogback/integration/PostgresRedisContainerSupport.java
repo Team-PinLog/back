@@ -13,9 +13,10 @@ import org.testcontainers.utility.DockerImageName;
  */
 public abstract class PostgresRedisContainerSupport extends PostgresContainerSupport {
 
+	/** 태그는 {@code compose.yaml}의 redis 서비스와 맞춘다. 로컬과 CI가 다른 판을 쓰면 안 된다. */
 	@ServiceConnection
 	protected static final GenericContainer<?> REDIS =
-		new GenericContainer<>(DockerImageName.parse("redis:7-alpine")).withExposedPorts(6379);
+		new GenericContainer<>(DockerImageName.parse("redis:7.4.5-alpine")).withExposedPorts(6379);
 
 	static {
 		REDIS.start();
