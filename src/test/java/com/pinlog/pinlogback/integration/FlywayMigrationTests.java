@@ -36,7 +36,7 @@ class FlywayMigrationTests extends IntegrationContainerSupport {
 			.map(info -> info.getVersion().getVersion())
 			.collect(Collectors.toSet());
 
-		assertThat(versions).contains("1", "100", "101", "102");
+		assertThat(versions).contains("1", "2", "3", "4", "5", "100", "101", "102");
 		assertThat(count("SELECT count(*) FROM information_schema.schemata WHERE schema_name IN ('core','ai')"))
 			.isEqualTo(2);
 		assertThat(count("SELECT count(*) FROM pg_extension WHERE extname = 'vector'"))

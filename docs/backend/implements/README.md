@@ -34,3 +34,4 @@
 | BI-16 | 요청 입력 크기 상한 — recordIds 100개·Context 본문 500자 (S15P11A705-117) | ✅ 완료 | [BI-16](BI-16-2026-07-28-input-size-limits.md) |
 | BI-17 | 별칭 수정 요청의 키 생략 동작을 계약으로 고정 (S15P11A705-116) | ✅ 완료 | [BI-17](BI-17-2026-07-28-alias-key-omission-contract.md) |
 | BI-18 | 쿠키 기반 세션 JWT — RS256 발급·검증 필터·Redis Refresh 회전 (S15P11A705-63) | ✅ 완료 | [BI-18](BI-18-2026-07-28-jwt-cookie-session.md) |
+| BI-19 | Collection `published_at` DB 불변식 (back#58) | ✅ 완료 | [BI-19](BI-19-2026-07-28-published-at-invariant.md) |

@@ -68,7 +68,7 @@ class FlywayOutOfOrderTests extends IntegrationContainerSupport {
 		assertThat(reapplied.migrationsExecuted)
 			.as("앞선 migrate가 이미 적용을 마쳤으므로 두 번째 호출은 아무것도 적용하지 않는다")
 			.isZero();
-		assertThat(appliedVersions(url)).contains("1", FIRST_BACKEND_VERSION, "3", "4", "100", "101", "102");
+		assertThat(appliedVersions(url)).contains("1", FIRST_BACKEND_VERSION, "3", "4", "5", "100", "101", "102");
 		assertThat(memberTableExists(url))
 			.as("out-of-order로 적용된 백엔드 마이그레이션이 실제로 테이블을 만들었는지")
 			.isTrue();

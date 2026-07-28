@@ -41,7 +41,7 @@ public class Collection extends BaseEntity {
 	@Column(name = "is_published", nullable = false)
 	private boolean isPublished;
 
-	@Column(name = "published_at")
+	@Column(name = "published_at", nullable = false)
 	private Instant publishedAt;
 
 	@Column(name = "record_count", nullable = false)
