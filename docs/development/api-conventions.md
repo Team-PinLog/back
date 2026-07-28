@@ -22,6 +22,13 @@
 - 시간 값은 ISO-8601 UTC 형식으로 주고받습니다. 예: `2026-07-23T14:06:24Z`.
 - Bean Validation 실패는 HTTP 400으로 응답합니다.
 - 목록 pagination은 커서 기반이며, query parameter는 `cursor`·`size`를 사용합니다. `page`/`sort` 파라미터는 사용하지 않습니다.
+- **요청 본문에서 키를 생략한 것과 명시적 `null`을 구분하지 않습니다.** 둘 다 "그 필드를 `null`로 지정했다"로 해석합니다. PATCH도 예외가 아니므로, 값을 유지하려면 현재 값을 그대로 실어 보내야 합니다.
+
+  Jackson이 record 컴포넌트의 키 부재와 명시적 `null`을 똑같이 `null`로 역직렬화하기 때문이며, 구분하려면 `JsonNullable` 같은 장치를 DTO에 도입해야 합니다. 지금은 도입하지 않았습니다 — 부분 수정 요청이 실제로 필요한 리소스가 아직 없고, 장치를 먼저 깔면 모든 요청 DTO가 그 비용을 집니다.
+
+  **구분이 필요한 리소스가 생기면 그 PR에서 도입하고 이 항목을 갱신합니다.** 필드가 여러 개인 PATCH가 등장하는 시점이 그 신호입니다.
+
+  적용 예: `PATCH /v1/follows/{followId}`의 `alias` — `{}`와 `{"alias": null}`이 모두 별칭 제거입니다([08 §8.3](https://github.com/Team-PinLog/docs/blob/main/static/08_API_%EB%AA%85%EC%84%B8.md), S15P11A705-116).
 
 ### 공통 응답 envelope
 

@@ -26,3 +26,4 @@
 | BI-14 | 같은 장소 동시 저장을 충돌 없는 INSERT로 수렴 (S15P11A705-105) | ✅ 완료 | [BI-14](BI-14-2026-07-28-record-create-conflict-free-insert.md) |
 | BI-15 | 중복 팔로우 경합을 500이 아니라 409로 거절 (S15P11A705-104) | ✅ 완료 | [BI-15](BI-15-2026-07-28-duplicate-follow-race.md) |
 | BI-16 | 요청 입력 크기 상한 — recordIds 100개·Context 본문 500자 (S15P11A705-117) | ✅ 완료 | [BI-16](BI-16-2026-07-28-input-size-limits.md) |
+| BI-17 | 별칭 수정 요청의 키 생략 동작을 계약으로 고정 (S15P11A705-116) | ✅ 완료 | [BI-17](BI-17-2026-07-28-alias-key-omission-contract.md) |
