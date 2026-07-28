@@ -5,6 +5,8 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 
 import org.slf4j.MDC;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -31,8 +33,14 @@ import jakarta.servlet.http.HttpServletResponse;
  * <p>거절할 때 요청을 400으로 실패시키지 않는 이유: 상관관계 ID는 부가 정보이고, 그 값이 이상하다고
  * 정상 요청을 막을 이유가 없다. 거절한 값을 로그로 남기지도 않는다 — 남기는 순간 막으려던 주입 경로가
  * 다시 열린다.
+ *
+ * <p><b>순서가 최우선이어야 한다.</b> Security 필터 체인은
+ * {@code SecurityProperties.DEFAULT_FILTER_ORDER}(-100)에 등록된다. 순서를 지정하지 않으면 이 필터가
+ * 그보다 뒤에 돌아, Security가 직접 쓰는 401·403 응답(`SecurityErrorWriter`)의 traceId가 null이 된다.
+ * 체인 전체를 감싸도록 {@link Ordered#HIGHEST_PRECEDENCE}로 둔다.
  */
 @Component
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class TraceIdFilter extends OncePerRequestFilter {
 
 	public static final String TRACE_ID = "traceId";

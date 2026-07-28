@@ -88,10 +88,12 @@ class DeploymentContractTests extends PostgresContainerSupport {
 	}
 
 	@Test
-	void unmappedServiceUrlIsNotBlockedByAuthentication() throws Exception {
+	void unmappedServiceUrlRequiresAuthentication() throws Exception {
+		// 인증 도입 전에는 404였다. 이제 매핑 여부와 무관하게 보호 경로는 401이며,
+		// 미인증과 "없는 경로"를 구분하지 않는다(08 §1.1·§1.2).
 		HttpResponse<String> response = get("/api/core/not-found");
 
-		assertEquals(404, response.statusCode());
+		assertEquals(401, response.statusCode());
 	}
 
 	private HttpResponse<String> get(String path) throws IOException, InterruptedException {
