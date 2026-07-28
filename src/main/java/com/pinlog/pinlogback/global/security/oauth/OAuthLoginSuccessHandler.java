@@ -1,4 +1,4 @@
-package com.pinlog.pinlogback.global.security;
+package com.pinlog.pinlogback.global.security.oauth;
 
 import java.io.IOException;
 
@@ -13,6 +13,7 @@ import com.pinlog.pinlogback.domain.auth.dto.OAuthUserInfo;
 import com.pinlog.pinlogback.domain.auth.service.AuthTokenService;
 import com.pinlog.pinlogback.domain.auth.service.AuthTokenService.TokenPair;
 import com.pinlog.pinlogback.domain.auth.service.SocialLoginService;
+import com.pinlog.pinlogback.global.security.token.AuthCookies;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

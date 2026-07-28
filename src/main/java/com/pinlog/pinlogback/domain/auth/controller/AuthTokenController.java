@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.pinlog.pinlogback.domain.auth.service.AuthTokenService;
 import com.pinlog.pinlogback.domain.auth.service.AuthTokenService.TokenPair;
-import com.pinlog.pinlogback.global.security.AuthCookies;
+import com.pinlog.pinlogback.global.security.token.AuthCookies;
 
 import jakarta.servlet.http.HttpServletResponse;
 

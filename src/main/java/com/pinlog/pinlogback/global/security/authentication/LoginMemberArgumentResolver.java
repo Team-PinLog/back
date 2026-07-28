@@ -1,4 +1,4 @@
-package com.pinlog.pinlogback.global.security;
+package com.pinlog.pinlogback.global.security.authentication;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.core.MethodParameter;

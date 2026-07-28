@@ -1,4 +1,4 @@
-package com.pinlog.pinlogback.global.security;
+package com.pinlog.pinlogback.global.security.token;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

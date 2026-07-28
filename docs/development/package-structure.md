@@ -64,7 +64,21 @@ com.pinlog.pinlogback
 
 ## 인증·보안 경계
 
-`auth` 도메인과 `global/security`, `global/config`의 `SecurityConfig`는 **지금 만들지 않습니다.** 인증 기능은 의존성·인증 계약·보안 설정·상태 코드별 테스트(`401` 미인증 / `404` 권한 / `403` CSRF)·문서를 한 PR로 병합할 때 이 위치에 함께 추가합니다([인증 PR 계약](authentication.md), [CONTRIBUTING.md](../../CONTRIBUTING.md)).
+인증은 S15P11A705-63에서 [인증 PR 계약](authentication.md)에 따라 한 PR로 들어왔습니다. `global/security`는 **책임별 하위 패키지**로 나뉘어 있습니다.
+
+| 패키지 | 책임 | 언제 도는가 |
+| --- | --- | --- |
+| `security/oauth` | 공급자와의 OAuth2 흐름 (OAuth 클라이언트 역할) | 로그인 진입·콜백 |
+| `security/token` | 세션 토큰 서명·검증과 쿠키 전달 (BFF 역할) | 로그인 성공·재발급 |
+| `security/authentication` | 요청을 인증 주체로 변환, principal 계약 (리소스 서버 역할) | 모든 요청 |
+| `security/error` | 필터 체인이 직접 만드는 401·403 응답 | 인증·인가 실패 |
+
+- **의존은 한 방향입니다.** `oauth`와 `authentication`이 `token`을 쓰고, `error`는 어느 쪽도 쓰지 않습니다. 반대 방향 참조가 생기면 경계가 잘못된 것이므로 클래스를 옮길 자리를 다시 봅니다.
+- 발급(`token`)과 검증(`authentication`)을 가른 기준은 **수명과 호출 빈도**입니다. 발급은 로그인 시점에 한 번, 검증은 모든 요청에서 돕니다.
+- `SecurityConfig`는 `global/config`에 있습니다. 하위 패키지 넷을 모두 조립하는 유일한 지점입니다.
+- 어느 하위 패키지에도 속하지 않는 것은 `security` 루트에 둡니다(현재 `CsrfCookieFilter` 하나). **억지로 끼워 넣지 않습니다** — 이름이 거짓말이 되는 쪽이 더 비쌉니다.
+
+> **하위 패키지에 클래스를 추가할 때**: `@NullMarked`는 **하위 패키지로 상속되지 않습니다.** 새 하위 패키지를 만들면 `package-info.java`에 직접 선언해야 하고, 빠뜨리면 컴파일은 통과하지만 `@Nullable` 표기가 조용히 무의미해집니다([BD-27](../backend/decisions/BD-27-nullmarked-security-package.md)).
 
 ## 테스트 패키지
 

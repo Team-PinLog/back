@@ -1,4 +1,4 @@
-package com.pinlog.pinlogback.global.security;
+package com.pinlog.pinlogback.global.security.authentication;
 
 /**
  * 컨트롤러가 인증 주체를 받는 타입(authentication.md 2).

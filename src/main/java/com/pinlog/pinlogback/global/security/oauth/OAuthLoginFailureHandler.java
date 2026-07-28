@@ -1,4 +1,4 @@
-package com.pinlog.pinlogback.global.security;
+package com.pinlog.pinlogback.global.security.oauth;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

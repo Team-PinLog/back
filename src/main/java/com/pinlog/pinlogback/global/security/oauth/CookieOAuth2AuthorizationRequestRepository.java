@@ -1,4 +1,4 @@
-package com.pinlog.pinlogback.global.security;
+package com.pinlog.pinlogback.global.security.oauth;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

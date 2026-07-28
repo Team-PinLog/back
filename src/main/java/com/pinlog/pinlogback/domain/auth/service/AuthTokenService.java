@@ -7,9 +7,9 @@ import org.springframework.stereotype.Service;
 
 import com.pinlog.pinlogback.global.config.JwtProperties;
 import com.pinlog.pinlogback.global.exception.UnauthorizedException;
-import com.pinlog.pinlogback.global.security.JwtTokenProvider;
-import com.pinlog.pinlogback.global.security.JwtTokenProvider.IssuedRefreshToken;
-import com.pinlog.pinlogback.global.security.JwtTokenProvider.RefreshTokenClaims;
+import com.pinlog.pinlogback.global.security.token.JwtTokenProvider;
+import com.pinlog.pinlogback.global.security.token.JwtTokenProvider.IssuedRefreshToken;
+import com.pinlog.pinlogback.global.security.token.JwtTokenProvider.RefreshTokenClaims;
 
 /**
  * 세션 토큰의 발급·회전·폐기(API 명세 3.2~3.4).

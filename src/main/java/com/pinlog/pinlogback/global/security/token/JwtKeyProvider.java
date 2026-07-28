@@ -1,4 +1,4 @@
-package com.pinlog.pinlogback.global.security;
+package com.pinlog.pinlogback.global.security.token;
 
 import java.security.KeyFactory;
 import java.security.KeyPair;

@@ -16,14 +16,14 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.csrf.CsrfFilter;
 
 import com.pinlog.pinlogback.domain.auth.controller.SocialLoginController;
-import com.pinlog.pinlogback.global.security.CookieOAuth2AuthorizationRequestRepository;
 import com.pinlog.pinlogback.global.security.CsrfCookieFilter;
-import com.pinlog.pinlogback.global.security.JwtAuthenticationFilter;
-import com.pinlog.pinlogback.global.security.JwtTokenProvider;
-import com.pinlog.pinlogback.global.security.OAuthLoginFailureHandler;
-import com.pinlog.pinlogback.global.security.OAuthLoginSuccessHandler;
-import com.pinlog.pinlogback.global.security.RestAccessDeniedHandler;
-import com.pinlog.pinlogback.global.security.RestAuthenticationEntryPoint;
+import com.pinlog.pinlogback.global.security.authentication.JwtAuthenticationFilter;
+import com.pinlog.pinlogback.global.security.error.RestAccessDeniedHandler;
+import com.pinlog.pinlogback.global.security.error.RestAuthenticationEntryPoint;
+import com.pinlog.pinlogback.global.security.oauth.CookieOAuth2AuthorizationRequestRepository;
+import com.pinlog.pinlogback.global.security.oauth.OAuthLoginFailureHandler;
+import com.pinlog.pinlogback.global.security.oauth.OAuthLoginSuccessHandler;
+import com.pinlog.pinlogback.global.security.token.JwtTokenProvider;
 
 /**
  * 인증·인가 설정. 경로는 context-path(/api/core)가 제거된 값으로 매칭된다.

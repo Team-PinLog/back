@@ -3,8 +3,8 @@ package com.pinlog.pinlogback.domain.sample;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.pinlog.pinlogback.global.security.LoginMember;
-import com.pinlog.pinlogback.global.security.MemberPrincipal;
+import com.pinlog.pinlogback.global.security.authentication.LoginMember;
+import com.pinlog.pinlogback.global.security.authentication.MemberPrincipal;
 
 /**
  * principal 계약(쿠키 → SecurityContext → {@code @LoginMember})이 끝까지 이어지는지 확인하기 위한
