@@ -50,3 +50,10 @@ management:
     health:
       probes:
         enabled: true
+
+# 인증 스텁(back#28 계약)은 기본 꺼짐이다(fail-closed). local·test에서만 켠다.
+# 인증 PR이 오면 이 프로퍼티와 스텁 분기를 반드시 제거한다 — 남기면 운영 인증 우회 구멍이 된다.
+pinlog:
+  auth:
+    stub:
+      enabled: false
