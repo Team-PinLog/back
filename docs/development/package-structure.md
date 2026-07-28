@@ -28,7 +28,7 @@ com.pinlog.pinlogback
    ├─ exception                # 공통 예외 정의·전역 핸들러
    ├─ response                 # 공통 응답 타입 (ApiResponse·ErrorResponse·CursorPage·Cursor)
    ├─ web                      # 서블릿·MVC 확장 (ResponseBodyAdvice·Filter)
-   └─ security                 # 인증·인가 (별도 인증 PR에서 생성)
+   └─ security                 # 인증·인가. 지금은 인증 스텁(@LoginMember·MemberPrincipal·리졸버)만 있다
 ```
 
 `response`와 `web`을 나눈 기준: `response`는 **직렬화되는 계약 타입**(응답 JSON의 형태 그 자체)이고, `web`은 그 계약을 **요청·응답 파이프라인에 적용하는 장치**입니다. 공통 응답 타입을 추가할 때는 `response`, advice·filter·interceptor·argument resolver는 `web`에 둡니다.
@@ -64,7 +64,9 @@ com.pinlog.pinlogback
 
 ## 인증·보안 경계
 
-`auth` 도메인과 `global/security`, `global/config`의 `SecurityConfig`는 **지금 만들지 않습니다.** 인증 기능은 의존성·인증 계약·보안 설정·상태 코드별 테스트(`401` 미인증 / `404` 권한 / `403` CSRF)·문서를 한 PR로 병합할 때 이 위치에 함께 추가합니다([인증 PR 계약](authentication.md), [CONTRIBUTING.md](../../CONTRIBUTING.md)).
+`auth` 도메인과 `global/config`의 `SecurityConfig`는 **지금 만들지 않습니다.** 인증 기능은 의존성·인증 계약·보안 설정·상태 코드별 테스트(`401` 미인증 / `404` 권한 / `403` CSRF)·문서를 한 PR로 병합할 때 이 위치에 함께 추가합니다([인증 PR 계약](authentication.md), [CONTRIBUTING.md](../../CONTRIBUTING.md)).
+
+`global/security`는 예외적으로 **인증 스텁만 선생성**되어 있습니다(back#28 합의, S15P11A705-67). `MemberPrincipal(Long memberId)` record와 `@LoginMember` 파라미터 애노테이션, 순수 MVC `LoginMemberArgumentResolver`가 그것입니다. 컨트롤러는 `@LoginMember MemberPrincipal`로 사용자를 받고 서비스는 `Long memberId`를 받습니다 — 인증 PR이 오면 **리졸버 본문과 테스트 헬퍼(`support/AuthTestSupport`)만** 실제 인증으로 바뀌고 도메인 코드는 그대로 남습니다. 스텁 분기(`X-Debug-Member-Id` 헤더·`pinlog.auth.stub.enabled`)는 인증 PR에서 반드시 제거합니다.
 
 ## 테스트 패키지
 
