@@ -89,3 +89,4 @@
 | [BD-25](BD-25-context-origin-created-at.md) | Context 최초 작성 시각 보존 — `origin_created_at`, 목록은 오래된순 (BD-07 트리거 발동) | Accepted | docs#16 |
 | [BD-26](BD-26-flyway-out-of-order.md) | 버전 구간 소유를 유지하고 Flyway `out-of-order`를 허용 (BT-02 해소) | Accepted | S15P11A705-86 |
 | [BD-27](BD-27-nullmarked-security-package.md) | `global/security`를 패키지 단위 `@NullMarked`로 선언(파라미터별 `@NonNull` 대신) | Accepted | S15P11A705-63 |
+| [BD-28](BD-28-authorization-request-in-cookie.md) | 인가 요청(state·PKCE verifier)을 `HttpSession` 대신 쿠키에 — 서명 없이 역직렬화 허용목록으로 | Accepted | S15P11A705-63 |
