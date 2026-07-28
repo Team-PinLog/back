@@ -13,4 +13,6 @@ public interface ContextRepository extends JpaRepository<Context, Long> {
 	 * (데이터모델 2.5 — 수정해도 목록 위치가 바뀌지 않는 기준).
 	 */
 	List<Context> findByRecordIdOrderByOriginCreatedAtAscIdAsc(Long recordId);
+
+	List<Context> findByRecordIdInOrderByOriginCreatedAtAscIdAsc(List<Long> recordIds);
 }
