@@ -48,13 +48,28 @@ public class RecordService {
 	/**
 	 * Record 생성(데이터모델 6.1·6.3). 동일 Place에 내 활성 Record가 있으면 거절하지 않고
 	 * Context 추가로 처리한다(BD-12).
+	 *
+	 * <p>조회 후 분기하지 않고 <b>먼저 충돌 없는 INSERT를 시도한 뒤 그 결과로 분기한다.</b> 조회로
+	 * 판정하면 동시 요청 둘이 나란히 "없음"을 보고 uq_record_active를 위반하는데, 그 예외는 트랜잭션을
+	 * rollback-only로 만들어 같은 트랜잭션 안에서 되돌릴 수 없다(S15P11A705-105). Place와 같은
+	 * {@code ON CONFLICT DO NOTHING} 패턴으로 충돌 자체를 없앤다.
+	 *
+	 * <p>이긴 요청과 진 요청 모두 같은 Record에 Context를 붙이므로, 진 요청의 본문도 사라지지 않는다.
 	 */
 	@Transactional
 	public RecordCreateResponse create(Long memberId, RecordCreateRequest request) {
 		Place place = upsertPlace(request.place());
-		return recordRepository.findByMemberIdAndPlaceId(memberId, place.getId())
-			.map(existing -> addContextToExisting(existing, memberId, request.contextBody(), place))
-			.orElseGet(() -> createNewRecord(memberId, request.contextBody(), place));
+		boolean createdNow = recordRepository.insertIfAbsent(memberId, place.getId()) == 1;
+		Record record = recordRepository.findByMemberIdAndPlaceId(memberId, place.getId())
+			.orElseThrow(() -> new IllegalStateException(
+				"insertIfAbsent 직후 record가 조회되지 않았다: memberId=" + memberId + ", placeId=" + place.getId()));
+
+		contextRepository.save(Context.create(record.getId(), memberId, request.contextBody()));
+		if (!createdNow) {
+			record.touch();
+		}
+		RecordSaveResult result = createdNow ? RecordSaveResult.RECORD_CREATED : RecordSaveResult.CONTEXT_ADDED;
+		return RecordCreateResponse.of(result, detailOf(record, place));
 	}
 
 	@Transactional(readOnly = true)
@@ -115,18 +130,6 @@ public class RecordService {
 			? recordRepository.findMarkersWithinBounds(memberId, swLat, swLng, neLat, neLng)
 			: recordRepository.findMarkers(memberId);
 		return new MapResponse(boundsOf(items), items);
-	}
-
-	private RecordCreateResponse createNewRecord(Long memberId, String contextBody, Place place) {
-		Record record = recordRepository.save(Record.create(memberId, place.getId()));
-		contextRepository.save(Context.create(record.getId(), memberId, contextBody));
-		return RecordCreateResponse.of(RecordSaveResult.RECORD_CREATED, detailOf(record, place));
-	}
-
-	private RecordCreateResponse addContextToExisting(Record record, Long memberId, String contextBody, Place place) {
-		contextRepository.save(Context.create(record.getId(), memberId, contextBody));
-		record.touch();
-		return RecordCreateResponse.of(RecordSaveResult.CONTEXT_ADDED, detailOf(record, place));
 	}
 
 	private Place upsertPlace(PlacePayload payload) {
