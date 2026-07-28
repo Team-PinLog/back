@@ -1,9 +1,9 @@
 -- core.social_account — 인증 수단. 신원(member)과 분리한다.
 -- 근거: docs/static/06_데이터모델_및_무결성.md §2.2, docs/static/07_ERD.md §4.1.
 --
--- 번호 규칙: 파트별 구간을 두지 않고 현재 적용된 최대 번호보다 큰 값을 쓴다.
--- 구간을 나누면 AI 구간(V100~)이 먼저 적용된 상태라 낮은 번호가 항상 순서를 위반해
--- Flyway 기동이 실패한다. 충돌하면 머지 시점에 다음 번호로 rename한다.
+-- 번호는 백엔드 소유 구간(V2~V99)의 다음 값이다. AI 구간(V100~V199)이 이미 적용된 DB에서는
+-- 이 번호가 최대 적용 버전보다 낮아 out-of-order로 적용된다. 구간 구조를 유지하기로 한 결과이며
+-- spring.flyway.out-of-order=true가 이를 허용한다(BD-26, BT-02).
 --
 -- provider_user_id는 공급자가 발급한 식별자다(Google sub, Kakao id, Naver response.id).
 -- 이메일·닉네임을 식별 기준으로 쓰지 않는다. 숫자로 보이는 값도 문자열로 저장한다.

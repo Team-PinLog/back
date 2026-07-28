@@ -8,6 +8,7 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.flywaydb.core.Flyway;
@@ -33,7 +34,15 @@ import org.springframework.test.annotation.DirtiesContext;
 class FlywayOutOfOrderTests extends PostgresContainerSupport {
 
 	private static final String SCRATCH_DATABASE = "bt02_out_of_order";
-	private static final String BACKEND_VERSION = "2";
+
+	/** 백엔드 소유 구간(V2~V99)에 있는 버전. 백엔드 마이그레이션을 추가하면 여기도 함께 늘린다. */
+	private static final List<String> BACKEND_VERSIONS = List.of("2", "3");
+
+	/**
+	 * 위 버전들이 만든 테이블을 되돌릴 순서. 참조하는 쪽을 먼저 지운다 —
+	 * social_account가 member를 FK로 참조하므로 순서를 뒤집으면 DROP이 실패한다.
+	 */
+	private static final List<String> BACKEND_TABLES_IN_DROP_ORDER = List.of("social_account", "member");
 
 	@Autowired
 	private Flyway flyway;
@@ -59,17 +68,21 @@ class FlywayOutOfOrderTests extends PostgresContainerSupport {
 			.load();
 
 		assertThatCode(asApplicationWouldRun::migrate)
-			.as("V100~V102가 적용된 DB에 V%s를 추가한 뒤 기동하면 Flyway가 거부하면 안 된다", BACKEND_VERSION)
+			.as("V100~V102가 적용된 DB에 %s를 추가한 뒤 기동하면 Flyway가 거부하면 안 된다", BACKEND_VERSIONS)
 			.doesNotThrowAnyException();
 
 		MigrateResult reapplied = asApplicationWouldRun.migrate();
 		assertThat(reapplied.migrationsExecuted)
 			.as("앞선 migrate가 이미 적용을 마쳤으므로 두 번째 호출은 아무것도 적용하지 않는다")
 			.isZero();
-		assertThat(appliedVersions(url)).contains("1", BACKEND_VERSION, "100", "101", "102");
-		assertThat(memberTableExists(url))
-			.as("out-of-order로 적용된 백엔드 마이그레이션이 실제로 테이블을 만들었는지")
-			.isTrue();
+		assertThat(appliedVersions(url))
+			.contains("1", "100", "101", "102")
+			.containsAll(BACKEND_VERSIONS);
+		for (String table : BACKEND_TABLES_IN_DROP_ORDER) {
+			assertThat(tableExists(url, table))
+				.as("out-of-order로 적용된 백엔드 마이그레이션이 실제로 core.%s를 만들었는지", table)
+				.isTrue();
+		}
 	}
 
 	/**
@@ -86,13 +99,17 @@ class FlywayOutOfOrderTests extends PostgresContainerSupport {
 
 		try (Connection connection = DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword());
 			Statement statement = connection.createStatement()) {
-			statement.execute("DROP TABLE core.member");
-			statement.execute("DELETE FROM public.flyway_schema_history WHERE version = '" + BACKEND_VERSION + "'");
+			for (String table : BACKEND_TABLES_IN_DROP_ORDER) {
+				statement.execute("DROP TABLE core." + table);
+			}
+			for (String version : BACKEND_VERSIONS) {
+				statement.execute("DELETE FROM public.flyway_schema_history WHERE version = '" + version + "'");
+			}
 		}
 
 		assertThat(appliedVersions(url))
 			.as("재현 상태 전제: 백엔드 마이그레이션은 적용돼 있지 않아야 한다")
-			.doesNotContain(BACKEND_VERSION)
+			.doesNotContainAnyElementsOf(BACKEND_VERSIONS)
 			.contains("1", "100", "101", "102");
 	}
 
@@ -123,9 +140,9 @@ class FlywayOutOfOrderTests extends PostgresContainerSupport {
 		return versions;
 	}
 
-	private boolean memberTableExists(String url) throws Exception {
+	private boolean tableExists(String url, String table) throws Exception {
 		try (Connection connection = DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword());
-			ResultSet rs = connection.getMetaData().getTables(null, "core", "member", null)) {
+			ResultSet rs = connection.getMetaData().getTables(null, "core", table, null)) {
 			return rs.next();
 		}
 	}
