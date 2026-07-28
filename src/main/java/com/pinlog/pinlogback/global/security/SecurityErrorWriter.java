@@ -2,6 +2,7 @@ package com.pinlog.pinlogback.global.security;
 
 import java.io.IOException;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.MDC;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
@@ -42,7 +43,8 @@ public class SecurityErrorWriter {
 		response.getWriter().write(objectMapper.writeValueAsString(ApiResponse.fail(error)));
 	}
 
-	private String traceId() {
+	/** TraceIdFilter가 Security 체인보다 먼저 돌지 않으면 null이다. 그 경우도 응답은 나가야 한다. */
+	private @Nullable String traceId() {
 		return MDC.get(TraceIdFilter.TRACE_ID);
 	}
 }

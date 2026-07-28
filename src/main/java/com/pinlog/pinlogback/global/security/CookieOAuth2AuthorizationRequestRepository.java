@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Base64;
 import java.util.Optional;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository;
@@ -47,13 +48,18 @@ public class CookieOAuth2AuthorizationRequestRepository
 		"org.springframework.security.oauth2.core.**;java.util.**;java.lang.**;!*");
 
 	@Override
-	public OAuth2AuthorizationRequest loadAuthorizationRequest(HttpServletRequest request) {
+	public @Nullable OAuth2AuthorizationRequest loadAuthorizationRequest(HttpServletRequest request) {
 		return findCookie(request).map(Cookie::getValue).map(this::deserialize).orElse(null);
 	}
 
+	/**
+	 * @param authorizationRequest 인터페이스는 non-null로 선언하지만, Spring 기본 구현과 마찬가지로
+	 *     null을 "저장할 것이 없으니 지운다"로 받아들인다. 오버라이드에서 파라미터의 nullability를
+	 *     넓히는 것은 허용된다.
+	 */
 	@Override
 	public void saveAuthorizationRequest(
-		OAuth2AuthorizationRequest authorizationRequest,
+		@Nullable OAuth2AuthorizationRequest authorizationRequest,
 		HttpServletRequest request,
 		HttpServletResponse response
 	) {
@@ -68,7 +74,7 @@ public class CookieOAuth2AuthorizationRequestRepository
 	}
 
 	@Override
-	public OAuth2AuthorizationRequest removeAuthorizationRequest(
+	public @Nullable OAuth2AuthorizationRequest removeAuthorizationRequest(
 		HttpServletRequest request,
 		HttpServletResponse response
 	) {
@@ -111,7 +117,7 @@ public class CookieOAuth2AuthorizationRequestRepository
 		return Base64.getUrlEncoder().encodeToString(buffer.toByteArray());
 	}
 
-	private OAuth2AuthorizationRequest deserialize(String value) {
+	private @Nullable OAuth2AuthorizationRequest deserialize(String value) {
 		try {
 			byte[] decoded = Base64.getUrlDecoder().decode(value);
 			try (ObjectInputStream in = new ObjectInputStream(new ByteArrayInputStream(decoded))) {
