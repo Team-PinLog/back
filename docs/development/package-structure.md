@@ -23,11 +23,15 @@ com.pinlog.pinlogback
 │     ├─ entity                # JPA Entity (@Entity)
 │     └─ dto                   # 요청·응답 DTO
 └─ global/                      # 도메인을 가로지르는 공통 관심사
-   ├─ common                   # 공용 상수·enum·유틸·기반 타입
+   ├─ common                   # 공용 상수·enum·유틸·기반 타입 (BaseEntity 등)
    ├─ config                   # Spring 설정 클래스 (@Configuration)
    ├─ exception                # 공통 예외 정의·전역 핸들러
+   ├─ response                 # 공통 응답 타입 (ApiResponse·ErrorResponse·CursorPage·Cursor)
+   ├─ web                      # 서블릿·MVC 확장 (ResponseBodyAdvice·Filter)
    └─ security                 # 인증·인가 (별도 인증 PR에서 생성)
 ```
+
+`response`와 `web`을 나눈 기준: `response`는 **직렬화되는 계약 타입**(응답 JSON의 형태 그 자체)이고, `web`은 그 계약을 **요청·응답 파이프라인에 적용하는 장치**입니다. 공통 응답 타입을 추가할 때는 `response`, advice·filter·interceptor·argument resolver는 `web`에 둡니다.
 
 ## 도메인 목록
 
@@ -60,7 +64,7 @@ com.pinlog.pinlogback
 
 ## 인증·보안 경계
 
-`auth` 도메인과 `global/security`, `global/config`의 `SecurityConfig`는 **지금 만들지 않습니다.** 인증 기능은 의존성·인증 계약·보안 설정·401/403 테스트·문서를 한 PR로 병합할 때 이 위치에 함께 추가합니다([CONTRIBUTING.md](../../CONTRIBUTING.md)).
+`auth` 도메인과 `global/security`, `global/config`의 `SecurityConfig`는 **지금 만들지 않습니다.** 인증 기능은 의존성·인증 계약·보안 설정·상태 코드별 테스트(`401` 미인증 / `404` 권한 / `403` CSRF)·문서를 한 PR로 병합할 때 이 위치에 함께 추가합니다([인증 PR 계약](authentication.md), [CONTRIBUTING.md](../../CONTRIBUTING.md)).
 
 ## 테스트 패키지
 
