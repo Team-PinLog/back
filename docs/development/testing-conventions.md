@@ -16,7 +16,7 @@
 | Repository 또는 DB 접근 | PostgreSQL Testcontainers 통합 테스트와 전체 check |
 | Flyway migration | 빈 PostgreSQL DB에서 전체 migration 검증과 전체 check |
 | API 계약 | 정상 요청, validation HTTP 400, 변경된 오류·pagination 계약 테스트와 문서 갱신 |
-| 인증·인가 | 성공, 미인증 401, 권한 부족 403 또는 확정된 리소스 은닉 404 테스트 |
+| 인증·인가 | 성공, 미인증 `401`, 남의 자원 접근 `404`(리소스 은닉), CSRF 실패 `403`, 쿠키 속성과 본문 토큰 부재 테스트 — 전체 목록은 [인증 PR 계약](authentication.md) |
 
 `./gradlew clean check --no-daemon`은 완료 보고 전의 공통 필수 검증입니다. 이 명령은 Testcontainers를 사용할 수 있도록 Docker가 실행 중인 상태에서 실행합니다.
 

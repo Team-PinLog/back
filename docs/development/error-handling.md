@@ -40,6 +40,9 @@
 `code`는 **안정적이고 유일**해야 합니다. 한 번 배포된 코드 값은 의미를 바꾸지 않습니다(클라이언트 분기가 깨짐).
 
 - 코드는 한 곳(enum 등)에 모아 관리하고, 문자열을 흩뿌리지 않습니다.
+
+> **현재 `ErrorCode`에는 401·403·409에 대응하는 코드가 없습니다.** 매핑이 없는 4xx는 `errorCodeOf`의 폴백으로 `INVALID_INPUT`(400 문구)이 되므로, 401·403을 쓰는 PR은 **해당 코드를 먼저 추가**해야 합니다. 그렇지 않으면 상태 코드는 403인데 `code`는 `INVALID_INPUT`으로 나가 클라이언트 분기가 깨집니다.
+
 - 도메인을 접두어로 구분하는 것을 권장합니다. 예: `MEMBER_NOT_FOUND`, `RECORD_ACCESS_DENIED`.
 - 코드마다 HTTP 상태와 발생 조건을 이 문서 또는 코드 주석에 기록합니다.
 - 값 변경이 필요하면 옛 코드를 없애지 말고 **새 코드를 추가**한 뒤 마이그레이션합니다.
@@ -70,11 +73,14 @@ Bean Validation 실패는 [API 규약](api-conventions.md)대로 **HTTP 400**으
 | 상황 | 상태 |
 | --- | --- |
 | 검증 실패 | `400` |
-| 미인증 | `401` (인증 도입 시, [인증 PR 계약](authentication.md)) |
+| 미인증(쿠키 없음·만료, 회전 전 Refresh 재사용) | `401` (인증 도입 시, [인증 PR 계약](authentication.md)) |
+| CSRF 토큰 누락·불일치 | `403` — **`403`은 이 용도로만 씁니다** |
 | 권한 부족 | `404` (리소스 은닉 정책 확정. 존재 여부를 노출하지 않습니다) |
 | 리소스 없음 | `404` |
 | 도메인 규칙 위반(충돌 등) | `409` 등 상황에 맞는 4xx |
 | 처리되지 않은 예외 | `500` |
+
+`403`과 `404`가 한 상태 코드에 두 의미를 갖지 않도록 용도를 갈라 지킵니다 — 자원 접근 권한 실패는 `404`, CSRF 실패는 `403`입니다. 근거는 [08_API_명세 §1](https://github.com/Team-PinLog/docs/blob/main/static/08_API_명세.md)이며 [BD-21](../backend/decisions/BD-21-auth-token-model.md)이 감수 항목으로 기록했습니다.
 
 > 결정 배경: [BD-13](../backend/decisions/BD-13-public-boundary-query-dto-split.md) 403 대신 404를 쓰는 이유와 공개 경계 · [BD-11](../backend/decisions/BD-11-minimum-holding-invariants.md) 409에 `error.impact`를 실어 연쇄 삭제 범위를 알리는 이유 · [BD-03](../backend/decisions/BD-03-api-response-envelope.md) 오류 응답 envelope
 
