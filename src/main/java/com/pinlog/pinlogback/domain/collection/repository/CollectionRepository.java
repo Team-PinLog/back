@@ -32,4 +32,14 @@ public interface CollectionRepository extends JpaRepository<Collection, Long> {
 		+ " order by c.createdAt desc, c.id desc")
 	List<Collection> findPageByMemberIdAfter(@Param("memberId") Long memberId,
 		@Param("createdAt") Instant createdAt, @Param("id") Long id, Pageable pageable);
+
+	@Query("select c from Collection c where c.memberId = :memberId and c.isPublished = true"
+		+ " order by c.createdAt desc, c.id desc")
+	List<Collection> findPublishedFirstPageByMemberId(@Param("memberId") Long memberId, Pageable pageable);
+
+	@Query("select c from Collection c where c.memberId = :memberId and c.isPublished = true"
+		+ " and (c.createdAt < :createdAt or (c.createdAt = :createdAt and c.id < :id))"
+		+ " order by c.createdAt desc, c.id desc")
+	List<Collection> findPublishedPageByMemberIdAfter(@Param("memberId") Long memberId,
+		@Param("createdAt") Instant createdAt, @Param("id") Long id, Pageable pageable);
 }
