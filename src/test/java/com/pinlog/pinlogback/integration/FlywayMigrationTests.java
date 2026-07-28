@@ -68,6 +68,79 @@ class FlywayMigrationTests extends PostgresContainerSupport {
 	}
 
 	@Test
+	void coreDomainTablesAreCreatedByBackendMigration() {
+		assertThat(tableNamesIn("core")).contains(
+			"place",
+			"record",
+			"context",
+			"collection",
+			"collection_record",
+			"follow"
+		);
+	}
+
+	@Test
+	void coreDomainUniqueAndLookupIndexesExist() {
+		assertThat(indexNamesIn("core")).contains(
+			"uq_place_kakao",
+			"uq_record_active",
+			"uq_colrec_active",
+			"uq_follow_active",
+			"ix_place_lat_lng",
+			"ix_record_member",
+			"ix_record_place",
+			"ix_context_record",
+			"ix_context_member",
+			"ix_colrec_collection",
+			"ix_colrec_record",
+			"ix_collection_member",
+			"ix_collection_feed",
+			"ix_follow_follower",
+			"ix_follow_followee"
+		);
+	}
+
+	@Test
+	void activeRowUniqueIndexesArePartial() {
+		Set<String> partialIndexes = new HashSet<>(jdbcTemplate.queryForList(
+			"SELECT indexname FROM pg_indexes WHERE schemaname = 'core'"
+				+ " AND indexdef LIKE '%WHERE (deleted_at IS NULL)%'",
+			String.class));
+
+		assertThat(partialIndexes).contains("uq_record_active", "uq_colrec_active", "uq_follow_active");
+		assertThat(partialIndexes).doesNotContain("uq_place_kakao");
+	}
+
+	@Test
+	void coreDomainCheckConstraintsExist() {
+		Set<String> checkNames = new HashSet<>(jdbcTemplate.queryForList(
+			"SELECT conname FROM pg_constraint c"
+				+ " JOIN pg_namespace n ON n.oid = c.connamespace"
+				+ " WHERE n.nspname = 'core' AND c.contype = 'c'",
+			String.class));
+
+		assertThat(checkNames).contains(
+			"ck_follow_self",
+			"ck_context_body",
+			"ck_collection_title",
+			"ck_collection_count",
+			"ck_place_lat",
+			"ck_place_lng"
+		);
+	}
+
+	@Test
+	void contextOriginCreatedAtIsNotNull() {
+		String isNullable = jdbcTemplate.queryForObject(
+			"SELECT is_nullable FROM information_schema.columns"
+				+ " WHERE table_schema = 'core' AND table_name = 'context'"
+				+ " AND column_name = 'origin_created_at'",
+			String.class);
+
+		assertThat(isNullable).isEqualTo("NO");
+	}
+
+	@Test
 	void memberTableIsCreatedByBackendMigration() throws Exception {
 		try (Connection connection = dataSource.getConnection();
 			ResultSet rs = connection.getMetaData().getColumns(null, "core", "member", null)) {
