@@ -50,6 +50,17 @@ management:
     health:
       probes:
         enabled: true
+      group:
+        # readiness에 db를 넣어 DB 장애 시 Pod가 트래픽에서 빠지게 한다. 이게 없으면 구성원이
+        # readinessState 하나뿐이라 DB가 죽어도 Ready로 남아 요청이 500으로 실패한다.
+        # readinessState를 함께 적어야 한다 — include는 기본 구성원을 대체하므로 db만 적으면
+        # 기동 완료 전에도 readiness가 UP이 된다.
+        #
+        # redis는 넣지 않는다. Redis 장애를 Pod unready로 번지게 할지는 장애 시 서비스 동작
+        # 계약이 정해진 뒤 판단한다(back#65). liveness는 기본값을 유지한다 — 외부 의존성을
+        # 넣으면 DB 순단이 Pod 재시작으로 번진다. 인프라와 합의한 정책이며 근거는 BD-28.
+        readiness:
+          include: readinessState,db
 
 # 인증 스텁(back#28 계약)은 기본 꺼짐이다(fail-closed). local·test에서만 켠다.
 # 인증 PR이 오면 이 프로퍼티와 스텁 분기를 반드시 제거한다 — 남기면 운영 인증 우회 구멍이 된다.
