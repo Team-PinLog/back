@@ -23,7 +23,6 @@ import com.nimbusds.jwt.SignedJWT;
 import com.nimbusds.jwt.proc.ConfigurableJWTProcessor;
 import com.nimbusds.jwt.proc.DefaultJWTClaimsVerifier;
 import com.nimbusds.jwt.proc.DefaultJWTProcessor;
-import com.pinlog.pinlogback.global.config.JwtProperties;
 
 /**
  * 세션 JWT를 발급하고 검증한다(BD-21·BD-29).

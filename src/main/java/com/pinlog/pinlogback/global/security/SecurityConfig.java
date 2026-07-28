@@ -1,4 +1,4 @@
-package com.pinlog.pinlogback.global.config;
+package com.pinlog.pinlogback.global.security;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -16,13 +16,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.csrf.CsrfFilter;
 
 import com.pinlog.pinlogback.domain.auth.controller.SocialLoginController;
-import com.pinlog.pinlogback.global.security.CsrfCookieFilter;
 import com.pinlog.pinlogback.global.security.authentication.JwtAuthenticationFilter;
 import com.pinlog.pinlogback.global.security.error.RestAccessDeniedHandler;
 import com.pinlog.pinlogback.global.security.error.RestAuthenticationEntryPoint;
 import com.pinlog.pinlogback.global.security.oauth.CookieOAuth2AuthorizationRequestRepository;
 import com.pinlog.pinlogback.global.security.oauth.OAuthLoginFailureHandler;
 import com.pinlog.pinlogback.global.security.oauth.OAuthLoginSuccessHandler;
+import com.pinlog.pinlogback.global.security.token.JwtProperties;
 import com.pinlog.pinlogback.global.security.token.JwtTokenProvider;
 
 /**

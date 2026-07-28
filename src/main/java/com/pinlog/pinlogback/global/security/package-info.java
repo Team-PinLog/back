@@ -17,9 +17,18 @@
  * <p>의존은 한 방향이다 — {@code oauth}와 {@code authentication}이 {@code token}을 쓰고,
  * {@code error}는 어느 쪽도 쓰지 않는다. 반대 방향 참조가 생기면 경계가 잘못된 것이다.
  *
- * <p>{@code CsrfCookieFilter}만 이 패키지에 남아 있다. CSRF는 세션 토큰과 다른 관심사라
- * {@code token}에 넣으면 이름이 거짓말이 되고, 나머지 셋에도 속하지 않는다. 억지로 끼워 넣는
- * 대신 루트에 둔다.
+ * <p>루트에는 둘만 있다.
+ *
+ * <ul>
+ *   <li>{@code SecurityConfig} — 하위 패키지 넷을 필터 체인으로 조립하는 <b>유일한</b> 지점.
+ *       어느 하나에 속하지 않고 넷을 모두 알아야 하므로 위에 둔다.</li>
+ *   <li>{@code CsrfCookieFilter} — CSRF는 세션 토큰과 다른 관심사라 {@code token}에 넣으면
+ *       이름이 거짓말이 되고, 나머지 셋에도 속하지 않는다. 억지로 끼워 넣는 대신 루트에 둔다.</li>
+ * </ul>
+ *
+ * <p>설정 클래스가 {@code global.config}가 아니라 여기 있는 이유: 설정과 그 설정이 조립하는
+ * 구현이 떨어져 있으면 한쪽만 고치게 된다. 토큰 설정({@code JwtProperties})도 같은 이유로
+ * 소비자와 같은 {@code token} 패키지에 있다.
  *
  * <p><b>하위 패키지에 클래스를 추가할 때</b>: 패키지 애노테이션은 상속되지 않으므로 이
  * 선언({@link org.jspecify.annotations.NullMarked})이 하위 패키지에 적용되지 않는다. 각

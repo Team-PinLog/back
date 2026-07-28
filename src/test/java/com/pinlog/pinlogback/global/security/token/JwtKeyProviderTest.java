@@ -12,7 +12,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 
-import com.pinlog.pinlogback.global.config.JwtProperties;
 
 @DisplayName("JWT 서명 키 공급")
 class JwtKeyProviderTest {

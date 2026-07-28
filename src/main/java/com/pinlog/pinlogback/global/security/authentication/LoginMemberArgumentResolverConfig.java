@@ -1,4 +1,4 @@
-package com.pinlog.pinlogback.global.config;
+package com.pinlog.pinlogback.global.security.authentication;
 
 import java.util.List;
 
@@ -10,7 +10,7 @@ import com.pinlog.pinlogback.global.security.authentication.LoginMemberArgumentR
 
 /** 컨트롤러가 {@code @LoginMember}로 인증 주체를 받도록 리졸버를 등록한다. */
 @Configuration
-public class WebMvcConfig implements WebMvcConfigurer {
+public class LoginMemberArgumentResolverConfig implements WebMvcConfigurer {
 
 	@Override
 	public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {

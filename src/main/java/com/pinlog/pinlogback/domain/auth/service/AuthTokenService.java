@@ -5,8 +5,8 @@ import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 import org.springframework.stereotype.Service;
 
-import com.pinlog.pinlogback.global.config.JwtProperties;
 import com.pinlog.pinlogback.global.exception.UnauthorizedException;
+import com.pinlog.pinlogback.global.security.token.JwtProperties;
 import com.pinlog.pinlogback.global.security.token.JwtTokenProvider;
 import com.pinlog.pinlogback.global.security.token.JwtTokenProvider.IssuedRefreshToken;
 import com.pinlog.pinlogback.global.security.token.JwtTokenProvider.RefreshTokenClaims;

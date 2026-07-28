@@ -75,7 +75,10 @@ com.pinlog.pinlogback
 
 - **의존은 한 방향입니다.** `oauth`와 `authentication`이 `token`을 쓰고, `error`는 어느 쪽도 쓰지 않습니다. 반대 방향 참조가 생기면 경계가 잘못된 것이므로 클래스를 옮길 자리를 다시 봅니다.
 - 발급(`token`)과 검증(`authentication`)을 가른 기준은 **수명과 호출 빈도**입니다. 발급은 로그인 시점에 한 번, 검증은 모든 요청에서 돕니다.
-- `SecurityConfig`는 `global/config`에 있습니다. 하위 패키지 넷을 모두 조립하는 유일한 지점입니다.
+- **보안 설정은 `global/config`가 아니라 `global/security` 안에 둡니다.** 설정과 그 설정이 조립하는 구현이 떨어져 있으면 한쪽만 고치게 됩니다.
+  - `security/SecurityConfig` — 하위 패키지 넷을 필터 체인으로 조립하는 유일한 지점이라 루트에 둡니다.
+  - `security/token/JwtProperties` — 소비자(`JwtKeyProvider`·`JwtTokenProvider`·`AuthCookies`)와 같은 패키지입니다.
+  - `security/authentication/LoginMemberArgumentResolverConfig` — `@LoginMember` 리졸버를 MVC에 등록합니다. `WebMvcConfigurer`는 여러 개가 공존할 수 있으므로, 일반 MVC 설정이 필요해지면 `global/config`에 따로 만들면 됩니다. 하나의 거대한 configurer로 모으지 않습니다.
 - 어느 하위 패키지에도 속하지 않는 것은 `security` 루트에 둡니다(현재 `CsrfCookieFilter` 하나). **억지로 끼워 넣지 않습니다** — 이름이 거짓말이 되는 쪽이 더 비쌉니다.
 
 > **하위 패키지에 클래스를 추가할 때**: `@NullMarked`는 **하위 패키지로 상속되지 않습니다.** 새 하위 패키지를 만들면 `package-info.java`에 직접 선언해야 하고, 빠뜨리면 컴파일은 통과하지만 `@Nullable` 표기가 조용히 무의미해집니다([BD-27](../backend/decisions/BD-27-nullmarked-security-package.md)).

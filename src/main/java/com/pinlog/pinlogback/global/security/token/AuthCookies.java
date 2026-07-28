@@ -7,7 +7,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 
-import com.pinlog.pinlogback.global.config.JwtProperties;
 
 import jakarta.servlet.http.HttpServletResponse;
 

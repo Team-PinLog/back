@@ -13,7 +13,6 @@ import com.nimbusds.jose.JWSHeader;
 import com.nimbusds.jose.crypto.MACSigner;
 import com.nimbusds.jwt.JWTClaimsSet;
 import com.nimbusds.jwt.SignedJWT;
-import com.pinlog.pinlogback.global.config.JwtProperties;
 
 @DisplayName("세션 JWT 발급·검증")
 class JwtTokenProviderTest {

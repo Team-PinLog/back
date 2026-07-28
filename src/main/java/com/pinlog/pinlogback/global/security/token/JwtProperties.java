@@ -1,4 +1,4 @@
-package com.pinlog.pinlogback.global.config;
+package com.pinlog.pinlogback.global.security.token;
 
 import java.time.Duration;
 

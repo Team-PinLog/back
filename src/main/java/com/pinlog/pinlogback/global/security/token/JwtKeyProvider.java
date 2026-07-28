@@ -19,7 +19,6 @@ import org.springframework.stereotype.Component;
 
 import com.nimbusds.jose.JOSEException;
 import com.nimbusds.jose.jwk.RSAKey;
-import com.pinlog.pinlogback.global.config.JwtProperties;
 
 /**
  * 세션 JWT 서명 키를 공급한다(BD-29).
