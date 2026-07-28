@@ -1,6 +1,7 @@
 package com.pinlog.pinlogback.domain.collection.controller;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -68,5 +69,18 @@ public class CollectionController {
 	public CollectionSummaryResponse addRecords(@LoginMember MemberPrincipal me,
 		@PathVariable Long collectionId, @Valid @RequestBody CollectionAddRecordsRequest request) {
 		return collectionService.addRecords(me.memberId(), collectionId, request);
+	}
+
+	@DeleteMapping("/{collectionId}/records/{recordId}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void removeRecord(@LoginMember MemberPrincipal me, @PathVariable Long collectionId,
+		@PathVariable Long recordId) {
+		collectionService.removeRecord(me.memberId(), collectionId, recordId);
+	}
+
+	@DeleteMapping("/{collectionId}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void deleteCollection(@LoginMember MemberPrincipal me, @PathVariable Long collectionId) {
+		collectionService.deleteCollection(me.memberId(), collectionId);
 	}
 }

@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -23,6 +24,7 @@ import com.pinlog.pinlogback.domain.record.dto.RecordCreateRequest;
 import com.pinlog.pinlogback.domain.record.dto.RecordCreateResponse;
 import com.pinlog.pinlogback.domain.record.dto.RecordDetailResponse;
 import com.pinlog.pinlogback.domain.record.dto.RecordSaveResult;
+import com.pinlog.pinlogback.domain.record.service.RecordDeletionService;
 import com.pinlog.pinlogback.domain.record.service.RecordService;
 import com.pinlog.pinlogback.global.security.LoginMember;
 import com.pinlog.pinlogback.global.security.MemberPrincipal;
@@ -38,9 +40,11 @@ import jakarta.validation.Valid;
 public class RecordController {
 
 	private final RecordService recordService;
+	private final RecordDeletionService recordDeletionService;
 
-	public RecordController(RecordService recordService) {
+	public RecordController(RecordService recordService, RecordDeletionService recordDeletionService) {
 		this.recordService = recordService;
+		this.recordDeletionService = recordDeletionService;
 	}
 
 	@PostMapping
@@ -84,5 +88,24 @@ public class RecordController {
 	public ContextMutationResponse replaceContext(@LoginMember MemberPrincipal me, @PathVariable Long recordId,
 		@PathVariable Long contextId, @Valid @RequestBody ContextUpdateRequest request) {
 		return recordService.replaceContext(me.memberId(), recordId, contextId, request.body());
+	}
+
+	@DeleteMapping("/{recordId}/contexts/{contextId}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void deleteContext(@LoginMember MemberPrincipal me, @PathVariable Long recordId,
+		@PathVariable Long contextId) {
+		recordDeletionService.deleteContext(me.memberId(), recordId, contextId);
+	}
+
+	@DeleteMapping("/{recordId}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void deleteRecord(@LoginMember MemberPrincipal me, @PathVariable Long recordId) {
+		recordDeletionService.deleteRecord(me.memberId(), recordId);
+	}
+
+	@DeleteMapping("/{recordId}/force")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void forceDeleteRecord(@LoginMember MemberPrincipal me, @PathVariable Long recordId) {
+		recordDeletionService.forceDeleteRecord(me.memberId(), recordId);
 	}
 }

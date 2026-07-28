@@ -27,9 +27,11 @@ import com.pinlog.pinlogback.domain.record.entity.Context;
 import com.pinlog.pinlogback.domain.record.entity.Record;
 import com.pinlog.pinlogback.domain.record.repository.ContextRepository;
 import com.pinlog.pinlogback.domain.record.repository.RecordRepository;
+import com.pinlog.pinlogback.global.exception.DeleteConfirmationRequiredException;
 import com.pinlog.pinlogback.global.exception.ResourceNotFoundException;
 import com.pinlog.pinlogback.global.response.Cursor;
 import com.pinlog.pinlogback.global.response.CursorPage;
+import com.pinlog.pinlogback.global.response.ErrorResponse;
 
 /**
  * Collection 유스케이스. 활성 Collection에는 활성 연결이 최소 1개 있어야 하고(BD-11),
@@ -136,6 +138,48 @@ public class CollectionService {
 			collectionRecordRepository.save(CollectionRecord.create(collectionId, recordId)));
 		collection.increaseRecordCount(toAdd.size());
 		return CollectionSummaryResponse.from(collection);
+	}
+
+	/**
+	 * Collection에서 Record 제거(데이터모델 6.7). 빈 Collection을 허용하지 않으므로 마지막 연결은
+	 * 이 API로 제거할 수 없다 — 409로 거절하고, 프론트는 확인 후 Collection 삭제 API를 호출한다.
+	 * 어느 경우에도 원본 Record는 유지된다(연결만 끊긴다).
+	 */
+	@Transactional
+	public void removeRecord(Long memberId, Long collectionId, Long recordId) {
+		Collection collection = collectionRepository.findByIdForUpdate(collectionId)
+			.orElseThrow(ResourceNotFoundException::new);
+		if (!collection.isOwnedBy(memberId)) {
+			throw new ResourceNotFoundException();
+		}
+		CollectionRecord link = collectionRecordRepository
+			.findByCollectionIdAndRecordIdIn(collectionId, List.of(recordId))
+			.stream()
+			.findFirst()
+			.orElseThrow(ResourceNotFoundException::new);
+
+		if (collectionRecordRepository.countByCollectionId(collectionId) <= 1) {
+			throw new DeleteConfirmationRequiredException(
+				"컬렉션의 마지막 기록입니다. 제거하면 컬렉션도 함께 사라집니다.",
+				new ErrorResponse.Impact(false, List.of(collectionId)));
+		}
+		link.softDelete();
+		collection.decreaseRecordCount(1);
+	}
+
+	/**
+	 * Collection 삭제(데이터모델 6.8). 연결만 함께 소프트 삭제하고 원본 Record는 유지한다.
+	 */
+	@Transactional
+	public void deleteCollection(Long memberId, Long collectionId) {
+		Collection collection = collectionRepository.findByIdForUpdate(collectionId)
+			.orElseThrow(ResourceNotFoundException::new);
+		if (!collection.isOwnedBy(memberId)) {
+			throw new ResourceNotFoundException();
+		}
+		collectionRecordRepository.findByCollectionId(collectionId)
+			.forEach(link -> link.softDelete());
+		collection.softDelete();
 	}
 
 	private void requireAllOwnedActiveRecords(Long memberId, List<Long> recordIds) {

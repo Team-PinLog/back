@@ -15,4 +15,8 @@ public interface ContextRepository extends JpaRepository<Context, Long> {
 	List<Context> findByRecordIdOrderByOriginCreatedAtAscIdAsc(Long recordId);
 
 	List<Context> findByRecordIdInOrderByOriginCreatedAtAscIdAsc(List<Long> recordIds);
+
+	List<Context> findByRecordId(Long recordId);
+
+	long countByRecordId(Long recordId);
 }

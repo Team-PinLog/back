@@ -8,6 +8,7 @@ public enum ErrorCode {
 	UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),
 	SELF_FOLLOW_NOT_ALLOWED(HttpStatus.UNPROCESSABLE_CONTENT, "자기 자신의 책장은 팔로우할 수 없습니다."),
 	DUPLICATE_FOLLOW(HttpStatus.CONFLICT, "이미 팔로우한 책장입니다."),
+	DELETE_CONFIRMATION_REQUIRED(HttpStatus.CONFLICT, "삭제 확인이 필요합니다."),
 	RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다."),
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다."),
 	METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "허용되지 않은 요청 메서드입니다."),
