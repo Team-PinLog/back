@@ -27,9 +27,19 @@
 backend foundation reset은 Spring Security, OAuth, 임시 계정, `SecurityConfig`를 **의도적으로 제거**했습니다. 인증 없이도 서비스가 실행·테스트·배포되도록 기반을 먼저 정리하기 위함입니다. 따라서 현재:
 
 - 매핑되지 않은 URL은 `401/403`이 아니라 `404`를 반환합니다(`DeploymentContractTests`가 이를 검증).
-- `global/security`, `global/config/SecurityConfig`, `domain/auth` 패키지는 **아직 만들지 않습니다**([패키지 구조 규약](package-structure.md)).
+- `global/config/SecurityConfig`와 `domain/auth` 패키지는 **아직 만들지 않습니다**([패키지 구조 규약](package-structure.md)).
 
 인증은 준비되면 **하나의 PR**로 의존성·계약·설정·테스트·문서를 함께 병합합니다. 조각내어 병합하지 않습니다.
+
+### 인증 스텁 — principal 계약은 이미 고정되어 있다
+
+core 도메인 개발을 인증보다 먼저 진행하기 위해 `global/security`에 **인증 스텁**이 선생성되어 있습니다(back#28 합의, S15P11A705-67). 인증 PR은 다음 계약을 그대로 이어받습니다.
+
+- principal 타입은 `MemberPrincipal(Long memberId)` record이고, 컨트롤러는 `@LoginMember MemberPrincipal`로 받습니다. **이 시그니처를 바꾸지 않습니다** — 바꾸면 도메인 컨트롤러 전부가 수정 대상이 됩니다.
+- 서비스는 `Long memberId` 파라미터를 받습니다. `SecurityContext`를 서비스에서 직접 읽는 구조로 바꾸지 않습니다.
+- 스텁은 `pinlog.auth.stub.enabled=true`(local·test만)일 때 `X-Debug-Member-Id` 헤더를 채택하고, 그 외에는 항상 401입니다(fail-closed).
+- 인증 PR은 `LoginMemberArgumentResolver`의 본문을 실제 인증으로 교체하고, **`X-Debug-Member-Id` 분기와 `pinlog.auth.stub.enabled` 프로퍼티를 반드시 제거**합니다. 남기면 운영 인증 우회 구멍이 됩니다.
+- 테스트 인증 주입은 `support/AuthTestSupport.loginAs(memberId)` 한 곳에 모여 있습니다. 인증 PR은 이 메서드 본문만 `spring-security-test` 지원으로 바꿉니다.
 
 ## 단일 PR 원칙
 
