@@ -1,3 +1,19 @@
+# 운영 override. 주소·계정은 인프라가 정한 고정값이라 파일에 적고, 비밀값만 주입받는다.
+# 계약 원본: https://github.com/Team-PinLog/infra/blob/main/docs/backend-conventions.md 5장
+#
+# 주소를 환경변수로 빼지 않는 이유: 비밀이 아니고, 파일에 있으면 "어디에 붙는지"를
+# 저장소만 보고 알 수 있다. 환경변수로 옮기면 그 값의 출처를 추적할 수 없게 된다.
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres.pinlog-prod.svc.cluster.local:5432/pinlog
+    username: pinlog
+    # 저장소가 public이므로 실제 비밀번호를 절대 적지 않는다. 인프라가 주입하는 유일한 값이다.
+    password: ${DB_PASSWORD}
+  data:
+    redis:
+      host: redis.pinlog-prod.svc.cluster.local
+      port: 6379
+
 # 운영에서는 API 문서를 노출하지 않는다. 로컬·개발(무프로파일)에서는 기본값(on)이 적용된다.
 springdoc:
   api-docs:

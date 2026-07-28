@@ -25,6 +25,7 @@
 
 - **context path는 `/api/core`** 로 고정합니다. 컨트롤러 매핑에 다시 쓰지 않습니다([API 규약](api-conventions.md), [infra/backend-conventions](https://github.com/Team-PinLog/infra/blob/main/docs/backend-conventions.md)).
 - Hibernate는 **`ddl-auto=validate`** 입니다. 스키마는 Flyway가 관리합니다([데이터베이스 규약](database-conventions.md)).
+- **`open-in-view=false`** 입니다. 기본값 `true`는 서비스 계층 밖에서도 영속성 컨텍스트를 열어 두어, DTO로 변환하기 전에 지연 로딩이 일어나 N+1이 조용히 발생합니다. 트랜잭션 경계를 `service`가 갖는다는 [계층 규칙](package-structure.md)과도 맞지 않습니다. 엔티티 밖에서 연관을 읽어야 하면 `fetch join`이나 전용 조회 메서드로 명시합니다.
 - Actuator는 필수이며 `health`와 `prometheus`만 노출합니다. **둘 다 필수입니다** — `DeploymentContractTests`가 두 경로를 모두 검증하고, 어긋나면 배포와 모니터링이 함께 깨집니다.
 
 ```yaml
@@ -37,6 +38,7 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+    open-in-view: false
 
 management:
   endpoints:
@@ -97,7 +99,7 @@ spring:
 
 이 주소·네임스페이스는 인프라 소관입니다. 값이 바뀌면 [infra/backend-conventions](https://github.com/Team-PinLog/infra/blob/main/docs/backend-conventions.md)를 기준으로 하고 인프라 담당자와 맞춥니다.
 
-> **미구현**: 현재 `application-prod.yml`에는 springdoc 차단만 있고 **datasource·redis 설정이 없습니다.** 위 값이 파일에 들어가기 전까지 운영 기동은 인프라가 넣어 주는 `SPRING_DATASOURCE_*` 계열 환경변수에 암묵적으로 의존합니다 — 즉 어디에 접속하는지가 저장소만 봐서는 확인되지 않습니다. 파일을 위 값으로 채우는 일은 후속 설정 티켓에서 처리합니다.
+이 값들은 `application-prod.yml`에 실제로 들어 있고, `ConfigurationContractTests`가 인프라 문서와 어긋나지 않는지 감시합니다. 주소를 환경변수로 빼지 않는 이유는 **비밀이 아니면서 어디에 접속하는지를 저장소만 보고 알 수 있어야** 하기 때문입니다 — 환경변수로 옮기면 그 값의 출처를 추적할 수 없게 됩니다.
 
 > Redis는 캐시·세션 전용이라 재시작하면 비워집니다. 유실되면 안 되는 데이터를 넣어야 하면 사전에 인프라와 협의합니다.
 
@@ -111,6 +113,7 @@ spring:
 - [ ] 비밀번호·토큰·키를 저장소에 넣지 않았다 (환경변수 주입)
 - [ ] context path는 `/api/core`, 컨트롤러에 중복하지 않았다
 - [ ] `ddl-auto=validate`이고 스키마는 Flyway가 관리한다
+- [ ] `open-in-view=false`이고, 연관 조회는 `fetch join`이나 전용 메서드로 명시한다
 - [ ] actuator는 `health`·`prometheus`만 노출한다 (둘 다 필수)
 - [ ] 비밀값은 `DB_PASSWORD`만 환경변수이고, 주소·사용자명은 프로파일 파일에 있다
 - [ ] 환경별 차이만 프로파일에 두고 공통값을 복제하지 않았다
