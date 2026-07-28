@@ -31,6 +31,17 @@ PostgreSQL만 지원합니다. 로컬 실행, 통합 테스트와 CI는 `pgvecto
 
 이미 적용된 migration은 절대로 수정하지 않습니다. 변경이 필요하면 다음 새 버전 migration을 추가합니다. 현재 파일과 적용 순서의 구현 세부는 [db/migration README](../../src/main/resources/db/migration/README.md)에서 확인합니다.
 
+### out-of-order를 허용합니다
+
+AI 구간(`V100`~)이 백엔드 구간(`V2`~) **위**에 있으므로, AI migration이 이미 적용된 DB에서는 백엔드가 추가하는 번호가 항상 적용된 최대 버전보다 낮습니다. Flyway 기본값은 이를 거부하고 **기동을 실패시킵니다.** 그래서 `spring.flyway.out-of-order: true`를 적용했습니다.
+
+- 이 설정을 끄면 백엔드 migration을 추가하는 순간 기존 DB에서 기동이 깨집니다. 끄기 전에 [BD-26](../backend/decisions/BD-26-flyway-out-of-order.md)의 재검토 트리거를 확인합니다.
+- **적용 순서가 환경마다 다릅니다.** 빈 DB는 `V1 → V2 → V100`, 기존 DB는 `V1 → V100 → V102 → V2`입니다. 따라서 **migration은 다른 구간의 객체에 의존하지 않아야 합니다.** `core`와 `ai`가 스키마로 분리되어 서로를 정의하지 않는다는 전제가 이 설정을 안전하게 만듭니다.
+- `core.feed_event`(AI 소유 `V102`)에 의존하는 제약·인덱스를 백엔드가 추가하려 하면 그 전제가 깨집니다. 추가하기 전에 BD-26을 재검토합니다.
+- out-of-order는 "빠진 낮은 번호"를 정상으로 취급하므로, 이력이 어긋난 상황을 Flyway가 더 이상 알려주지 않습니다.
+
+> 결정 배경: [BD-26](../backend/decisions/BD-26-flyway-out-of-order.md) 구간 소유 유지와 out-of-order 허용 · [BT-02](../backend/troubleshooting/BT-02-flyway-out-of-order-version-ranges.md) 증상과 진단
+
 ## migration과 DB 변경 검증
 
 - migration을 추가하거나 변경하는 PR은 빈 PostgreSQL DB에서 전체 migration이 적용되는 Testcontainers 검증을 추가하거나 갱신합니다.
@@ -56,6 +67,8 @@ RollingUpdate 중에는 **구 버전 Pod와 신 버전 Pod가 같은 DB를 동�
 3. 제거 — **다음 릴리스의 새 migration**에서 구 컬럼을 지우고 `NOT NULL`을 건다
 
 CI의 `FlywayMigrationTests`는 **빈 DB에 전체 migration을 적용하는 것까지만** 검증합니다. 구 Pod 호환성은 자동으로 잡히지 않으므로 이 규약과 리뷰로 지킵니다. 근거: `S15P11A705-51`.
+
+기존 DB에 migration을 추가하는 경로는 `FlywayOutOfOrderTests`가 별도로 검증합니다 — AI 구간만 적용된 DB를 재현해 백엔드 migration이 적용되는지 확인합니다. 두 테스트의 역할이 다르므로 **둘 다 유지합니다**: 하나는 최초 배포, 하나는 그 이후를 지킵니다.
 
 ## 공통 컬럼과 BaseEntity
 

@@ -1,9 +1,9 @@
 # BT-02. 백엔드 migration이 AI 구간보다 낮은 번호라 Flyway validate가 실패한다
 
-- **상태**: ⚠️ 미해결 — 파트 간 합의 필요. 운영 배포 전 blocker
+- **상태**: ✅ 해결 (2026-07-28, S15P11A705-86) — 아래 "해결" 절 참고. 구간 소유를 유지하고 `out-of-order`를 허용하는 (a)를 채택했다([BD-26](../decisions/BD-26-flyway-out-of-order.md))
 - **날짜**: 2026-07-27
 - **레이어**: Flyway / 배포
-- **관련**: S15P11A705-51 검증 중 발견, S15P11A705-66(다음 백엔드 migration)에 직접 영향
+- **관련**: S15P11A705-51 검증 중 발견, S15P11A705-66(다음 백엔드 migration)에 직접 영향. 해소는 S15P11A705-86
 
 ## 증상
 
@@ -42,9 +42,9 @@ DB에는 `V1`·`V100`~`V102`가 적용돼 있고, 레포에는 그 뒤에 추가
 - 최초 배포(S15P11A705-48)는 빈 DB라 통과한다.
 - 그 이후 백엔드가 migration을 하나라도 추가하면(예: S15P11A705-66의 core 테이블) **다음 배포에서 애플리케이션이 기동 실패한다.** RollingUpdate 중이라면 새 Pod가 CrashLoop에 빠지고 롤아웃이 멈춘다.
 
-## 임시 확인 방법 (해결책 아님)
+## 확인 방법 (진단 당시)
 
-로컬에서 상태를 맞추려면 out-of-order를 1회 허용해 적용한다. **설정으로 커밋하지 않았다.**
+로컬에서 상태를 맞추려면 out-of-order를 1회 허용해 적용했다. 이 시점에는 설정으로 커밋하지 않았다.
 
 ```bash
 SPRING_FLYWAY_OUT_OF_ORDER=true java -jar build/libs/*.jar
@@ -55,7 +55,17 @@ Migrating schema "public" to version "2 - member" [out of order]
 Successfully applied 1 migration
 ```
 
-## 선택지 (합의 필요)
+이 1회 확인이 (a)의 근거가 되었고, 아래 "해결"에서 상시 설정으로 승격했다.
+
+## 해결 (2026-07-28, S15P11A705-86)
+
+**(a)를 채택했다** — 구간 소유 구조를 유지하고 `application.yml`에 `spring.flyway.out-of-order: true`를 적용했다. 결정 배경과 감수 항목은 [BD-26](../decisions/BD-26-flyway-out-of-order.md)에 있다.
+
+**"CI가 못 잡는다"는 공백도 함께 메웠다.** `FlywayOutOfOrderTests`가 AI 구간만 적용된 DB를 재현한 뒤 백엔드 마이그레이션이 적용되는지 검증한다. 재현 방식은 전체를 적용한 뒤 백엔드 몫만 이력에서 되돌리는 것인데, 특정 버전만 골라 적용하는 `cherryPick`이 Flyway 상용 기능이라 community 판에서 쓸 수 없기 때문이다. 이 테스트를 설정 적용 **전에** 돌려 위 증상의 예외가 그대로 재현되는 것을 확인했다.
+
+남은 것: 적용 순서 변화는 두 파트에 함께 영향을 주므로 **AI 파트 통지**가 필요하다(P## 절차가 필요한지 포함).
+
+## 선택지 (검토 당시)
 
 | 안 | 장점 | 단점 |
 |---|---|---|
@@ -67,6 +77,6 @@ Successfully applied 1 migration
 
 ## 재발 방지
 
-- 결정 전까지 **기존 DB가 있는 환경에서 백엔드 migration을 추가한 뒤 반드시 수동 기동 확인**한다. CI만 믿으면 안 된다.
-- 파트 간 영향이 있는 결정이므로 [백엔드 문서 README](../README.md)의 규칙대로 `docs/ai/proposals/`의 P 번호 절차를 따른다.
-- 결정이 나면 이 문서의 상태를 갱신하고 [데이터베이스 규약](../../development/database-conventions.md)에 반영한다.
+- `FlywayOutOfOrderTests`가 이 경로를 자동으로 감시한다. 빈 DB만 검증하는 `FlywayMigrationTests`와 **둘 다** 유지한다 — 하나는 처음 배포, 하나는 그 이후를 지킨다.
+- `spring.flyway.out-of-order`를 끄려면 먼저 [BD-26](../decisions/BD-26-flyway-out-of-order.md)의 재검토 트리거를 확인한다. 끄는 순간 이 증상이 그대로 돌아온다.
+- 백엔드가 `core.feed_event`나 `ai` 스키마 객체에 의존하는 제약을 추가하려 하면, 적용 순서가 결과를 바꾸므로 BD-26을 먼저 재검토한다.
