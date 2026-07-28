@@ -25,6 +25,7 @@ import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 
 import com.pinlog.pinlogback.domain.collection.entity.Collection;
 import com.pinlog.pinlogback.domain.collection.repository.CollectionRepository;
@@ -228,6 +229,39 @@ class FollowApiTests extends PostgresContainerSupport {
 		assertThat(stored).isNull();
 	}
 
+	/**
+	 * 별칭 수정 요청의 세 형태를 한 테스트로 고정한다(API 명세 8.3, S15P11A705-116).
+	 *
+	 * <p><b>키 생략({@code {}})과 명시적 null을 구분하지 않는다.</b> 요청 DTO가 컴포넌트 하나짜리
+	 * record라 Jackson이 둘을 똑같이 null로 역직렬화하고, 서비스가 그 null을 "제거"로 해석한다.
+	 * 명세 8.3은 명시적 null만 제거로 정의하고 키 생략은 정의하지 않았는데, 구분하지 않기로 정했다 —
+	 * Follow에서 수정 가능한 필드가 alias 하나뿐이라 부분 수정 요청이 나올 이유가 없다.
+	 *
+	 * <p>정의되지 않은 입력이 사용자 데이터를 지우는 상태로 두지 않으려고 계약으로 못 박는다.
+	 * 셋 중 하나라도 동작이 바뀌면 이 테스트가 실패한다.
+	 */
+	@Test
+	void aliasSetRemoveAndKeyOmissionAllBehaveAsContracted() throws Exception {
+		Member me = memberRepository.save(Member.create());
+		long followId = follow(me.getId(), publishedCollection(memberRepository.save(Member.create()).getId()));
+
+		patchAlias(me.getId(), followId, "{\"alias\": \"취향 좋은 카페\"}")
+			.andExpect(jsonPath("$.data.alias").value("취향 좋은 카페"));
+		assertThat(storedAlias(followId)).isEqualTo("취향 좋은 카페");
+
+		patchAlias(me.getId(), followId, "{\"alias\": null}")
+			.andExpect(jsonPath("$.data.alias").value(Matchers.nullValue()));
+		assertThat(storedAlias(followId)).isNull();
+
+		patchAlias(me.getId(), followId, "{\"alias\": \"다시 설정\"}")
+			.andExpect(jsonPath("$.data.alias").value("다시 설정"));
+
+		// 키 자체가 없는 요청. 명시적 null과 같은 결과여야 한다.
+		patchAlias(me.getId(), followId, "{}")
+			.andExpect(jsonPath("$.data.alias").value(Matchers.nullValue()));
+		assertThat(storedAlias(followId)).isNull();
+	}
+
 	@Test
 	void aliasLongerThan20CharsIs400() throws Exception {
 		Member me = memberRepository.save(Member.create());
@@ -293,6 +327,18 @@ class FollowApiTests extends PostgresContainerSupport {
 			.andExpect(status().isCreated())
 			.andReturn().getResponse().getContentAsString());
 		return response.at("/data/followId").asLong();
+	}
+
+	private ResultActions patchAlias(long memberId, long followId, String body) throws Exception {
+		return mockMvc.perform(patch("/v1/follows/{followId}", followId).with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(body))
+			.andExpect(status().isOk());
+	}
+
+	private String storedAlias(long followId) {
+		return jdbcTemplate.queryForObject(
+			"SELECT display_name FROM core.follow WHERE id = ?", String.class, followId);
 	}
 
 	private record RawResponse(int status, String body) {
