@@ -13,12 +13,20 @@ import jakarta.servlet.http.HttpServletResponse;
 /**
  * 인증 쿠키 3종을 만든다(BD-21, 08 §1.1).
  *
+ * <p>세 쿠키의 {@code Path}가 모두 다르고, 각각 <b>누가 읽어야 하는가</b>로 정해진다.
+ *
+ * <ul>
+ *   <li>Access — {@code /api/core}. 모든 API 요청에 실려야 하고 그 밖에는 갈 필요가 없다.</li>
+ *   <li>Refresh — {@code /api/core/v1/auth}. 일반 API 요청마다 7일짜리 토큰이 실려 나가면 노출
+ *       면적이 그만큼 넓어진다. 재발급·로그아웃이 모두 이 아래 있어 이 범위로 충분하다.</li>
+ *   <li>{@code logged_in} — <b>{@code /}</b>. 프론트 JS가 읽는 쿠키이고 프론트 페이지는
+ *       {@code /}·{@code /auth/callback}처럼 루트 아래에 있다. API 경로로 좁히면 그 페이지들의
+ *       {@code document.cookie}에 나타나지 않아 <b>읽을 방법이 아예 없다.</b></li>
+ * </ul>
+ *
  * <p>{@code Secure}를 로컬에서도 끄지 않는다. 브라우저는 {@code http://localhost}를 신뢰할 수 있는
  * 오리진으로 취급해 {@code Secure} 쿠키를 그대로 보내므로, 로컬 전용 예외를 두면 운영과 다른 경로를
  * 검증하게 될 뿐이다.
- *
- * <p>Refresh만 경로를 좁히는 이유: 일반 API 요청마다 7일짜리 토큰이 실려 나가면 노출 면적이 그만큼
- * 넓어진다. 재발급·로그아웃이 모두 {@code /v1/auth} 아래 있어 이 범위로 충분하다.
  */
 @Component
 public class AuthCookies {
@@ -29,6 +37,8 @@ public class AuthCookies {
 	public static final String LOGGED_IN = "logged_in";
 
 	private static final String SAME_SITE = "Lax";
+	/** 프론트가 서비스되는 경로. 프론트 JS가 읽어야 하는 쿠키는 여기에 붙어야 한다. */
+	private static final String CLIENT_PATH = "/";
 
 	private final JwtProperties properties;
 	private final String basePath;
@@ -66,7 +76,7 @@ public class AuthCookies {
 	}
 
 	private ResponseCookie loggedIn(String value, Duration maxAge) {
-		return base(LOGGED_IN, value, maxAge).httpOnly(false).path(basePath).build();
+		return base(LOGGED_IN, value, maxAge).httpOnly(false).path(CLIENT_PATH).build();
 	}
 
 	private ResponseCookie.ResponseCookieBuilder base(String name, String value, Duration maxAge) {

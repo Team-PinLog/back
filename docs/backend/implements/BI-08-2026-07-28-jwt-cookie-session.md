@@ -110,6 +110,19 @@ nimbus `DefaultJWTClaimsVerifier`의 기본 시계 오차다. 처음에 `-1초` 
 
 **하위 패키지마다 `package-info`에 `@NullMarked`를 다시 선언했다.** 패키지 애노테이션은 상속되지 않으므로, 이걸 빠뜨리면 방금 붙인 마킹이 이동만으로 조용히 사라진다. 컴파일은 통과하기 때문에 눈치채기 어렵다.
 
+## 실제 Google로 한 수동 검증
+
+스텁(`StubOAuthProvider`)이 **구조적으로 덮지 못하는 것**을 보려고 실제 Google 계정으로 한 번 돌렸다. 이 흐름은 동의 화면이 사람의 브라우저를 요구하므로 CI에 넣을 수 없다 — 인증 흐름을 바꿀 때 손으로 하는 절차로 남긴다([인증 계약](../../development/authentication.md) §8).
+
+확인된 것:
+
+- **OIDC 경로가 동작한다.** 테스트는 `scope`에서 `openid`를 빼고 돌아(서명된 id_token·JWKS 검증 우회) `OidcUserService` 경로에 자동 커버리지가 **0건**이었다. 운영 설정은 `openid,email`이다. `sub`·`email`이 정상 추출돼 `core.social_account`에 저장되는 것을 확인했다.
+- `redirect_uri` 정확 일치, PKCE `S256`, `nonce` 모두 실제 Google에서 통과.
+- `Secure` 쿠키가 `http://localhost`에서 저장·전송된다. 코드 주석에 주장만 해두고 검증한 적 없던 지점이다.
+- Redis에 `auth:refresh:{memberId}:{jti}`가 7일 TTL로 쌓인다.
+
+그리고 **버그 하나를 잡았다** — `logged_in` 쿠키를 프론트가 읽을 수 없었다([BT-04](../troubleshooting/BT-04-logged-in-cookie-path-unreadable.md)). `Path=/api/core`로 발급하고 있었고, `HttpOnly`가 아니라는 것만 확인하는 테스트로는 잡히지 않았다. **`HttpOnly`가 아니라는 것은 읽을 수 있다는 뜻이 아니다.**
+
 ## 남은 것
 
 - **키 회전** — `kid`만 선반영했고 다중 키 검증은 없다. 지금 키를 바꾸면 전면 로그아웃이다.

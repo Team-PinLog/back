@@ -59,6 +59,11 @@ class AuthTokenContractTests extends SocialLoginTestSupport {
 		String loggedIn = setCookie(callback, LOGGED_IN_COOKIE);
 		assertThat(loggedIn).doesNotContain("HttpOnly");
 		assertThat(loggedIn).contains("Secure").contains("SameSite=Lax");
+		// Path가 API 경로면 프론트 페이지(/, /auth/callback, /feed …)에서 document.cookie에
+		// 나타나지 않아 읽을 방법이 없다. 실제 브라우저 로그인에서 확인된 문제다.
+		assertThat(attribute(loggedIn, "Path"))
+			.as("프론트는 루트 아래에서 실행된다. API 경로로 좁히면 이 쿠키는 쓸모가 없다")
+			.isEqualTo("/");
 	}
 
 	@Test

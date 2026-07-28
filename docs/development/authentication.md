@@ -157,13 +157,15 @@ DB가 필요한 인증 테스트는 PostgreSQL Testcontainers를 사용합니다
 
 ### 쿠키
 
-| 쿠키 | 속성 | Path |
-| --- | --- | --- |
-| `access_token` | `HttpOnly`·`Secure`·`SameSite=Lax`, 30분 | `/api/core` |
-| `refresh_token` | `HttpOnly`·`Secure`·`SameSite=Lax`, 7일 | `/api/core/v1/auth` |
-| `logged_in` | `Secure`·`SameSite=Lax`, 7일. **`HttpOnly` 아님** | `/api/core` |
+| 쿠키 | 속성 | Path | 읽는 주체 |
+| --- | --- | --- | --- |
+| `access_token` | `HttpOnly`·`Secure`·`SameSite=Lax`, 30분 | `/api/core` | 서버 — 모든 API 요청 |
+| `refresh_token` | `HttpOnly`·`Secure`·`SameSite=Lax`, 7일 | `/api/core/v1/auth` | 서버 — 재발급·로그아웃만 |
+| `logged_in` | `Secure`·`SameSite=Lax`, 7일. **`HttpOnly` 아님** | **`/`** | **프론트 JS** |
 
 `logged_in`은 UI 힌트 전용입니다. **인가 판단에 쓰지 마세요** — 값이 클라이언트에서 조작 가능합니다.
+
+**`Path`는 "누가 읽어야 하는가"로 정합니다.** `logged_in`만 `/`인 이유가 여기 있습니다 — 프론트 페이지는 `/`·`/auth/callback`처럼 루트 아래에서 서비스되므로, API 경로로 좁히면 `document.cookie`에 나타나지 않아 읽을 방법이 없습니다. `HttpOnly`를 끄는 것만으로는 읽히지 않습니다([BT-04](../backend/troubleshooting/BT-04-logged-in-cookie-path-unreadable.md)).
 
 `Secure`를 로컬에서도 끄지 않습니다. 브라우저는 `http://localhost`를 신뢰할 수 있는 오리진으로 취급해 `Secure` 쿠키를 그대로 보냅니다.
 
