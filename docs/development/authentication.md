@@ -38,7 +38,7 @@ backend foundation reset은 Spring Security, OAuth, 임시 계정, `SecurityConf
 1. Spring Security와 OAuth2 Client 의존성
 2. principal 계약 — 인증 주체를 컨트롤러가 받는 방식
 3. 보안 설정 — 공개/보호 경로, 인가 규칙, 쿠키 속성, CSRF 검증
-4. envelope 경계 — 인증 엔드포인트의 opt-out과 Security entry point의 오류 envelope
+4. envelope 경계 — 인증 엔드포인트 성공 응답에 본문을 만들지 않는 것과, Security entry point의 오류 envelope
 5. 로컬 개발 방법 — 인증을 로컬에서 어떻게 통과시키는지
 6. 테스트 — 성공, `401` 미인증, `404` 권한, `403` CSRF, 쿠키 속성
 7. 문서 — 이 문서와 [API 규약](api-conventions.md)의 갱신
@@ -127,7 +127,7 @@ DB가 필요한 인증 테스트는 PostgreSQL Testcontainers를 사용합니다
 - [ ] `SecurityConfig`와 공개/보호 경로 설정, health·prometheus·로그인 진입점 공개 유지
 - [ ] 쿠키 속성(`HttpOnly`·`Secure`·`SameSite=Lax`)과 Refresh `Path` 범위 구현
 - [ ] CSRF 검증(`XSRF-TOKEN` → `X-XSRF-TOKEN`) 구현
-- [ ] envelope opt-out 장치로 인증 엔드포인트 제외 + Security entry point의 오류 envelope 직접 생성
+- [ ] 인증 엔드포인트 성공 응답에 본문 없음(제외 장치를 만들지 않음) + Security entry point의 오류 envelope 직접 생성
 - [ ] 로컬 개발·테스트에서 인증 통과 방법 문서화
 - [ ] 성공 / 401 / 404(권한) / 403(CSRF) / 공개 경로 / 쿠키 속성 / 본문 토큰 부재 테스트
 - [ ] `./gradlew clean check --no-daemon` 통과
