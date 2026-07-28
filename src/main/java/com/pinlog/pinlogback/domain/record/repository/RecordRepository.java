@@ -18,6 +18,8 @@ public interface RecordRepository extends JpaRepository<Record, Long> {
 
 	Optional<Record> findByMemberIdAndPlaceId(Long memberId, Long placeId);
 
+	List<Record> findByIdInAndMemberId(List<Long> ids, Long memberId);
+
 	/**
 	 * 활성 Context 수를 세고 분기한 뒤 쓰는 유스케이스(수정·삭제)의 행 잠금(데이터모델 6.4~6.6).
 	 * 서로 다른 Context를 다루는 두 트랜잭션이 공유하는 유일한 대상이 부모 Record이므로 여기를 잠근다.
