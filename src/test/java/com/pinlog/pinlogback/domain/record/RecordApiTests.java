@@ -10,6 +10,12 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +23,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.pinlog.pinlogback.domain.member.entity.Member;
@@ -104,6 +111,46 @@ class RecordApiTests extends PostgresContainerSupport {
 			.andExpect(jsonPath("$.data.result").value("CONTEXT_ADDED"))
 			.andExpect(jsonPath("$.data.recordId").value(first.at("/data/recordId").asLong()))
 			.andExpect(jsonPath("$.data.contexts.length()").value(2));
+	}
+
+	/**
+	 * Place가 이미 커밋돼 있으면 Place upsert의 ON CONFLICT가 블로킹하지 않아 두 트랜잭션이 나란히
+	 * "내 활성 Record 없음"으로 판정한다. 순차 요청(위 테스트)과 같은 결과로 수렴해야 한다.
+	 */
+	@Test
+	void concurrentCreateOnExistingPlaceAddsContextInsteadOfFailing() throws Exception {
+		createRecord(newMemberId(), "api-race-1", "다른 회원이 먼저 저장해 Place를 만든다");
+		long memberId = newMemberId();
+
+		List<RawResponse> responses = runConcurrently(
+			() -> postRecord(memberId, "api-race-1", "동시 요청 A"),
+			() -> postRecord(memberId, "api-race-1", "동시 요청 B"));
+
+		assertThat(responses).extracting(RawResponse::status).containsExactlyInAnyOrder(201, 200);
+
+		JsonNode created = parse(bodyOf(responses, 201));
+		JsonNode added = parse(bodyOf(responses, 200));
+		assertThat(added.at("/data/result").asText()).isEqualTo("CONTEXT_ADDED");
+		assertThat(added.at("/data/recordId").asLong()).isEqualTo(created.at("/data/recordId").asLong());
+
+		// 경합에 진 요청의 본문도 남아야 한다 — 재조회만 하고 돌려주면 조용히 사라진다.
+		assertThat(activeContextBodies(created.at("/data/recordId").asLong()))
+			.containsExactlyInAnyOrder("동시 요청 A", "동시 요청 B");
+	}
+
+	/**
+	 * Place가 없을 때는 upsert의 ON CONFLICT가 미커밋 키에서 블로킹해 두 트랜잭션이 직렬화된다.
+	 * 이미 통과하는 경로이며, 위 수정이 이 동작을 깨지 않는지 지키는 회귀 테스트다.
+	 */
+	@Test
+	void concurrentCreateOnNewPlaceStaysSerialized() throws Exception {
+		long memberId = newMemberId();
+
+		List<RawResponse> responses = runConcurrently(
+			() -> postRecord(memberId, "api-race-new-1", "동시 요청 A"),
+			() -> postRecord(memberId, "api-race-new-1", "동시 요청 B"));
+
+		assertThat(responses).extracting(RawResponse::status).containsExactlyInAnyOrder(201, 200);
 	}
 
 	@Test
@@ -317,6 +364,56 @@ class RecordApiTests extends PostgresContainerSupport {
 		return jdbcTemplate.queryForObject(
 			"SELECT updated_at FROM core.record WHERE id = ?",
 			java.time.OffsetDateTime.class, recordId).toInstant();
+	}
+
+	private record RawResponse(int status, String body) {
+	}
+
+	private RawResponse postRecord(long memberId, String kakaoPlaceId, String contextBody) throws Exception {
+		MockHttpServletResponse response = mockMvc.perform(post("/v1/records").with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(createBody(kakaoPlaceId, contextBody)))
+			.andReturn().getResponse();
+		return new RawResponse(response.getStatus(), response.getContentAsString());
+	}
+
+	/**
+	 * 두 요청을 같은 순간에 출발시킨다. 어느 쪽이 이기는지는 보장하지 않으므로 단정은 순서에
+	 * 의존하지 않는다.
+	 */
+	private List<RawResponse> runConcurrently(Callable<RawResponse> first, Callable<RawResponse> second)
+		throws Exception {
+		CountDownLatch ready = new CountDownLatch(2);
+		CountDownLatch start = new CountDownLatch(1);
+		ExecutorService executor = Executors.newFixedThreadPool(2);
+		try {
+			List<Future<RawResponse>> futures = List.of(first, second).stream()
+				.map(call -> executor.submit(() -> {
+					ready.countDown();
+					start.await();
+					return call.call();
+				}))
+				.toList();
+			ready.await();
+			start.countDown();
+			return List.of(futures.get(0).get(), futures.get(1).get());
+		} finally {
+			executor.shutdownNow();
+		}
+	}
+
+	private String bodyOf(List<RawResponse> responses, int status) {
+		return responses.stream()
+			.filter(response -> response.status() == status)
+			.map(RawResponse::body)
+			.findFirst()
+			.orElseThrow();
+	}
+
+	private List<String> activeContextBodies(long recordId) {
+		return jdbcTemplate.queryForList(
+			"SELECT body FROM core.context WHERE record_id = ? AND deleted_at IS NULL",
+			String.class, recordId);
 	}
 
 	private JsonNode parse(String json) throws Exception {
