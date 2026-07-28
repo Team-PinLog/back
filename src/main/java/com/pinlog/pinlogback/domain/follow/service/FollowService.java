@@ -2,6 +2,8 @@ package com.pinlog.pinlogback.domain.follow.service;
 
 import java.util.List;
 
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,9 @@ public class FollowService {
 
 	private static final int MAX_ALIAS_LENGTH = 20;
 
+	/** 활성행 부분 유니크 인덱스(V3). 동일 Shelf 중복 Follow를 DB가 막는 지점이다. */
+	private static final String UNIQUE_ACTIVE_FOLLOW = "uq_follow_active";
+
 	private final FollowRepository followRepository;
 	private final CollectionRepository collectionRepository;
 	private final MemberRepository memberRepository;
@@ -42,6 +47,16 @@ public class FollowService {
 		this.memberRepository = memberRepository;
 	}
 
+	/**
+	 * Shelf Follow 생성(API 명세 8.2). 중복 확인과 저장 사이는 원자적이지 않아, 동시 요청 둘이
+	 * 나란히 "중복 아님"으로 판정하고 {@code uq_follow_active}를 위반할 수 있다. 그래서 사전 확인과
+	 * <b>제약 위반 처리를 둘 다 둔다</b> — 앞의 것은 흔한 순차 요청을 예외 없이 거르고, 뒤의 것은
+	 * 경합에서 진 요청이 500이 아니라 409로 나가게 하는 안전망이다(S15P11A705-104).
+	 *
+	 * <p>Record 생성(S15P11A705-105)과 달리 {@code ON CONFLICT DO NOTHING}으로 흡수하지 않는다.
+	 * 중복 팔로우는 기존 것을 돌려주면 되는 멱등 연산이 아니라 <b>거절해야 하는 요청</b>이기 때문이다.
+	 * 위반 뒤 DB 작업을 이어가지 않고 예외만 바꿔 던지므로, 트랜잭션이 rollback-only가 되어도 문제가 없다.
+	 */
 	@Transactional
 	public FollowResponse follow(Long memberId, Long collectionId) {
 		Collection collection = collectionRepository.findById(collectionId)
@@ -59,8 +74,25 @@ public class FollowService {
 			.ifPresent(existing -> {
 				throw new DuplicateFollowException();
 			});
-		Follow follow = followRepository.save(Follow.create(followeeMemberId, memberId));
-		return FollowResponse.from(follow);
+		try {
+			Follow follow = followRepository.saveAndFlush(Follow.create(followeeMemberId, memberId));
+			return FollowResponse.from(follow);
+		} catch (DataIntegrityViolationException e) {
+			throw duplicateFollowOr(e);
+		}
+	}
+
+	/**
+	 * 활성행 부분 유니크 위반만 409로 바꾸고 나머지는 그대로 올린다. 모든
+	 * {@link DataIntegrityViolationException}을 409로 뭉뚱그리면 성격이 다른 위반(예: FK)이
+	 * "이미 팔로우한 책장입니다"로 나가 원인을 가린다.
+	 */
+	private RuntimeException duplicateFollowOr(DataIntegrityViolationException cause) {
+		if (cause.getCause() instanceof ConstraintViolationException violation
+			&& UNIQUE_ACTIVE_FOLLOW.equalsIgnoreCase(violation.getConstraintName())) {
+			return new DuplicateFollowException();
+		}
+		return cause;
 	}
 
 	@Transactional(readOnly = true)

@@ -24,3 +24,4 @@
 | BI-06 | Infra 배포 연동 체크리스트 검증 + pgvector `0.8.5-pg16` 정렬 (S15P11A705-51) | ✅ 완료 | [BI-06](BI-06-2026-07-27-deployment-contract-verification.md) |
 | BI-07 | 프레임워크 예외를 catch-all 500이 아니라 자체 상태 코드로 매핑 (S15P11A705-40) | ✅ 완료 | [BI-07](BI-07-2026-07-27-framework-error-mapping.md) |
 | BI-14 | 같은 장소 동시 저장을 충돌 없는 INSERT로 수렴 (S15P11A705-105) | ✅ 완료 | [BI-14](BI-14-2026-07-28-record-create-conflict-free-insert.md) |
+| BI-15 | 중복 팔로우 경합을 500이 아니라 409로 거절 (S15P11A705-104) | ✅ 완료 | [BI-15](BI-15-2026-07-28-duplicate-follow-race.md) |

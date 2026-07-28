@@ -9,6 +9,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +23,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.pinlog.pinlogback.domain.collection.entity.Collection;
@@ -92,6 +100,25 @@ class FollowApiTests extends PostgresContainerSupport {
 			"SELECT count(*) FROM core.follow WHERE follower_member_id = ? AND deleted_at IS NULL",
 			Long.class, me.getId());
 		assertThat(rows).isEqualTo(1);
+	}
+
+	/**
+	 * 중복 확인과 저장 사이에 다른 트랜잭션이 끼어들면 둘 다 "중복 아님"으로 판정한다.
+	 * 순차 요청(위 테스트)과 같은 결과 — 한쪽만 201, 나머지는 409 — 로 수렴해야 한다.
+	 */
+	@Test
+	void concurrentDuplicateFollowIs409NotServerError() throws Exception {
+		Member owner = memberRepository.save(Member.create());
+		Member me = memberRepository.save(Member.create());
+		long collectionId = publishedCollection(owner.getId());
+
+		List<RawResponse> responses = runConcurrently(
+			() -> postFollow(me.getId(), collectionId),
+			() -> postFollow(me.getId(), collectionId));
+
+		assertThat(responses).extracting(RawResponse::status).containsExactlyInAnyOrder(201, 409);
+		assertThat(parse(bodyOf(responses, 409)).at("/error/code").asText()).isEqualTo("DUPLICATE_FOLLOW");
+		assertThat(activeFollowCount(me.getId())).isEqualTo(1);
 	}
 
 	@Test
@@ -266,6 +293,56 @@ class FollowApiTests extends PostgresContainerSupport {
 			.andExpect(status().isCreated())
 			.andReturn().getResponse().getContentAsString());
 		return response.at("/data/followId").asLong();
+	}
+
+	private record RawResponse(int status, String body) {
+	}
+
+	private RawResponse postFollow(long memberId, long collectionId) throws Exception {
+		MockHttpServletResponse response = mockMvc.perform(post("/v1/follows").with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"collectionId\": " + collectionId + "}"))
+			.andReturn().getResponse();
+		return new RawResponse(response.getStatus(), response.getContentAsString());
+	}
+
+	/**
+	 * 두 요청을 같은 순간에 출발시킨다. 어느 쪽이 이기는지는 보장하지 않으므로 단정은 순서에
+	 * 의존하지 않는다.
+	 */
+	private List<RawResponse> runConcurrently(Callable<RawResponse> first, Callable<RawResponse> second)
+		throws Exception {
+		CountDownLatch ready = new CountDownLatch(2);
+		CountDownLatch start = new CountDownLatch(1);
+		ExecutorService executor = Executors.newFixedThreadPool(2);
+		try {
+			List<Future<RawResponse>> futures = List.of(first, second).stream()
+				.map(call -> executor.submit(() -> {
+					ready.countDown();
+					start.await();
+					return call.call();
+				}))
+				.toList();
+			ready.await();
+			start.countDown();
+			return List.of(futures.get(0).get(), futures.get(1).get());
+		} finally {
+			executor.shutdownNow();
+		}
+	}
+
+	private String bodyOf(List<RawResponse> responses, int status) {
+		return responses.stream()
+			.filter(response -> response.status() == status)
+			.map(RawResponse::body)
+			.findFirst()
+			.orElseThrow();
+	}
+
+	private long activeFollowCount(long followerMemberId) {
+		return jdbcTemplate.queryForObject(
+			"SELECT count(*) FROM core.follow WHERE follower_member_id = ? AND deleted_at IS NULL",
+			Long.class, followerMemberId);
 	}
 
 	private JsonNode parse(String json) {
