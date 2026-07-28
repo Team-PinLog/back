@@ -9,3 +9,11 @@
 *.yml text eol=lf
 *.sql text eol=lf
 .editorconfig text eol=lf
+
+# WORKLOG는 모든 작업이 표 끝에 한 줄씩 추가하는 append 전용 파일이라, 브랜치가 둘 이상이면
+# 항상 같은 지점에서 충돌한다. union은 양쪽 줄을 모두 남겨 그 충돌을 없앤다.
+# 감수할 점은 세 가지다 — 순서가 보장되지 않으므로 시간순 판독의 기준은 날짜 컬럼이고,
+# 기존 줄을 두 브랜치가 각각 수정하면 두 버전이 중복으로 남으며(WORKLOG 머리말 참고),
+# GitHub 서버측 병합 판정은 이 설정을 반영하지 않아 PR은 여전히 CONFLICTING으로 표시된다.
+# 즉 이득은 "로컬 병합에서 손으로 충돌을 풀 일이 없어지는 것"까지다(실측: S15P11A705-91).
+docs/backend/WORKLOG.md merge=union
