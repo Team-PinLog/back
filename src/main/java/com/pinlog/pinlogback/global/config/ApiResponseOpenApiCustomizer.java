@@ -4,7 +4,7 @@ import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
 
-import com.pinlog.pinlogback.global.response.ApiResponse;
+import com.pinlog.pinlogback.global.web.EnvelopeTargets;
 
 import io.swagger.v3.oas.models.Operation;
 import io.swagger.v3.oas.models.media.Content;
@@ -17,8 +17,10 @@ import io.swagger.v3.oas.models.responses.ApiResponses;
  *
  * <p>springdoc은 컨트롤러의 선언된 반환 타입을 introspect하지만
  * {@link com.pinlog.pinlogback.global.web.ApiResponseBodyAdvice}는 런타임에 응답 바디를 감싼다. 두 판정이
- * 어긋나면 문서와 실제 응답이 달라지므로, 이 커스터마이저는 Advice와 <b>동일한 판정</b>(컨트롤러 패키지가
- * {@code com.pinlog.pinlogback.domain} 하위 + 선언된 반환형이 이미 {@link ApiResponse}가 아님)을 재사용한다.
+ * 어긋나면 문서와 실제 응답이 달라지므로, 판정을 각자 두지 않고
+ * {@link com.pinlog.pinlogback.global.web.EnvelopeTargets} <b>한 곳</b>을 함께 쓴다. 실제로 두 곳에 각자
+ * 두었을 때 {@code ResponseEntity<ApiResponse<T>>}에서 결론이 갈려 문서만 이중 래핑되는 일이 있었다
+ * (S15P11A705-85).
  *
  * <p>대상 operation의 2xx 응답 content 스키마만 {@code success}/{@code data}를 가진 객체 스키마로 감싼다.
  * 원래 스키마가 {@code $ref}면 참조를 그대로 {@code data}에 넣어 스키마 중복 정의를 만들지 않는다. content가
@@ -29,11 +31,9 @@ import io.swagger.v3.oas.models.responses.ApiResponses;
 @Component
 public class ApiResponseOpenApiCustomizer implements OperationCustomizer {
 
-	private static final String DOMAIN_PACKAGE = "com.pinlog.pinlogback.domain";
-
 	@Override
 	public Operation customize(Operation operation, HandlerMethod handlerMethod) {
-		if (!isEnvelopeTarget(handlerMethod)) {
+		if (!EnvelopeTargets.appliesTo(handlerMethod.getBeanType(), handlerMethod.getReturnType())) {
 			return operation;
 		}
 		ApiResponses responses = operation.getResponses();
@@ -46,12 +46,6 @@ public class ApiResponseOpenApiCustomizer implements OperationCustomizer {
 			}
 		});
 		return operation;
-	}
-
-	private boolean isEnvelopeTarget(HandlerMethod handlerMethod) {
-		String packageName = handlerMethod.getBeanType().getPackageName();
-		Class<?> returnType = handlerMethod.getReturnType().getParameterType();
-		return packageName.startsWith(DOMAIN_PACKAGE) && !ApiResponse.class.isAssignableFrom(returnType);
 	}
 
 	private boolean isSuccessStatus(String status) {
