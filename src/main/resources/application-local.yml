@@ -9,3 +9,9 @@ spring:
     redis:
       host: localhost
       port: 16379
+
+# 인증 스텁(back#28 계약). 인증 PR이 오면 이 프로퍼티와 X-Debug-Member-Id 분기를 반드시 제거한다.
+pinlog:
+  auth:
+    stub:
+      enabled: true
