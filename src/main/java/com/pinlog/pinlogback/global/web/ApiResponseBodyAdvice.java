@@ -14,10 +14,13 @@ import com.pinlog.pinlogback.global.response.ApiResponse;
 /**
  * 도메인 컨트롤러가 반환한 DTO를 공통 envelope(ApiResponse)로 감싼다(API 명세 1.6).
  *
- * <p>판정을 URL 패턴이 아니라 <b>컨트롤러 패키지</b>로 하는 이유: actuator와 springdoc은 각자
- * 다른 패키지의 핸들러이므로 이 조건에서 자동으로 제외된다. 이들을 감싸면 배포 헬스체크와
- * Swagger UI가 깨진다. Jackson 컨버터 조건은 String 응답이 StringHttpMessageConverter로
- * 처리될 때 envelope를 문자열로 쓸 수 없는 문제를 막는다.
+ * <p>"어떤 핸들러를 감쌀 것인가"의 판정은 {@link EnvelopeTargets}가 갖는다 — 문서를 생성하는
+ * {@code ApiResponseOpenApiCustomizer}와 같은 결론을 내야 하기 때문이다. 여기서는 그 판정에
+ * <b>컨버터 조건만 추가</b>한다: String 응답이 StringHttpMessageConverter로 처리될 때는 envelope를
+ * 문자열로 쓸 수 없으므로 대상에서 빼야 한다.
+ *
+ * <p>{@link #beforeBodyWrite}의 {@code instanceof ApiResponse} 검사는 남겨 둔다. 선언 타입으로는
+ * 알 수 없는 경우({@code ResponseEntity<?>} 등)의 최종 방어선이고, 이중 래핑은 여기서 확실히 막힌다.
  *
  * <p>Jackson 3(tools.jackson) 기준 컨버터 공통 상위 타입은 Jackson 2 시절의
  * {@code AbstractJackson2HttpMessageConverter}(org.springframework.http.converter.json)가 아니라
@@ -27,12 +30,9 @@ import com.pinlog.pinlogback.global.response.ApiResponse;
 @RestControllerAdvice
 public class ApiResponseBodyAdvice implements ResponseBodyAdvice<Object> {
 
-	private static final String DOMAIN_PACKAGE = "com.pinlog.pinlogback.domain";
-
 	@Override
 	public boolean supports(MethodParameter returnType, Class<? extends HttpMessageConverter<?>> converterType) {
-		return isDomainController(returnType)
-			&& !ApiResponse.class.isAssignableFrom(returnType.getParameterType())
+		return EnvelopeTargets.appliesTo(returnType.getContainingClass(), returnType)
 			&& AbstractJacksonHttpMessageConverter.class.isAssignableFrom(converterType);
 	}
 
@@ -47,10 +47,5 @@ public class ApiResponseBodyAdvice implements ResponseBodyAdvice<Object> {
 			return body;
 		}
 		return ApiResponse.ok(body);
-	}
-
-	private boolean isDomainController(MethodParameter returnType) {
-		Class<?> controller = returnType.getContainingClass();
-		return controller != null && controller.getPackageName().startsWith(DOMAIN_PACKAGE);
 	}
 }
