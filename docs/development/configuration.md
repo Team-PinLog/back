@@ -25,7 +25,7 @@
 
 - **context path는 `/api/core`** 로 고정합니다. 컨트롤러 매핑에 다시 쓰지 않습니다([API 규약](api-conventions.md), [infra/backend-conventions](https://github.com/Team-PinLog/infra/blob/main/docs/backend-conventions.md)).
 - Hibernate는 **`ddl-auto=validate`** 입니다. 스키마는 Flyway가 관리합니다([데이터베이스 규약](database-conventions.md)).
-- Actuator는 필수이며 `health`(및 필요 시 `prometheus`)만 노출합니다. 헬스체크 경로가 어긋나면 배포가 실패합니다.
+- Actuator는 필수이며 `health`와 `prometheus`만 노출합니다. **둘 다 필수입니다** — `DeploymentContractTests`가 두 경로를 모두 검증하고, 어긋나면 배포와 모니터링이 함께 깨집니다.
 
 ```yaml
 server:
@@ -42,7 +42,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health        # 지표가 필요하면 health,prometheus
+        include: health,prometheus
   endpoint:
     health:
       probes:
@@ -51,21 +51,23 @@ management:
 
 ## 비밀값과 자격증명 주입
 
-접속 자격증명은 파일이 아니라 환경변수로 주입받습니다. 기본값에 실제 비밀번호를 넣지 않습니다.
+**비밀값만** 환경변수로 주입받습니다. 주소·DB 이름·사용자명은 비밀이 아니므로 프로파일 파일에 그대로 적습니다 — 값이 무엇인지 코드를 읽어서 알 수 있어야 하고, 환경변수로 옮기면 그 값이 어디서 오는지 추적할 수 없게 됩니다.
+
+`Team-PinLog/infra`가 정한 주입 계약은 **`DB_PASSWORD` 하나**입니다([infra/backend-conventions §5](https://github.com/Team-PinLog/infra/blob/main/docs/backend-conventions.md)).
 
 ```yaml
 spring:
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}      # 환경변수로 주입
+    url: jdbc:postgresql://postgres.pinlog-prod.svc.cluster.local:5432/pinlog
+    username: pinlog
+    password: ${DB_PASSWORD}      # 환경변수로 주입되는 유일한 값
   data:
     redis:
-      host: ${REDIS_HOST}
-      port: ${REDIS_PORT}
+      host: redis.pinlog-prod.svc.cluster.local
+      port: 6379
 ```
 
-운영에서는 인프라가 이 값을 주입합니다. 새 비밀번호·API 키가 필요하면 저장소에 넣지 말고 인프라 담당자에게 요청합니다([infra/backend-conventions](https://github.com/Team-PinLog/infra/blob/main/docs/backend-conventions.md)).
+`${DB_URL}`·`${DB_USERNAME}`·`${REDIS_HOST}` 같은 이름을 새로 만들지 않습니다. 인프라가 주입하지 않는 변수를 참조하면 기동 시점에 해석 실패로 죽습니다. 새 비밀번호·API 키가 필요하면 저장소에 넣지 말고 인프라 담당자에게 요청합니다.
 
 ## 로컬 프로파일 (`local`)
 
@@ -88,12 +90,14 @@ spring:
 
 ## 운영 프로파일 (`prod`)
 
-운영은 클러스터 내부 주소를 사용하고 자격증명은 주입받습니다.
+운영은 클러스터 내부 주소를 사용하고 비밀번호만 주입받습니다.
 
-- PostgreSQL: `postgres.pinlog-prod.svc.cluster.local:5432`
+- PostgreSQL: `postgres.pinlog-prod.svc.cluster.local:5432` (DB·사용자 모두 `pinlog`)
 - Redis: `redis.pinlog-prod.svc.cluster.local:6379`
 
 이 주소·네임스페이스는 인프라 소관입니다. 값이 바뀌면 [infra/backend-conventions](https://github.com/Team-PinLog/infra/blob/main/docs/backend-conventions.md)를 기준으로 하고 인프라 담당자와 맞춥니다.
+
+> **미구현**: 현재 `application-prod.yml`에는 springdoc 차단만 있고 **datasource·redis 설정이 없습니다.** 위 값이 파일에 들어가기 전까지 운영 기동은 인프라가 넣어 주는 `SPRING_DATASOURCE_*` 계열 환경변수에 암묵적으로 의존합니다 — 즉 어디에 접속하는지가 저장소만 봐서는 확인되지 않습니다. 파일을 위 값으로 채우는 일은 후속 설정 티켓에서 처리합니다.
 
 > Redis는 캐시·세션 전용이라 재시작하면 비워집니다. 유실되면 안 되는 데이터를 넣어야 하면 사전에 인프라와 협의합니다.
 
@@ -107,5 +111,6 @@ spring:
 - [ ] 비밀번호·토큰·키를 저장소에 넣지 않았다 (환경변수 주입)
 - [ ] context path는 `/api/core`, 컨트롤러에 중복하지 않았다
 - [ ] `ddl-auto=validate`이고 스키마는 Flyway가 관리한다
-- [ ] actuator `health`(필요 시 `prometheus`)만 노출한다
+- [ ] actuator는 `health`·`prometheus`만 노출한다 (둘 다 필수)
+- [ ] 비밀값은 `DB_PASSWORD`만 환경변수이고, 주소·사용자명은 프로파일 파일에 있다
 - [ ] 환경별 차이만 프로파일에 두고 공통값을 복제하지 않았다

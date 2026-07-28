@@ -4,8 +4,16 @@
 
 ## 경로와 리소스
 
-- 애플리케이션 context path는 `/api/core`입니다.
-- Controller의 `@RequestMapping`과 메서드 매핑에는 `/api/core`를 중복하지 않습니다. 예를 들어 회원 리소스는 `/members`로 매핑해 최종 경로를 `/api/core/members`로 만듭니다.
+공용 명세가 정한 **기본 경로는 `/api/core/v1`** 이며, 이는 context path와 API 버전을 합친 값입니다([08_API_명세 §1](https://github.com/Team-PinLog/docs/blob/main/static/08_API_명세.md)). 두 조각의 출처가 다르므로 붙이는 위치도 다릅니다.
+
+| 조각 | 누가 붙이나 |
+| --- | --- |
+| `/api/core` | **인프라 고정값.** `server.servlet.context-path`가 붙입니다. 컨트롤러에 다시 쓰지 않습니다 |
+| `/v1` | **컨트롤러가 직접** `@RequestMapping`에 씁니다 |
+
+- 컨트롤러는 `@RequestMapping("/v1/records")`처럼 **`/v1`을 포함해** 매핑합니다. 최종 경로는 `/api/core/v1/records`가 됩니다.
+- **`/v1`을 전역 설정(`addPathPrefix` 등)으로 자동 부여하지 않습니다.** 버저닝은 컨트롤러의 책임입니다 — 새 계약이 생기면 `v2` 컨트롤러를 추가해 `v1`과 **공존**시키고, 준비된 리소스만 옮깁니다. 전역 prefix는 이 공존을 막습니다.
+- 컨트롤러 매핑에 `/api/core`를 중복하지 않습니다. 중복하면 최종 경로가 `/api/core/api/core/...`가 됩니다.
 - URI는 복수 명사를 사용합니다. 동작이 필요한 경우에도 리소스와 하위 리소스로 표현하는 방식을 먼저 선택합니다.
 
 ## 요청과 응답 모델
