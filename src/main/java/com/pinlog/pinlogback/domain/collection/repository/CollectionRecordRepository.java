@@ -14,6 +14,12 @@ public interface CollectionRecordRepository extends JpaRepository<CollectionReco
 
 	List<CollectionRecord> findByCollectionIdAndRecordIdIn(Long collectionId, List<Long> recordIds);
 
+	List<CollectionRecord> findByRecordId(Long recordId);
+
+	List<CollectionRecord> findByCollectionId(Long collectionId);
+
+	long countByCollectionId(Long collectionId);
+
 	/**
 	 * 컬렉션 내부 페이지. 정렬은 담은 순서 최신순(collection_record.created_at DESC, 데이터모델 2.7) —
 	 * Record의 시각을 기준으로 삼으면 Context 수정만으로 순서가 바뀌므로 쓰지 않는다.

@@ -41,6 +41,17 @@ import lombok.extern.slf4j.Slf4j;
 @RestControllerAdvice
 public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 
+	/**
+	 * DELETE_CONFIRMATION_REQUIRED는 error에 impact(연쇄 삭제 영향)를 추가로 싣는다(API 명세 1.5).
+	 * BusinessException보다 구체적인 타입이므로 이 핸들러가 우선한다.
+	 */
+	@ExceptionHandler(DeleteConfirmationRequiredException.class)
+	public ResponseEntity<ApiResponse<Void>> handleDeleteConfirmation(DeleteConfirmationRequiredException ex) {
+		log.warn("delete confirmation required: impact={}", ex.getImpact());
+		ErrorResponse error = ErrorResponse.of(ex.getCode(), ex.getMessage(), traceId(), ex.getImpact());
+		return ResponseEntity.status(ex.getHttpStatus()).body(ApiResponse.fail(error));
+	}
+
 	@ExceptionHandler(BusinessException.class)
 	public ResponseEntity<ApiResponse<Void>> handleBusiness(BusinessException ex) {
 		log.warn("business error: code={}, message={}", ex.getCode(), ex.getMessage());
