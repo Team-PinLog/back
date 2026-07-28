@@ -48,9 +48,12 @@ public class JwtKeyProvider {
 	private final RSAKey rsaKey;
 
 	public JwtKeyProvider(JwtProperties properties, Environment environment) {
-		this.rsaKey = properties.hasPrivateKey()
-			? fromPem(properties.privateKey())
-			: ephemeral(environment);
+		// 지역 변수로 받아야 "비어 있지 않음"이 타입에 남는다. hasPrivateKey() 같은 술어 메서드는
+		// 검사와 사용 사이의 연결을 컴파일러에 알려 주지 못해 nullable을 non-null 자리에 넘기게 된다.
+		String privateKey = properties.privateKey();
+		this.rsaKey = privateKey == null || privateKey.isBlank()
+			? ephemeral(environment)
+			: fromPem(privateKey);
 	}
 
 	public RSAKey rsaKey() {

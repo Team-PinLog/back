@@ -73,6 +73,24 @@ nimbus `DefaultJWTClaimsVerifier`의 기본 시계 오차다. 처음에 `-1초` 
 
 나머지: `WebUtils.getCookie()`로 수동 쿠키 순회 대체, nimbus `keyIDFromThumbprint()`로 이중 빌드 제거, `sub` 이중 파싱 제거, 테스트의 JSON 정규식을 `SignedJWT.parse()`로, Refresh 쿠키 부재 판단을 컨트롤러에서 `AuthTokenService`로 이동(토큰의 의미는 서비스가 소유한다).
 
+## JSpecify 마킹 확대
+
+[BD-27](../decisions/BD-27-nullmarked-security-package.md)이 `global/security`만 `@NullMarked`로 선언해 둔 상태였다. 그 기준("전수 감사 비용이 작고 다른 파트 소유 파일이 안 섞일 것")을 그대로 적용해 `global/config`와 `domain/auth/{controller,dto,service,exception}`을 추가로 마킹했다.
+
+**마킹하지 않으면 `@Nullable`이 아무 의미도 없다.** `JwtProperties.privateKey`에 표기를 붙여 뒀지만 `global/config`가 미마킹이라 도구가 무시하고 있었다. 이 사실이 `JwtKeyProviderTest`에서 `properties(null)` 경고로 드러났다.
+
+마킹이 드러낸 실제 구멍 셋:
+
+| 위치 | 문제 |
+| --- | --- |
+| `JwtKeyProvider` 생성자 | `hasPrivateKey()`로 검사하고 `fromPem(properties.privateKey())`에 nullable을 non-null 자리로 넘겼다. 술어 메서드는 검사와 사용의 연결을 컴파일러에 알려 주지 못한다 — 지역 변수 + 흐름 검사로 바꾸고 술어를 지웠다 |
+| `OAuthUserInfo.email` | javadoc은 "null이다"라고 적고 타입은 non-null이었다. 거짓 보증 |
+| `OAuthUserInfo.providerUserId` | `stringValue(attributes.get("sub"))`(nullable)를 non-null 컴포넌트에 넣고 있었다. `sub`가 없으면 조용히 통과해 `provider_user_id` NOT NULL 위반으로 DB까지 내려가서야 터진다 |
+
+세 번째는 **동작 변경**이다. `requiredStringValue`로 진입점에서 끊는다. Spring이 `user-name-attribute: sub` 설정으로 앞단에서 걸러 주긴 하지만 그 보증이 설정에만 있고 타입에는 없어, 설정이 바뀌면 조용히 뚫린다.
+
+`global/web`·`global/response`·`global/common`은 그대로 뒀다. BD-27이 명시적으로 제외한 범위이고 이 티켓의 산출물도 아니다. BD-27의 재검토 트리거("마킹 패키지가 늘어 혼재가 부담이 될 때 → 레포 전체 도입 논의")에 근접했으나, 전체 도입은 다른 파트 소유 파일까지 감사해야 하므로 이 PR 범위 밖으로 판단했다.
+
 ## 남은 것
 
 - **키 회전** — `kid`만 선반영했고 다중 키 검증은 없다. 지금 키를 바꾸면 전면 로그아웃이다.

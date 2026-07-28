@@ -7,6 +7,7 @@ import java.security.KeyPairGenerator;
 import java.time.Duration;
 import java.util.Base64;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
@@ -73,7 +74,8 @@ class JwtKeyProviderTest {
 			.hasMessageNotContaining("not-a-key");
 	}
 
-	private JwtProperties properties(String privateKey) {
+	/** 키 미주입을 재현하려면 {@code null}을 넣어야 하므로 파라미터도 nullable이다. */
+	private JwtProperties properties(@Nullable String privateKey) {
 		return new JwtProperties(privateKey, ACCESS_TTL, REFRESH_TTL, "pinlog");
 	}
 

@@ -22,8 +22,4 @@ public record JwtProperties(
 	Duration refreshTokenTtl,
 	String issuer
 ) {
-
-	public boolean hasPrivateKey() {
-		return privateKey != null && !privateKey.isBlank();
-	}
 }
