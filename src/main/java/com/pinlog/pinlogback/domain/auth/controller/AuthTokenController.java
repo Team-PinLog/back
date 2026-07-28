@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.pinlog.pinlogback.domain.auth.service.AuthTokenService;
 import com.pinlog.pinlogback.domain.auth.service.AuthTokenService.TokenPair;
-import com.pinlog.pinlogback.global.exception.UnauthorizedException;
 import com.pinlog.pinlogback.global.security.AuthCookies;
 
 import jakarta.servlet.http.HttpServletResponse;
@@ -43,9 +42,6 @@ public class AuthTokenController {
 		@CookieValue(name = AuthCookies.REFRESH_TOKEN, required = false) @Nullable String refreshToken,
 		HttpServletResponse response
 	) {
-		if (refreshToken == null || refreshToken.isBlank()) {
-			throw new UnauthorizedException();
-		}
 		TokenPair tokens = authTokenService.rotate(refreshToken);
 		authCookies.write(response, tokens.accessToken(), tokens.refreshToken());
 	}
@@ -56,9 +52,7 @@ public class AuthTokenController {
 		@CookieValue(name = AuthCookies.REFRESH_TOKEN, required = false) @Nullable String refreshToken,
 		HttpServletResponse response
 	) {
-		if (refreshToken != null && !refreshToken.isBlank()) {
-			authTokenService.logout(refreshToken);
-		}
+		authTokenService.logout(refreshToken);
 		// 서버 상태와 무관하게 쿠키는 항상 지운다. 로그아웃은 멱등하다.
 		authCookies.clear(response);
 	}

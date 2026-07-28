@@ -81,13 +81,13 @@ public class JwtTokenProvider {
 
 	/** @return 검증을 통과한 Access 토큰의 회원 식별자. 실패하면 빈 값 */
 	public Optional<Long> parseAccessToken(String token) {
-		return parse(token, ACCESS).map(claims -> Long.valueOf(claims.getSubject()));
+		return parse(token, ACCESS).map(VerifiedToken::memberId);
 	}
 
 	/** @return 검증을 통과한 Refresh 토큰의 회원 식별자와 {@code jti}. 실패하면 빈 값 */
 	public Optional<RefreshTokenClaims> parseRefreshToken(String token) {
 		return parse(token, REFRESH)
-			.map(claims -> new RefreshTokenClaims(Long.valueOf(claims.getSubject()), claims.getJWTID()));
+			.map(verified -> new RefreshTokenClaims(verified.memberId(), verified.tokenId()));
 	}
 
 	private String sign(Long memberId, String tokenUse, long ttlSeconds, String tokenId) {
@@ -111,19 +111,22 @@ public class JwtTokenProvider {
 
 	/**
 	 * 서명·만료·발급자·필수 클레임을 검증하고 용도까지 맞는지 확인한다. 실패 원인을 호출자에게
-	 * 구분해 알리지 않는다 — 만료인지 위조인지 알려 주면 공격자에게 정보를 준다.
+	 * 구분해 알리지 않는다 — 만료인지 위조인지 알려 주면 공격자에게 정보를 준다. {@code sub}가
+	 * 숫자가 아닌 경우도 여기서 걸러지므로 호출자는 변환을 다시 하지 않는다.
 	 */
-	private Optional<JWTClaimsSet> parse(String token, String expectedUse) {
+	private Optional<VerifiedToken> parse(String token, String expectedUse) {
 		try {
 			JWTClaimsSet claims = processor.process(token, null);
 			if (!expectedUse.equals(claims.getStringClaim(TOKEN_USE))) {
 				return Optional.empty();
 			}
-			Long.parseLong(claims.getSubject());
-			return Optional.of(claims);
+			return Optional.of(new VerifiedToken(Long.parseLong(claims.getSubject()), claims.getJWTID()));
 		} catch (Exception e) {
 			return Optional.empty();
 		}
+	}
+
+	private record VerifiedToken(Long memberId, String tokenId) {
 	}
 
 	public record IssuedRefreshToken(String token, String tokenId) {

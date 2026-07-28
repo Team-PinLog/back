@@ -8,6 +8,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
+import org.springframework.web.util.WebUtils;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -51,23 +52,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		filterChain.doFilter(request, response);
 	}
 
+	private static Optional<String> readAccessToken(HttpServletRequest request) {
+		return Optional.ofNullable(WebUtils.getCookie(request, AuthCookies.ACCESS_TOKEN))
+			.map(Cookie::getValue)
+			.filter(value -> !value.isBlank());
+	}
+
 	private void authenticate(HttpServletRequest request, Long memberId) {
 		UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
 			new MemberPrincipal(memberId), null, List.of());
 		authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 		SecurityContextHolder.getContext().setAuthentication(authentication);
-	}
-
-	private Optional<String> readAccessToken(HttpServletRequest request) {
-		Cookie[] cookies = request.getCookies();
-		if (cookies == null) {
-			return Optional.empty();
-		}
-		for (Cookie cookie : cookies) {
-			if (AuthCookies.ACCESS_TOKEN.equals(cookie.getName())) {
-				return Optional.ofNullable(cookie.getValue()).filter(value -> !value.isBlank());
-			}
-		}
-		return Optional.empty();
 	}
 }

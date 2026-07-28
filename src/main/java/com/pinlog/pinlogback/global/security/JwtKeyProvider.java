@@ -108,9 +108,8 @@ public class JwtKeyProvider {
 	}
 
 	private static RSAKey withThumbprintKeyId(RSAPublicKey publicKey, RSAPrivateKey privateKey) {
-		RSAKey key = new RSAKey.Builder(publicKey).privateKey(privateKey).build();
 		try {
-			return new RSAKey.Builder(key).keyID(key.computeThumbprint().toString()).build();
+			return new RSAKey.Builder(publicKey).privateKey(privateKey).keyIDFromThumbprint().build();
 		} catch (JOSEException e) {
 			throw new IllegalStateException("공개키 thumbprint를 계산하지 못했다", e);
 		}

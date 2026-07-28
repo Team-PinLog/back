@@ -3,34 +3,24 @@ package com.pinlog.pinlogback.domain.auth;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.IOException;
-import java.net.CookieManager;
-import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.util.UriComponentsBuilder;
 
-import com.pinlog.pinlogback.integration.PostgresRedisContainerSupport;
+import com.nimbusds.jwt.SignedJWT;
 
 /**
  * 토큰 발급·검증·회전 계약을 HTTP 경계에서 검증한다(인증 PR 계약 5, BD-21·BD-29).
  *
- * <p>쿠키를 {@link CookieManager}에 맡기지 않고 {@code Set-Cookie} 헤더를 직접 읽는다. 두 가지
+ * <p>쿠키를 {@code CookieManager}에 맡기지 않고 {@code Set-Cookie} 헤더를 직접 읽는다. 두 가지
  * 이유가 있다. 첫째, 검증 대상이 <b>속성 자체</b>(HttpOnly·Secure·SameSite·Path)라서 파싱된
  * 쿠키가 아니라 원문을 봐야 한다. 둘째, {@code CookieManager}는 http 링크에 {@code Secure}
  * 쿠키를 싣지 않으므로 왕복 검증이 불가능해진다 — 실제 브라우저는 localhost를 신뢰할 수 있는
@@ -39,38 +29,16 @@ import com.pinlog.pinlogback.integration.PostgresRedisContainerSupport;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @DisplayName("인증 토큰 계약")
-class AuthTokenContractTests extends PostgresRedisContainerSupport {
+class AuthTokenContractTests extends SocialLoginTestSupport {
 
 	private static final String ACCESS_COOKIE = "access_token";
 	private static final String REFRESH_COOKIE = "refresh_token";
 	private static final String LOGGED_IN_COOKIE = "logged_in";
-
-	private static StubOAuthProvider provider;
+	private static final String CSRF_COOKIE = "XSRF-TOKEN";
+	private static final String PROTECTED_PATH = "/api/core/v1/test-authenticated/me";
 
 	@Value("${local.server.port}")
 	private int port;
-
-	@BeforeAll
-	static void startProvider() throws IOException {
-		provider = StubOAuthProvider.start();
-	}
-
-	@AfterAll
-	static void stopProvider() {
-		provider.stop();
-	}
-
-	@DynamicPropertySource
-	static void stubProviderEndpoints(DynamicPropertyRegistry registry) {
-		String base = "spring.security.oauth2.client.";
-		registry.add(base + "registration.google.client-id", () -> "stub-client-id");
-		registry.add(base + "registration.google.client-secret", () -> "stub-client-secret");
-		registry.add(base + "registration.google.scope", () -> "email");
-		registry.add(base + "provider.google.authorization-uri", () -> provider.baseUrl() + "/authorize");
-		registry.add(base + "provider.google.token-uri", () -> provider.baseUrl() + "/token");
-		registry.add(base + "provider.google.user-info-uri", () -> provider.baseUrl() + "/userinfo");
-		registry.add(base + "provider.google.user-name-attribute", () -> "sub");
-	}
 
 	@Test
 	@DisplayName("콜백이 Access·Refresh·logged_in 쿠키를 계약된 속성으로 내려준다")
@@ -99,8 +67,7 @@ class AuthTokenContractTests extends PostgresRedisContainerSupport {
 		// 쿠키를 택한 이유가 여기 있으므로 회귀로 고정한다(BD-21, 인증 PR 계약 5).
 		HttpResponse<String> callback = login("no-token-in-body");
 
-		String accessToken = cookieValue(callback, ACCESS_COOKIE);
-		assertThat(callback.body()).doesNotContain(accessToken);
+		assertThat(callback.body()).doesNotContain(cookieValue(callback, ACCESS_COOKIE));
 		assertThat(callback.body()).doesNotContain(cookieValue(callback, REFRESH_COOKIE));
 	}
 
@@ -109,24 +76,18 @@ class AuthTokenContractTests extends PostgresRedisContainerSupport {
 	void validAccessCookieCarriesThePrincipal() throws Exception {
 		// 쿠키 → 필터 → SecurityContext → @LoginMember로 이어지는 principal 계약 전체를 한 번에 본다.
 		// 200만 보면 리졸버가 엉뚱한 회원을 넣어도 통과한다.
-		HttpResponse<String> callback = login("valid-access");
-		String accessToken = cookieValue(callback, ACCESS_COOKIE);
-		String memberId = subjectOf(accessToken);
+		String accessToken = cookieValue(login("valid-access"), ACCESS_COOKIE);
 
-		HttpResponse<String> response = send(HttpRequest.newBuilder()
-			.uri(uri("/api/core/v1/test-authenticated/me"))
-			.header("Cookie", ACCESS_COOKIE + "=" + accessToken)
-			.GET().build());
+		HttpResponse<String> response = getWithCookies(PROTECTED_PATH, ACCESS_COOKIE + "=" + accessToken);
 
 		assertThat(response.statusCode()).isEqualTo(200);
-		assertThat(response.body()).contains("\"memberId\":" + memberId);
+		assertThat(response.body()).contains("\"memberId\":" + subjectOf(accessToken));
 	}
 
 	@Test
 	@DisplayName("Access 쿠키가 없으면 401이다")
 	void missingAccessCookieIsUnauthorized() throws Exception {
-		HttpResponse<String> response = send(HttpRequest.newBuilder()
-			.uri(uri("/api/core/v1/test-authenticated/me")).GET().build());
+		HttpResponse<String> response = getWithCookies(PROTECTED_PATH, null);
 
 		assertThat(response.statusCode()).isEqualTo(401);
 		assertThat(response.body()).contains("\"code\":\"UNAUTHORIZED\"");
@@ -138,10 +99,7 @@ class AuthTokenContractTests extends PostgresRedisContainerSupport {
 		String accessToken = cookieValue(login("tampered-access"), ACCESS_COOKIE);
 		String tampered = accessToken.substring(0, accessToken.length() - 4) + "AAAA";
 
-		HttpResponse<String> response = send(HttpRequest.newBuilder()
-			.uri(uri("/api/core/v1/test-authenticated/me"))
-			.header("Cookie", ACCESS_COOKIE + "=" + tampered)
-			.GET().build());
+		HttpResponse<String> response = getWithCookies(PROTECTED_PATH, ACCESS_COOKIE + "=" + tampered);
 
 		assertThat(response.statusCode()).isEqualTo(401);
 	}
@@ -149,8 +107,7 @@ class AuthTokenContractTests extends PostgresRedisContainerSupport {
 	@Test
 	@DisplayName("Refresh는 새 토큰 쌍을 발급하고 회전 전 토큰을 무효화한다")
 	void refreshRotatesAndInvalidatesPreviousToken() throws Exception {
-		HttpResponse<String> callback = login("refresh-rotation");
-		String firstRefresh = cookieValue(callback, REFRESH_COOKIE);
+		String firstRefresh = cookieValue(login("refresh-rotation"), REFRESH_COOKIE);
 
 		HttpResponse<String> rotated = postWithCsrf("/api/core/v1/auth/refresh", firstRefresh);
 
@@ -171,9 +128,7 @@ class AuthTokenContractTests extends PostgresRedisContainerSupport {
 	void refreshAfterLogoutIsUnauthorized() throws Exception {
 		String refreshToken = cookieValue(login("logout-invalidates"), REFRESH_COOKIE);
 
-		HttpResponse<String> logout = postWithCsrf("/api/core/v1/auth/logout", refreshToken);
-
-		assertThat(logout.statusCode()).isEqualTo(204);
+		assertThat(postWithCsrf("/api/core/v1/auth/logout", refreshToken).statusCode()).isEqualTo(204);
 		assertThat(postWithCsrf("/api/core/v1/auth/refresh", refreshToken).statusCode()).isEqualTo(401);
 	}
 
@@ -198,34 +153,17 @@ class AuthTokenContractTests extends PostgresRedisContainerSupport {
 		assertThat(postWithCsrf("/api/core/v1/auth/refresh", accessToken).statusCode()).isEqualTo(401);
 	}
 
-	/** 로그인 진입 → 공급자 → 콜백까지 한 흐름을 돌고 콜백 응답을 돌려준다. */
 	private HttpResponse<String> login(String subject) throws IOException, InterruptedException {
-		provider.useSubject("google-sub-" + subject);
-		HttpClient client = HttpClient.newBuilder()
-			.followRedirects(HttpClient.Redirect.NEVER)
-			.cookieHandler(new CookieManager())
-			.build();
+		return completeLogin(port, "google-sub-" + subject);
+	}
 
-		String current = "/api/core/v1/auth/google/login";
-		String state = null;
-		for (int hop = 0; hop < 3 && state == null; hop++) {
-			HttpResponse<String> response = client.send(
-				HttpRequest.newBuilder().uri(uri(current)).GET().build(),
-				HttpResponse.BodyHandlers.ofString());
-			String location = response.headers().firstValue("Location").orElseThrow();
-			if (location.startsWith("http")) {
-				MultiValueMap<String, String> params =
-					UriComponentsBuilder.fromUriString(location).build().getQueryParams();
-				state = params.getFirst("state");
-			} else {
-				current = location;
-			}
+	private HttpResponse<String> getWithCookies(String path, String cookieHeader)
+		throws IOException, InterruptedException {
+		HttpRequest.Builder request = HttpRequest.newBuilder().uri(uri(port, path)).GET();
+		if (cookieHeader != null) {
+			request.header("Cookie", cookieHeader);
 		}
-		return client.send(
-			HttpRequest.newBuilder()
-				.uri(uri("/api/core/v1/auth/google/callback?code=stub-code&state=" + state))
-				.GET().build(),
-			HttpResponse.BodyHandlers.ofString());
+		return send(request.build());
 	}
 
 	/**
@@ -234,23 +172,29 @@ class AuthTokenContractTests extends PostgresRedisContainerSupport {
 	 */
 	private HttpResponse<String> postWithCsrf(String path, String refreshToken)
 		throws IOException, InterruptedException {
-		HttpResponse<String> seed = send(HttpRequest.newBuilder()
-			.uri(uri("/api/core/actuator/health")).GET().build());
-		String csrfToken = cookieValue(seed, "XSRF-TOKEN");
+		String csrfToken = cookieValue(
+			send(HttpRequest.newBuilder().uri(uri(port, "/api/core/actuator/health")).GET().build()),
+			CSRF_COOKIE);
 
 		return send(HttpRequest.newBuilder()
-			.uri(uri(path))
-			.header("Cookie", REFRESH_COOKIE + "=" + refreshToken + "; XSRF-TOKEN=" + csrfToken)
+			.uri(uri(port, path))
+			.header("Cookie", REFRESH_COOKIE + "=" + refreshToken + "; " + CSRF_COOKIE + "=" + csrfToken)
 			.header("X-XSRF-TOKEN", csrfToken)
 			.POST(HttpRequest.BodyPublishers.noBody())
 			.build());
 	}
 
+	/** 쿠키를 보관하지 않는다. 각 요청이 무엇을 들고 가는지 테스트가 직접 정해야 한다. */
 	private HttpResponse<String> send(HttpRequest request) throws IOException, InterruptedException {
 		return HttpClient.newBuilder()
 			.followRedirects(HttpClient.Redirect.NEVER)
 			.build()
 			.send(request, HttpResponse.BodyHandlers.ofString());
+	}
+
+	/** 토큰의 {@code sub} 클레임. 서버가 어느 회원으로 발급했는지를 테스트가 알아야 한다. */
+	private String subjectOf(String jwt) throws Exception {
+		return SignedJWT.parse(jwt).getJWTClaimsSet().getSubject();
 	}
 
 	private String setCookie(HttpResponse<String> response, String name) {
@@ -260,33 +204,22 @@ class AuthTokenContractTests extends PostgresRedisContainerSupport {
 		return found.orElseThrow();
 	}
 
-	/** 토큰의 {@code sub} 클레임. 서버가 어느 회원으로 발급했는지를 테스트가 알아야 한다. */
-	private String subjectOf(String jwt) {
-		String payload = new String(
-			Base64.getUrlDecoder().decode(jwt.split("\\.")[1]), StandardCharsets.UTF_8);
-		return payload.replaceAll(".*\"sub\"\\s*:\\s*\"([^\"]+)\".*", "$1");
+	private String cookieValue(HttpResponse<String> response, String name) {
+		return attribute(setCookie(response, name), name);
 	}
 
-	/** {@code Set-Cookie} 원문에서 속성 하나를 꺼낸다. {@code Path=/api/core}가 접두사로만 맞는 것을
-	 * 통과시키지 않으려면 값 전체를 비교해야 한다. */
-	private String attribute(String setCookieHeader, String attributeName) {
+	/**
+	 * {@code Set-Cookie} 원문에서 이름=값 하나를 꺼낸다. 쿠키 값과 속성이 같은 문법이라 같은
+	 * 함수로 처리한다. {@code Path=/api/core}가 접두사로만 맞는 것을 통과시키지 않으려면
+	 * 값 전체를 비교해야 하므로, 부분 문자열 검사 대신 이걸 쓴다.
+	 */
+	private String attribute(String setCookieHeader, String name) {
 		for (String part : setCookieHeader.split(";")) {
 			String trimmed = part.trim();
-			if (trimmed.regionMatches(true, 0, attributeName + "=", 0, attributeName.length() + 1)) {
-				return trimmed.substring(attributeName.length() + 1);
+			if (trimmed.regionMatches(true, 0, name + "=", 0, name.length() + 1)) {
+				return trimmed.substring(name.length() + 1);
 			}
 		}
-		throw new AssertionError(attributeName + " 속성이 없다: " + setCookieHeader);
-	}
-
-	private String cookieValue(HttpResponse<String> response, String name) {
-		String header = setCookie(response, name);
-		String value = header.substring(name.length() + 1);
-		int end = value.indexOf(';');
-		return end < 0 ? value : value.substring(0, end);
-	}
-
-	private URI uri(String path) {
-		return URI.create("http://localhost:" + port + path);
+		throw new AssertionError(name + " 속성이 없다: " + setCookieHeader);
 	}
 }
