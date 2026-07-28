@@ -25,3 +25,4 @@
 | BI-07 | 프레임워크 예외를 catch-all 500이 아니라 자체 상태 코드로 매핑 (S15P11A705-40) | ✅ 완료 | [BI-07](BI-07-2026-07-27-framework-error-mapping.md) |
 | BI-14 | 같은 장소 동시 저장을 충돌 없는 INSERT로 수렴 (S15P11A705-105) | ✅ 완료 | [BI-14](BI-14-2026-07-28-record-create-conflict-free-insert.md) |
 | BI-15 | 중복 팔로우 경합을 500이 아니라 409로 거절 (S15P11A705-104) | ✅ 완료 | [BI-15](BI-15-2026-07-28-duplicate-follow-race.md) |
+| BI-16 | 요청 입력 크기 상한 — recordIds 100개·Context 본문 500자 (S15P11A705-117) | ✅ 완료 | [BI-16](BI-16-2026-07-28-input-size-limits.md) |

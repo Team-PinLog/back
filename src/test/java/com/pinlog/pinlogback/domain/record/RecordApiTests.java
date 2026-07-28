@@ -316,6 +316,53 @@ class RecordApiTests extends PostgresContainerSupport {
 			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
 	}
 
+	/**
+	 * Context 본문은 그대로 임베딩 입력이 되어 호출 비용과 직결된다(데이터모델 8장). 본문이 들어오는
+	 * 경로가 셋이므로 세 곳 모두 막아야 한다 — 한 곳만 열려 있으면 상한을 우회할 수 있다.
+	 */
+	@Test
+	void contextBodyLongerThan500CharsIs400OnEveryEntryPoint() throws Exception {
+		long memberId = newMemberId();
+		long recordId = createRecord(memberId, "api-len-1", "첫 맥락");
+		long contextId = detail(memberId, recordId).at("/data/contexts/0/contextId").asLong();
+		String tooLong = "가".repeat(501);
+
+		mockMvc.perform(post("/v1/records").with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(createBody("api-len-2", tooLong)))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"))
+			.andExpect(jsonPath("$.error.fieldErrors[0].field").value("contextBody"));
+
+		mockMvc.perform(post("/v1/records/{recordId}/contexts", recordId).with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"body\": \"" + tooLong + "\"}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"))
+			.andExpect(jsonPath("$.error.fieldErrors[0].field").value("body"));
+
+		mockMvc.perform(patch("/v1/records/{recordId}/contexts/{contextId}", recordId, contextId)
+				.with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"body\": \"" + tooLong + "\"}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"))
+			.andExpect(jsonPath("$.error.fieldErrors[0].field").value("body"));
+	}
+
+	@Test
+	void contextBodyOfExactly500CharsSucceeds() throws Exception {
+		long memberId = newMemberId();
+		long recordId = createRecord(memberId, "api-len-ok-1", "첫 맥락");
+		String atLimit = "가".repeat(500);
+
+		mockMvc.perform(post("/v1/records/{recordId}/contexts", recordId).with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"body\": \"" + atLimit + "\"}"))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.data.body").value(atLimit));
+	}
+
 	private long newMemberId() {
 		return memberRepository.save(Member.create()).getId();
 	}

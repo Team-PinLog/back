@@ -9,8 +9,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -102,6 +104,52 @@ class CollectionApiTests extends PostgresContainerSupport {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content(createBody("가".repeat(21), List.of(recordId))))
 			.andExpect(status().isBadRequest());
+	}
+
+	/**
+	 * recordIds는 Collection 행을 잠근 상태에서 건당 INSERT를 돌기 때문에, 상한이 없으면 큰 배열
+	 * 하나가 그 Collection의 다른 요청을 오래 막는다. 소유권 검사보다 먼저 걸러져야 하므로
+	 * 존재하지 않는 id로도 404가 아니라 400이다.
+	 */
+	@Test
+	void createWithMoreThan100RecordIdsIs400() throws Exception {
+		long memberId = newMemberId();
+
+		mockMvc.perform(post("/v1/collections").with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(createBody("너무 많은 기록", sequentialIds(101))))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"))
+			.andExpect(jsonPath("$.error.fieldErrors[0].field").value("recordIds"));
+	}
+
+	@Test
+	void createWithExactly100RecordIdsSucceeds() throws Exception {
+		long memberId = newMemberId();
+		List<Long> recordIds = new ArrayList<>();
+		for (int i = 0; i < 100; i++) {
+			recordIds.add(newRecord(memberId, "col-limit-" + i));
+		}
+
+		mockMvc.perform(post("/v1/collections").with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(createBody("경계값", recordIds)))
+			.andExpect(status().isCreated())
+			.andExpect(jsonPath("$.data.recordCount").value(100));
+	}
+
+	@Test
+	void addRecordsWithMoreThan100RecordIdsIs400() throws Exception {
+		long memberId = newMemberId();
+		long collectionId = createCollection(memberId, "추가 상한", List.of(newRecord(memberId, "col-add-limit-1")));
+
+		mockMvc.perform(post("/v1/collections/{id}/records", collectionId).with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"recordIds\": [" + sequentialIds(101).stream()
+					.map(String::valueOf).collect(Collectors.joining(", ")) + "]}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"))
+			.andExpect(jsonPath("$.error.fieldErrors[0].field").value("recordIds"));
 	}
 
 	@Test
@@ -240,6 +288,11 @@ class CollectionApiTests extends PostgresContainerSupport {
 		Record record = recordRepository.save(Record.create(memberId, place.getId()));
 		contextRepository.save(Context.create(record.getId(), memberId, "저장 이유"));
 		return record.getId();
+	}
+
+	/** 검증이 소유권 검사보다 먼저 걸러지는지 보려면 실제로 존재하지 않는 id면 충분하다. */
+	private List<Long> sequentialIds(int count) {
+		return LongStream.rangeClosed(1, count).boxed().toList();
 	}
 
 	private String createBody(String title, List<Long> recordIds) {
