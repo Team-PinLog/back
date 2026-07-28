@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.pinlog.pinlogback.domain.collection.dto.CollectionAddRecordsRequest;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionCreateRequest;
-import com.pinlog.pinlogback.domain.collection.dto.CollectionDetailResponse;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionRenameRequest;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionSummaryResponse;
 import com.pinlog.pinlogback.domain.collection.service.CollectionService;
@@ -51,12 +50,17 @@ public class CollectionController {
 		return collectionService.listMine(me.memberId(), cursor, size);
 	}
 
+	/**
+	 * 소유 여부에 따라 소유자용({@code CollectionDetailResponse})·공개용
+	 * ({@code PublicCollectionDetailResponse}) 서로 다른 DTO가 반환된다(BD-13). 두 타입은 상속
+	 * 관계가 없으므로 선언 타입은 Object다 — envelope는 런타임 advice가 감싼다.
+	 */
 	@GetMapping("/{collectionId}")
-	public CollectionDetailResponse detail(@LoginMember MemberPrincipal me,
+	public Object detail(@LoginMember MemberPrincipal me,
 		@PathVariable Long collectionId,
 		@RequestParam(required = false) String recordCursor,
 		@RequestParam(required = false) Integer recordSize) {
-		return collectionService.getDetailForOwner(me.memberId(), collectionId, recordCursor, recordSize);
+		return collectionService.getDetail(me.memberId(), collectionId, recordCursor, recordSize);
 	}
 
 	@PatchMapping("/{collectionId}")

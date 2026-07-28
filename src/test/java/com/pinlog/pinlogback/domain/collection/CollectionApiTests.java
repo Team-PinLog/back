@@ -176,16 +176,6 @@ class CollectionApiTests extends PostgresContainerSupport {
 	}
 
 	@Test
-	void detailByStrangerIsHiddenAs404UntilPublicScopeTicket() throws Exception {
-		long owner = newMemberId();
-		long stranger = newMemberId();
-		long collectionId = createCollection(owner, "비공개 아님", List.of(newRecord(owner, "col-detail-2")));
-
-		mockMvc.perform(get("/v1/collections/{id}", collectionId).with(loginAs(stranger)))
-			.andExpect(status().isNotFound());
-	}
-
-	@Test
 	void ownerCanRenameAndStrangerCannot() throws Exception {
 		long owner = newMemberId();
 		long stranger = newMemberId();
