@@ -13,19 +13,20 @@ import java.time.Instant;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
 
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.json.JsonMapper;
 import com.pinlog.pinlogback.domain.member.entity.Member;
 import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
 import com.pinlog.pinlogback.domain.place.entity.Place;
 import com.pinlog.pinlogback.domain.place.repository.PlaceRepository;
 import com.pinlog.pinlogback.integration.PostgresContainerSupport;
+
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.json.JsonMapper;
 
 @SpringBootTest(properties = {
 	"management.health.redis.enabled=false",
@@ -250,14 +251,14 @@ class RecordApiTests extends PostgresContainerSupport {
 		long memberId = newMemberId();
 		String body = """
 			{
-			  "place": {
-			    "kakaoPlaceId": "api-badlat-1",
-			    "name": "이상한 장소",
-			    "address": "주소",
-			    "lat": 95.0,
-			    "lng": 127.0
-			  },
-			  "contextBody": "저장 이유"
+				"place": {
+					"kakaoPlaceId": "api-badlat-1",
+					"name": "이상한 장소",
+					"address": "주소",
+					"lat": 95.0,
+					"lng": 127.0
+				},
+				"contextBody": "저장 이유"
 			}
 			""";
 
@@ -275,17 +276,17 @@ class RecordApiTests extends PostgresContainerSupport {
 	private String createBody(String kakaoPlaceId, String contextBody) {
 		return """
 			{
-			  "place": {
-			    "kakaoPlaceId": "%s",
-			    "name": "앤트러사이트 성수",
-			    "address": "성동구 성수동2가 273-1",
-			    "roadAddress": "성동구 연무장길 47",
-			    "phone": "02-1234-5678",
-			    "placeUrl": "http://place.map.kakao.com/1234567",
-			    "lat": 37.5447,
-			    "lng": 127.0557
-			  },
-			  "contextBody": "%s"
+				"place": {
+					"kakaoPlaceId": "%s",
+					"name": "앤트러사이트 성수",
+					"address": "성동구 성수동2가 273-1",
+					"roadAddress": "성동구 연무장길 47",
+					"phone": "02-1234-5678",
+					"placeUrl": "http://place.map.kakao.com/1234567",
+					"lat": 37.5447,
+					"lng": 127.0557
+				},
+				"contextBody": "%s"
 			}
 			""".formatted(kakaoPlaceId, contextBody);
 	}
