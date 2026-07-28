@@ -59,6 +59,13 @@ spring:
     # 감수하는 것: 적용 순서가 환경마다 달라진다(빈 DB는 V2→V100, 기존 DB는 V100→V2). 근거는 BD-26.
     out-of-order: true
 
+pinlog:
+  auth:
+    # 로그인·실패 후 브라우저를 돌려보낼 클라이언트 경로(API 명세 3.2).
+    # 요청 파라미터로 받지 않는다 — 임의 URL을 받으면 open redirect가 된다.
+    # 프론트와 같은 오리진이라 절대 경로면 충분하다.
+    client-redirect-uri: ${AUTH_CLIENT_REDIRECT_URI:/auth/callback}
+
 build:
   sha: ${BUILD_SHA:unknown}
 

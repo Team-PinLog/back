@@ -13,6 +13,9 @@ import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequest
 import org.springframework.security.web.SecurityFilterChain;
 
 import com.pinlog.pinlogback.domain.auth.controller.SocialLoginController;
+import com.pinlog.pinlogback.global.security.CookieOAuth2AuthorizationRequestRepository;
+import com.pinlog.pinlogback.global.security.OAuthLoginFailureHandler;
+import com.pinlog.pinlogback.global.security.OAuthLoginSuccessHandler;
 import com.pinlog.pinlogback.global.security.RestAccessDeniedHandler;
 import com.pinlog.pinlogback.global.security.RestAuthenticationEntryPoint;
 
@@ -65,14 +68,21 @@ public class SecurityConfig {
 		HttpSecurity http,
 		RestAuthenticationEntryPoint authenticationEntryPoint,
 		RestAccessDeniedHandler accessDeniedHandler,
-		OAuth2AuthorizationRequestResolver authorizationRequestResolver
+		OAuth2AuthorizationRequestResolver authorizationRequestResolver,
+		CookieOAuth2AuthorizationRequestRepository authorizationRequestRepository,
+		OAuthLoginSuccessHandler successHandler,
+		OAuthLoginFailureHandler failureHandler
 	) throws Exception {
 		return http
 			.oauth2Login(oauth2 -> oauth2
 				.authorizationEndpoint(endpoint -> endpoint
-					.authorizationRequestResolver(authorizationRequestResolver))
+					.authorizationRequestResolver(authorizationRequestResolver)
+					// 기본 구현은 HttpSession을 쓴다. STATELESS 선언과 어긋나므로 쿠키로 바꾼다.
+					.authorizationRequestRepository(authorizationRequestRepository))
 				// 콜백 경로. registrationId를 state에서 꺼내므로 마지막 세그먼트가 아니어도 된다.
-				.redirectionEndpoint(endpoint -> endpoint.baseUri("/v1/auth/*/callback")))
+				.redirectionEndpoint(endpoint -> endpoint.baseUri("/v1/auth/*/callback"))
+				.successHandler(successHandler)
+				.failureHandler(failureHandler))
 			.authorizeHttpRequests(requests -> requests
 				.requestMatchers(PUBLIC_ACTUATOR).permitAll()
 				.requestMatchers(PUBLIC_AUTH).permitAll()
