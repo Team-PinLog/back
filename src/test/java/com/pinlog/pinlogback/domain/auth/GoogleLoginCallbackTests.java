@@ -26,20 +26,17 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import com.pinlog.pinlogback.domain.member.entity.SocialProvider;
 import com.pinlog.pinlogback.domain.member.repository.SocialAccountRepository;
-import com.pinlog.pinlogback.integration.PostgresContainerSupport;
+import com.pinlog.pinlogback.integration.PostgresRedisContainerSupport;
 
 /**
  * 로그인 진입부터 콜백 처리까지 한 흐름을 검증한다.
  *
  * <p>공급자는 {@link StubOAuthProvider}로 대역화한다. 실제 Google을 부르지 않으므로 CI에서도 돈다.
  */
-@SpringBootTest(
-	webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-	properties = "management.health.redis.enabled=false"
-)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 @DisplayName("소셜 로그인 콜백")
-class GoogleLoginCallbackTests extends PostgresContainerSupport {
+class GoogleLoginCallbackTests extends PostgresRedisContainerSupport {
 
 	private static StubOAuthProvider provider;
 

@@ -65,6 +65,15 @@ pinlog:
     # 요청 파라미터로 받지 않는다 — 임의 URL을 받으면 open redirect가 된다.
     # 프론트와 같은 오리진이라 절대 경로면 충분하다.
     client-redirect-uri: ${AUTH_CLIENT_REDIRECT_URI:/auth/callback}
+    jwt:
+      # RS256 개인키(PKCS#8 PEM). 운영은 Kubernetes Secret으로 주입한다(BD-29).
+      # 비어 있으면 로컬·테스트는 임시 키쌍을 만들고, 운영 프로파일은 기동에 실패한다 —
+      # 파드마다 서명 키가 달라지면 재시작·스케일아웃 때 전면 로그아웃이 되기 때문이다.
+      private-key: ${JWT_PRIVATE_KEY:}
+      # 수명의 원본은 BD-21이다. 여기서 임의로 바꾸지 않는다.
+      access-token-ttl: 30m
+      refresh-token-ttl: 7d
+      issuer: pinlog
 
 build:
   sha: ${BUILD_SHA:unknown}

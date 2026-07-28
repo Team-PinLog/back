@@ -10,6 +10,8 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
 import org.springframework.stereotype.Component;
 
 import com.pinlog.pinlogback.domain.auth.dto.OAuthUserInfo;
+import com.pinlog.pinlogback.domain.auth.service.AuthTokenService;
+import com.pinlog.pinlogback.domain.auth.service.AuthTokenService.TokenPair;
 import com.pinlog.pinlogback.domain.auth.service.SocialLoginService;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,13 +28,19 @@ import jakarta.servlet.http.HttpServletResponse;
 public class OAuthLoginSuccessHandler implements AuthenticationSuccessHandler {
 
 	private final SocialLoginService socialLoginService;
+	private final AuthTokenService authTokenService;
+	private final AuthCookies authCookies;
 	private final String clientRedirectUri;
 
 	public OAuthLoginSuccessHandler(
 		SocialLoginService socialLoginService,
+		AuthTokenService authTokenService,
+		AuthCookies authCookies,
 		@Value("${pinlog.auth.client-redirect-uri}") String clientRedirectUri
 	) {
 		this.socialLoginService = socialLoginService;
+		this.authTokenService = authTokenService;
+		this.authCookies = authCookies;
 		this.clientRedirectUri = clientRedirectUri;
 	}
 
@@ -47,9 +55,11 @@ public class OAuthLoginSuccessHandler implements AuthenticationSuccessHandler {
 
 		OAuthUserInfo userInfo = OAuthUserInfo.from(
 			token.getAuthorizedClientRegistrationId(), principal.getAttributes());
-		socialLoginService.login(userInfo);
+		Long memberId = socialLoginService.login(userInfo);
 
-		// TODO(S15P11A705-63): 발급한 memberId로 Access·Refresh·logged_in 쿠키를 내려준다.
+		TokenPair tokens = authTokenService.issue(memberId);
+		// 리다이렉트는 응답을 커밋하므로 쿠키를 먼저 실어야 한다.
+		authCookies.write(response, tokens.accessToken(), tokens.refreshToken());
 		response.sendRedirect(clientRedirectUri);
 	}
 }
