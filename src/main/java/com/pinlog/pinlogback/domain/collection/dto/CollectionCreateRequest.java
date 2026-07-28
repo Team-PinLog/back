@@ -2,6 +2,8 @@ package com.pinlog.pinlogback.domain.collection.dto;
 
 import java.util.List;
 
+import com.pinlog.pinlogback.global.common.InputLimits;
+
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
@@ -11,6 +13,6 @@ import jakarta.validation.constraints.Size;
  */
 public record CollectionCreateRequest(
 	@NotBlank @Size(max = 20) String title,
-	@NotEmpty List<Long> recordIds
+	@NotEmpty @Size(max = InputLimits.RECORD_IDS_MAX) List<Long> recordIds
 ) {
 }
