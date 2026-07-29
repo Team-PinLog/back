@@ -98,3 +98,4 @@
 | [BD-34](BD-34-feed-deterministic-pagination-without-session-cache.md) | Feed 페이지네이션을 Redis Session Cache 대신 `requestId` seed 기반 결정적 재계산으로 | Accepted | S15P11A705-120 |
 | [BD-35](BD-35-refresh-reuse-family-revocation.md) | Refresh 재사용을 유출로 간주해 그 회원의 세션을 전부 폐기 — 회원별 `jti` 인덱스, 오탐 시 전체 로그아웃 감수 | Accepted | S15P11A705-131 |
 | [BD-37](BD-37-ai-derived-invalidation-inside-deletion-transaction.md) | AI 파생 데이터 무효화를 삭제 트랜잭션 안에서 백엔드가 직접 쓴다 | Accepted | S15P11A705-124 |
+| [BD-39](BD-39-embedding-profile-in-application-config.md) | Embedding Profile을 `application.yml` 리터럴로 두고 환경변수는 덮어쓰기로만 — 런타임 대조가 성립하려면 Spring도 값을 가져야 한다 | Accepted | S15P11A705-135 |

@@ -1,7 +1,6 @@
 package com.pinlog.pinlogback.domain.record.service;
 
 import java.math.BigDecimal;
-import java.util.Comparator;
 import java.util.List;
 
 import org.springframework.context.ApplicationEventPublisher;
@@ -15,7 +14,6 @@ import com.pinlog.pinlogback.domain.ai.repository.AiDerivedDataRepository;
 import com.pinlog.pinlogback.domain.ai.repository.ContextAiStateRepository;
 import com.pinlog.pinlogback.domain.place.entity.Place;
 import com.pinlog.pinlogback.domain.place.repository.PlaceRepository;
-import com.pinlog.pinlogback.domain.record.dto.BoundsResponse;
 import com.pinlog.pinlogback.domain.record.dto.ContextMutationResponse;
 import com.pinlog.pinlogback.domain.record.dto.ContextResponse;
 import com.pinlog.pinlogback.domain.record.dto.MapMarkerResponse;
@@ -32,6 +30,7 @@ import com.pinlog.pinlogback.domain.record.repository.ContextRepository;
 import com.pinlog.pinlogback.domain.record.repository.RecordRepository;
 import com.pinlog.pinlogback.global.exception.InvalidRequestException;
 import com.pinlog.pinlogback.global.exception.ResourceNotFoundException;
+import com.pinlog.pinlogback.global.response.BoundsResponse;
 
 /**
  * Record·Context 유스케이스. 사용자 식별자는 컨트롤러가 인증 경계에서 해석한 memberId를
@@ -153,7 +152,8 @@ public class RecordService {
 		List<MapMarkerResponse> items = allPresent
 			? recordRepository.findMarkersWithinBounds(memberId, swLat, swLng, neLat, neLng)
 			: recordRepository.findMarkers(memberId);
-		return new MapResponse(boundsOf(items), items);
+		return new MapResponse(
+			BoundsResponse.enclosing(items, MapMarkerResponse::lat, MapMarkerResponse::lng), items);
 	}
 
 	/**
@@ -213,16 +213,5 @@ public class RecordService {
 			.map(ContextResponse::from)
 			.toList();
 		return RecordDetailResponse.of(record, place, contexts);
-	}
-
-	private BoundsResponse boundsOf(List<MapMarkerResponse> items) {
-		if (items.isEmpty()) {
-			return null;
-		}
-		BigDecimal swLat = items.stream().map(MapMarkerResponse::lat).min(Comparator.naturalOrder()).orElseThrow();
-		BigDecimal neLat = items.stream().map(MapMarkerResponse::lat).max(Comparator.naturalOrder()).orElseThrow();
-		BigDecimal swLng = items.stream().map(MapMarkerResponse::lng).min(Comparator.naturalOrder()).orElseThrow();
-		BigDecimal neLng = items.stream().map(MapMarkerResponse::lng).max(Comparator.naturalOrder()).orElseThrow();
-		return new BoundsResponse(swLat, swLng, neLat, neLng);
 	}
 }

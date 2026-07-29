@@ -51,6 +51,13 @@ pinlog:
 
 `@ConfigurationProperties`로 바인딩하고 값 자체는 코드에 상수로 두지 않습니다.
 
+> **⚠️ 충돌 표시 (S15P11A705-135, 2026-07-29).** 이 절의 두 지점이 현재 구현·상위 계약과 어긋납니다. AI 파트 소유 문서이므로 고치지 않고 표시만 남깁니다(`CLAUDE.md` 9번).
+>
+> 1. **`internal-token: ${PINLOG_AI_INTERNAL_TOKEN}`** — 구현과 `ai` 레포는 `pinlog.ai.internal-secret` / `PINLOG_AI_INTERNAL_SECRET` / 헤더 `X-Internal-Secret`을 씁니다(S15P11A705-96, back#83). 이 절의 YAML만 옛 이름입니다.
+> 2. **"배포 환경의 단일 설정에서 주입합니다" · "값 자체는 코드에 상수로 두지 않습니다"** — 상위 계약 `Team-PinLog/docs` `static/05_AI_설계.md` §7.1이 **2026-07-29에 이 규칙을 뒤집었습니다.** 개정 후 정본은 코드이고(`ai` 레포 `app/core/config.py`의 기본값) 환경변수 주입은 실험·롤백용 덮어쓰기이며 필수가 아닙니다. 두 파트의 불일치는 단일 주입이 아니라 **검색 요청의 런타임 대조**(Profile 불일치 시 422)로 막습니다.
+>
+> 백엔드는 개정된 §7.1을 따라 `application.yml`에 리터럴 + 환경변수 덮어쓰기로 구현했습니다 — 근거는 [BD-39](../../backend/decisions/BD-39-embedding-profile-in-application-config.md). 이 문서를 상위 계약에 맞추는 것은 AI 파트의 몫입니다.
+
 ## 3. 타임아웃
 
 | 호출 | Connect | Read | 근거 |
