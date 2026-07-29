@@ -42,6 +42,10 @@ public class RefreshTokenStore {
 	 * <p>세 왕복으로 나누면 중간 실패가 두 가지를 남긴다. 토큰만 저장되면 <b>인덱스에 없는 유효
 	 * 토큰</b>이 되어 폐기가 7일 동안 못 잡고, {@code EXPIRE}가 빠지면 인덱스가 <b>만료 없는
 	 * 영구 키</b>로 남는다.
+	 *
+	 * <p>여기서 막는 것은 경합이 아니라 <b>부분 실패</b>다. 두 발급이 겹치는 것 자체는 서로 다른
+	 * {@code jti}라 무해하므로 {@code MULTI}로도 정확하다 — Lua인 것은 {@link #REVOKE_ALL}과
+	 * 메커니즘을 하나로 두려는 선택이며, 이쪽만 트랜잭션으로 바꿔도 맞다.
 	 */
 	private static final RedisScript<Long> SAVE = RedisScript.of("""
 		redis.call('SET', KEYS[1], '1', 'EX', ARGV[2])
@@ -57,6 +61,12 @@ public class RefreshTokenStore {
 	 * 만든다 — 새 {@code jti}는 이미 읽은 목록에 없어 삭제를 피하고, 뒤따르는 인덱스 삭제가
 	 * 그 {@code jti}를 인덱스에서도 지워 다음 폐기의 사정권 밖으로 내보낸다. 재사용 감지는
 	 * 회전 요청이 트리거이므로 이 창은 유출 시나리오에서 구조적으로 열린다.
+	 *
+	 * <p><b>{@code MULTI}로는 대체할 수 없다.</b> 트랜잭션 안에서 명령은 큐에 쌓이고 응답은
+	 * {@code EXEC} 때 한꺼번에 오므로, {@code SMEMBERS} 결과로 삭제 대상을 정하는 이 흐름을
+	 * 표현할 방법이 없다(대안은 {@code WATCH} + 재시도 루프뿐이다). {@link #SAVE}와 달리
+	 * <b>이 선택은 취향이 아니다</b> — 트랜잭션으로 바꾸면 위 경합이 돌아오고, <b>그것을 잡는
+	 * 테스트는 없다</b>(원자성은 구조로만 보장되는 성질이다).
 	 */
 	private static final RedisScript<Long> REVOKE_ALL = RedisScript.of("""
 		local ids = redis.call('SMEMBERS', KEYS[1])
