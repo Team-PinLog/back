@@ -63,8 +63,9 @@ public class AuthTokenService {
 		if (!refreshTokenStore.consume(claims.memberId(), claims.tokenId())) {
 			// 서명·만료는 통과했는데 이미 소비된 토큰이다. 정상 흐름에서는 나오지 않는다 —
 			// 유출됐거나 클라이언트가 같은 토큰을 두 번 보냈다는 뜻이다.
-			log.warn("refresh token reuse detected, revoking all sessions: memberId={}", claims.memberId());
-			refreshTokenStore.revokeAll(claims.memberId());
+			int revoked = refreshTokenStore.revokeAll(claims.memberId());
+			log.warn("refresh token reuse detected, revoked all sessions: memberId={} revoked={}",
+				claims.memberId(), revoked);
 			throw new UnauthorizedException();
 		}
 		return issue(claims.memberId());
