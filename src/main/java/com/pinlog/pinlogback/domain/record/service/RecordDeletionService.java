@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.pinlog.pinlogback.domain.ai.repository.AiDerivedDataRepository;
 import com.pinlog.pinlogback.domain.collection.entity.Collection;
 import com.pinlog.pinlogback.domain.collection.entity.CollectionRecord;
 import com.pinlog.pinlogback.domain.collection.repository.CollectionRecordRepository;
@@ -22,8 +23,9 @@ import com.pinlog.pinlogback.global.response.ErrorResponse;
  * 부모 Record 행 잠금 없이는 동시 요청에서 "활성 Context 1개 이상" 불변식이 깨진다 —
  * 서로 다른 Context를 지우는 두 트랜잭션이 공유하는 유일한 대상이 Record이므로 거기를 잠근다.
  *
- * <p>AI 파생 데이터 무효화(State CANCELLED·Embedding is_deleted)는 백엔드의 ai 스키마 연동이
- * 아직 없어 이 단계에 포함하지 않았다. AI 연동 티켓에서 생성·무효화를 한 쌍으로 붙인다.
+ * <p>AI 파생 데이터 무효화(State CANCELLED·Embedding is_deleted)는 소프트 삭제와 <b>같은
+ * 트랜잭션</b>에서 수행한다(데이터모델 6.5~6.6). 동일 PostgreSQL 인스턴스라 나눌 이유가 없고,
+ * 나누면 "core는 지웠는데 검색 결과에는 계속 나오는" 부분 실패가 남는다.
  */
 @Service
 public class RecordDeletionService {
@@ -32,13 +34,16 @@ public class RecordDeletionService {
 	private final ContextRepository contextRepository;
 	private final CollectionRepository collectionRepository;
 	private final CollectionRecordRepository collectionRecordRepository;
+	private final AiDerivedDataRepository aiDerivedDataRepository;
 
 	public RecordDeletionService(RecordRepository recordRepository, ContextRepository contextRepository,
-		CollectionRepository collectionRepository, CollectionRecordRepository collectionRecordRepository) {
+		CollectionRepository collectionRepository, CollectionRecordRepository collectionRecordRepository,
+		AiDerivedDataRepository aiDerivedDataRepository) {
 		this.recordRepository = recordRepository;
 		this.contextRepository = contextRepository;
 		this.collectionRepository = collectionRepository;
 		this.collectionRecordRepository = collectionRecordRepository;
+		this.aiDerivedDataRepository = aiDerivedDataRepository;
 	}
 
 	/**
@@ -58,6 +63,7 @@ public class RecordDeletionService {
 				new ErrorResponse.Impact(true, lastCollectionIds(recordId)));
 		}
 		context.softDelete();
+		aiDerivedDataRepository.invalidate(contextId);
 	}
 
 	/**
@@ -90,7 +96,9 @@ public class RecordDeletionService {
 		Long recordId = record.getId();
 		List<CollectionRecord> links = collectionRecordRepository.findByRecordId(recordId);
 
-		contextRepository.findByRecordId(recordId).forEach(context -> context.softDelete());
+		List<Context> contexts = contextRepository.findByRecordId(recordId);
+		contexts.forEach(Context::softDelete);
+		aiDerivedDataRepository.invalidate(contexts.stream().map(Context::getId).toList());
 		for (CollectionRecord link : links) {
 			// record_count 판단·갱신이 다른 요청과 경합하므로 Collection도 잠근다(6.7과 같은 구조).
 			Collection collection = collectionRepository.findByIdForUpdate(link.getCollectionId())
