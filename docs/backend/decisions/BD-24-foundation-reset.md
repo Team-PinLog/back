@@ -44,6 +44,8 @@
 
 이 결정에서 나온 제약들이 [`CLAUDE.md`](../../../CLAUDE.md)의 상시 규칙으로 굳었다 — H2 금지, 빈 패키지·`.gitkeep` 금지, 투기적 도메인 계층 금지, 인증 PR 전 Security 금지. 그 규칙 중 하나를 되돌리려 할 때 먼저 이 문서를 본다.
 
+> 2026-07-29 갱신: 네 제약 중 셋이 `CLAUDE.md`를 떠났다. H2 금지는 [데이터베이스 개발 규약](../../development/database-conventions.md)으로, 빈 패키지·`.gitkeep`·투기적 계층 금지는 [`CONTRIBUTING.md`](../../../CONTRIBUTING.md)와 [패키지 구조](../../development/package-structure.md)로 옮겼다. Security 보류는 인증 PR(S15P11A705-63, [BI-18](../implements/BI-18-2026-07-28-jwt-cookie-session.md)) 병합으로 아래 재검토 트리거가 예고한 대로 소멸했다. 제약이 풀린 것이 아니라 규약 층으로 내려간 것이고, 결정 자체는 유효하다.
+
 **재검토 트리거**
 
 - 일회성 정리이므로 결정 자체를 되돌릴 일은 없다. 다만 파생 규칙(특히 Security 보류)은 인증 PR이 병합되는 시점에 자연히 소멸한다.
