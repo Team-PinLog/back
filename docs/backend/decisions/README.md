@@ -97,4 +97,6 @@
 | [BD-33](BD-33-published-at-database-invariant.md) | 발행된 Collection의 `published_at`을 DB `CHECK`로 강제 | Accepted | S15P11A705-125 |
 | [BD-34](BD-34-feed-deterministic-pagination-without-session-cache.md) | Feed 페이지네이션을 Redis Session Cache 대신 `requestId` seed 기반 결정적 재계산으로 | Accepted | S15P11A705-120 |
 | [BD-35](BD-35-refresh-reuse-family-revocation.md) | Refresh 재사용을 유출로 간주해 그 회원의 세션을 전부 폐기 — 회원별 `jti` 인덱스, 오탐 시 전체 로그아웃 감수 | Accepted | S15P11A705-131 |
+| [BD-36](BD-36-pending-insert-in-transaction-process-call-after-commit.md) | PENDING INSERT는 Core 트랜잭션 안에, `process` 호출은 커밋 이후 비동기로 | Accepted | S15P11A705-102 |
 | [BD-37](BD-37-ai-derived-invalidation-inside-deletion-transaction.md) | AI 파생 데이터 무효화를 삭제 트랜잭션 안에서 백엔드가 직접 쓴다 | Accepted | S15P11A705-124 |
+| [BD-38](BD-38-published-predicate-per-layer.md) | 발행 여부 판정은 층마다 자체 보유하고(아홉 곳), 대가를 각 자리를 지키는 테스트로 갚는다 | Accepted | S15P11A705-148 |

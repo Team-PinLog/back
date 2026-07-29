@@ -143,6 +143,10 @@ class FollowApiTests extends IntegrationContainerSupport {
 		assertThat(page2.at("/data/items/0/followId").asLong()).isEqualTo(followA);
 	}
 
+	/**
+	 * 제외 사유가 둘이라 픽스처도 둘이다 — 소프트 삭제와 미발행. 미발행 쪽은
+	 * {@code findPublishedFirstPageByMemberId}의 {@code c.isPublished = true}를 지키는 지점이다(BD-38).
+	 */
 	@Test
 	void followedShelfCollectionsReturnOnlyPublishedActiveOnes() throws Exception {
 		Member owner = memberRepository.save(Member.create());
@@ -153,6 +157,7 @@ class FollowApiTests extends IntegrationContainerSupport {
 		Collection deletedOne = collectionRepository.save(Collection.create(owner.getId(), "삭제될 책"));
 		deletedOne.softDelete();
 		collectionRepository.saveAndFlush(deletedOne);
+		unpublishedCollection(owner.getId());
 
 		mockMvc.perform(get("/v1/follows/{followId}/collections", followId).with(loginAs(me.getId())))
 			.andExpect(status().isOk())
@@ -161,11 +166,17 @@ class FollowApiTests extends IntegrationContainerSupport {
 			.andExpect(jsonPath("$.data.items[0].keywords").isEmpty());
 	}
 
+	/**
+	 * 미발행 Collection을 <b>가운데</b>에 끼운다. 첫 페이지 쿼리와 커서 쿼리는 별개 메서드라,
+	 * 미발행이 최신이면 첫 페이지만 지켜지고 {@code findPublishedPageByMemberIdAfter}의 조건은
+	 * 여전히 아무도 안 본다. 커서 이후 구간에 놓아야 두 번째 페이지가 그것을 걸러내는지 드러난다(BD-38).
+	 */
 	@Test
 	void followedShelfCollectionsArePaginatedByCursor() throws Exception {
 		Member owner = memberRepository.save(Member.create());
 		Member me = memberRepository.save(Member.create());
 		long first = publishedCollection(owner.getId());
+		unpublishedCollection(owner.getId());
 		long second = publishedCollection(owner.getId());
 		long followId = follow(me.getId(), first);
 
@@ -184,6 +195,27 @@ class FollowApiTests extends IntegrationContainerSupport {
 			.andExpect(jsonPath("$.data.hasNext").value(false))
 			.andReturn().getResponse().getContentAsString());
 		assertThat(page2.at("/data/items/0/collectionId").asLong()).isEqualTo(first);
+	}
+
+	/**
+	 * 미발행 Collection은 공개 대상이 아니므로 팔로우 진입이 막힌다. 작성자 탈퇴와 같은 404다.
+	 * 이 단정이 {@code FollowService.follow}의 {@code filter(Collection::isPublished)}를 지키는
+	 * 유일한 지점이다 — 자체 보유를 택한 대가를 테스트로 갚는 자리다(BD-38).
+	 */
+	@Test
+	void followingUnpublishedShelfIs404() throws Exception {
+		Member owner = memberRepository.save(Member.create());
+		Member me = memberRepository.save(Member.create());
+		long collectionId = unpublishedCollection(owner.getId());
+
+		mockMvc.perform(post("/v1/follows").with(loginAs(me.getId()))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"collectionId\": " + collectionId + "}"))
+			.andExpect(status().isNotFound());
+
+		long rows = jdbcTemplate.queryForObject(
+			"SELECT count(*) FROM core.follow WHERE follower_member_id = ?", Long.class, me.getId());
+		assertThat(rows).isZero();
 	}
 
 	/**
@@ -338,6 +370,16 @@ class FollowApiTests extends IntegrationContainerSupport {
 
 	private long publishedCollection(long ownerId) {
 		return collectionRepository.save(Collection.create(ownerId, "책장")).getId();
+	}
+
+	/**
+	 * 비공개 전환이 MVP 범위 밖이라 엔티티에 발행 취소 경로가 없다(BD-38). 그래서 DB로 직접
+	 * 미발행 상태를 만든다 — {@code PublicCollectionApiTests}도 같은 방식이다.
+	 */
+	private long unpublishedCollection(long ownerId) {
+		long id = collectionRepository.save(Collection.create(ownerId, "미발행 책장")).getId();
+		jdbcTemplate.update("UPDATE core.collection SET is_published = false WHERE id = ?", id);
+		return id;
 	}
 
 	private long follow(long memberId, long collectionId) throws Exception {
