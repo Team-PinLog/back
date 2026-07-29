@@ -1,4 +1,4 @@
-# BD-27. `global/security` 패키지를 `@NullMarked`로 선언한다
+# BD-29. `global/security` 패키지를 `@NullMarked`로 선언한다
 
 - **상태**: Accepted
 - **날짜**: 2026-07-28
