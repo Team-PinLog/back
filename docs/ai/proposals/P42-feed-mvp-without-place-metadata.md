@@ -41,5 +41,6 @@ category·region을 `placeMeta`로 Context 본문과 함께 임베딩할 수 있
 ## 감수하는 것
 
 - Keyword가 없는 사용자는 최신·팔로우·무작위 중심의 Cold Start 결과를 받는다.
+- **Collection 쪽 Cold Start** — AI가 미완료인 Collection은 노출이 지연될 수 있다. region을 제외하기 전에는 이 항이 AI 완료 여부와 무관하게 계산돼 미완료 Collection도 점수를 얻었지만, 그 경로가 사라졌다. 이제 `keywordAffinity = 0`이므로 팔로우 관계가 없는 신규 발행분은 `recency`(w=0.125) 하나로 경쟁한다. 후보 채널에는 `keywords: []`로 포함되지만 **후보 포함과 노출은 다른 층위**이고, 최신 채널 배분을 60에서 100으로 올린 것은 후보 진입 기회를 넓힐 뿐 점수 열세를 해소하지 않는다. 실질 노출 경로는 팔로우와 최신 두 갈래로 좁아진다.
 - 기존 4채널·category/region 가중치 실험은 후속 고도화로 미룬다.
 - 나중에 Place metadata를 임베딩하면 Profile 전환과 재처리 비용이 발생한다.
