@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.pinlog.pinlogback.domain.ai.repository.AiDerivedDataRepository;
 import com.pinlog.pinlogback.domain.place.entity.Place;
 import com.pinlog.pinlogback.domain.place.repository.PlaceRepository;
 import com.pinlog.pinlogback.domain.record.dto.BoundsResponse;
@@ -37,12 +38,14 @@ public class RecordService {
 	private final PlaceRepository placeRepository;
 	private final RecordRepository recordRepository;
 	private final ContextRepository contextRepository;
+	private final AiDerivedDataRepository aiDerivedDataRepository;
 
 	public RecordService(PlaceRepository placeRepository, RecordRepository recordRepository,
-		ContextRepository contextRepository) {
+		ContextRepository contextRepository, AiDerivedDataRepository aiDerivedDataRepository) {
 		this.placeRepository = placeRepository;
 		this.recordRepository = recordRepository;
 		this.contextRepository = contextRepository;
+		this.aiDerivedDataRepository = aiDerivedDataRepository;
 	}
 
 	/**
@@ -98,6 +101,10 @@ public class RecordService {
 	 * Context 교체 수정(데이터모델 6.4). 반드시 새 Context 생성이 먼저다 — 삭제를 먼저 하면
 	 * 마지막 Context를 수정할 때 활성 수가 0이 되는 중간 상태가 생긴다. "마지막 Context는 삭제할 수
 	 * 없다"는 삭제 유스케이스의 규칙이며 수정에는 적용하지 않는다.
+	 *
+	 * <p>구 Context는 소프트 삭제되므로 AI 파생 데이터도 같은 트랜잭션에서 무효화한다. 새 Context의
+	 * 임베딩·Keyword는 비동기로 새로 생성되며, 늦게 도착한 구 Context의 결과는 State의
+	 * {@code CANCELLED}가 막는다.
 	 */
 	@Transactional
 	public ContextMutationResponse replaceContext(Long memberId, Long recordId, Long contextId, String body) {
@@ -112,6 +119,7 @@ public class RecordService {
 
 		Context replacement = contextRepository.saveAndFlush(Context.replacing(old, body));
 		old.softDelete();
+		aiDerivedDataRepository.invalidate(old.getId());
 		record.touch();
 		return ContextMutationResponse.from(replacement);
 	}
