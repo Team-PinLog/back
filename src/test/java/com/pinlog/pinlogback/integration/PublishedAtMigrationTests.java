@@ -1,10 +1,12 @@
 package com.pinlog.pinlogback.integration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.OffsetDateTime;
 
@@ -16,7 +18,7 @@ class PublishedAtMigrationTests extends IntegrationContainerSupport {
 	private static final String SCRATCH_DATABASE = "published_at_migration";
 
 	@Test
-	void backfillsExistingNullAndEnforcesDatabaseDefaultAndNotNull() throws Exception {
+	void backfillsExistingNullAndEnforcesPublishedRowsCarryTimestamp() throws Exception {
 		recreateScratchDatabase();
 		String url = scratchUrl();
 
@@ -53,26 +55,50 @@ class PublishedAtMigrationTests extends IntegrationContainerSupport {
 					.isEqualTo(row.getObject("created_at", OffsetDateTime.class));
 			}
 
+			try (ResultSet constraint = statement.executeQuery("""
+				SELECT pg_get_constraintdef(oid) AS definition
+				FROM pg_constraint
+				WHERE conrelid = 'core.collection'::regclass
+				AND conname = 'ck_collection_published_at'
+				""")) {
+				assertThat(constraint.next()).isTrue();
+				assertThat(constraint.getString("definition"))
+					.contains("NOT is_published")
+					.contains("published_at IS NOT NULL");
+			}
+
+			// 컬럼은 nullable로 남는다 — 제약은 발행된 행에만 건다.
 			try (ResultSet column = statement.executeQuery("""
-				SELECT is_nullable, column_default
+				SELECT is_nullable
 				FROM information_schema.columns
 				WHERE table_schema = 'core'
 				AND table_name = 'collection'
 				AND column_name = 'published_at'
 				""")) {
 				assertThat(column.next()).isTrue();
-				assertThat(column.getString("is_nullable")).isEqualTo("NO");
-				assertThat(column.getString("column_default")).contains("now()");
+				assertThat(column.getString("is_nullable")).isEqualTo("YES");
 			}
 
-			try (ResultSet inserted = statement.executeQuery("""
-				INSERT INTO core.collection (member_id, title)
-				VALUES (1, 'DB 기본값')
-				RETURNING published_at
-				""")) {
-				assertThat(inserted.next()).isTrue();
-				assertThat(inserted.getObject("published_at", OffsetDateTime.class)).isNotNull();
-			}
+			// 미발행 행은 발행 시각이 없어도 된다 — 비공개 생성이 들어와도 제약을 풀 필요가 없다.
+			statement.execute("""
+				INSERT INTO core.collection (member_id, title, is_published, published_at)
+				VALUES (1, '미발행', false, NULL)
+				""");
+
+			// 미발행 행이 과거 발행 시각을 남겨도 된다 — 쌍조건이었다면 여기서 거부된다.
+			// 함의 한 방향이므로 발행 취소가 들어와도 유효하다.
+			statement.execute("""
+				INSERT INTO core.collection (member_id, title, is_published, published_at)
+				VALUES (1, '발행 취소', false, now())
+				""");
+
+			// 발행된 행이 발행 시각을 빠뜨리면 거부된다 — 그럴듯한 값으로 덮지 않고 실패한다.
+			assertThatThrownBy(() -> statement.execute("""
+				INSERT INTO core.collection (member_id, title, is_published, published_at)
+				VALUES (1, '발행인데 시각 없음', true, NULL)
+				"""))
+				.isInstanceOf(SQLException.class)
+				.hasMessageContaining("ck_collection_published_at");
 		}
 	}
 

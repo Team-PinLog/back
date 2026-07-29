@@ -17,8 +17,8 @@ Flyway 마이그레이션 위치입니다. 여러 파트가 각자 마이그레�
 - `V200` 이후는 현재 예약됨 / 미할당 상태입니다. 해당 번호를 쓰기 전 관련 소유자와 책임 및 번호를 합의합니다.
 - 이미 배포된 마이그레이션은 수정하지 않습니다. 변경이 필요하면 새 버전을 추가합니다.
 
-현재 백엔드 구간은 `V2` member, `V3` core 도메인, `V4` social_account, `V5` Collection `published_at`
-백필·기본값·NOT NULL 순서입니다.
+현재 백엔드 구간은 `V2` member, `V3` core 도메인, `V4` social_account, `V5` Collection
+`published_at` 백필·발행 시각 `CHECK` 순서입니다.
 
 ## 구간 소유의 대가 — out-of-order 허용
 
