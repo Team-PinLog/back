@@ -36,9 +36,9 @@ AiSearchClient    -- 개인 자연어 검색 요청
 ```yaml
 pinlog:
   ai:
-    base-url: http://localhost:8000
-    internal-token: ${PINLOG_AI_INTERNAL_TOKEN}
-    embedding-profile: openai-text-embedding-3-small-1536-cosine-v1
+    base-url: ${PINLOG_AI_BASE_URL:http://localhost:8000}
+    internal-secret: ${PINLOG_AI_INTERNAL_SECRET:}
+    embedding-profile: ${PINLOG_AI_EMBEDDING_PROFILE:openai-text-embedding-3-small-1536-cosine-v1}
     process:
       connect-timeout: 1s
       read-timeout: 3s
@@ -47,16 +47,24 @@ pinlog:
       read-timeout: 5s
 ```
 
-`embedding-profile`은 Spring과 FastAPI 양쪽에 하드코딩하지 않고 배포 환경의 단일 설정에서 주입합니다. Spring은 이 값을 검색 요청에 실어 보내는 역할만 하며 해석하지 않습니다.
+`internal-secret`은 저장소가 public이므로 기본값을 비워 둡니다. 값이 없으면 운영 프로파일은 **기동에 실패하고** 그 외에는 경고만 남깁니다 — 시크릿 부재의 실패 모드가 무음이라(`process`는 모든 실패를 삼킵니다) 운영에서는 기동을 막는 편이 안전합니다. 헤더 이름은 §7의 `X-Internal-Secret`이며 원본은 `ai` 레포 `app/core/security.py`입니다.
 
-`@ConfigurationProperties`로 바인딩하고 값 자체는 코드에 상수로 두지 않습니다.
+`embedding-profile`은 **리터럴을 파일에 두고 환경변수는 덮어쓰기로만** 받습니다. Profile의 정본이 코드이기 때문이며(상위 계약 §7.1), 그래야 Profile 교체가 PR·리뷰·git 이력을 거칩니다. Profile 변경은 기존 Embedding 전부를 조회 대상에서 빼는 결정인데(§9.3 검색 필터), 환경변수만으로 바꿀 수 있으면 그 변경이 어디에도 기록되지 않습니다. 값 자체는 비밀이 아니라 §7.1 표에 공개된 문자열입니다.
 
-> **⚠️ 충돌 표시 (S15P11A705-135, 2026-07-29).** 이 절의 두 지점이 현재 구현·상위 계약과 어긋납니다. AI 파트 소유 문서이므로 고치지 않고 표시만 남깁니다(`CLAUDE.md` 9번).
+기본값을 두는 이유는 실패 모드입니다. 기본값이 없으면 주입 누락 시 Spring이 **빈 문자열 Profile**을 실어 보내고 모든 검색이 422로 죽는데, 그 실패가 배포 시점이 아니라 첫 검색 시점에 나타납니다.
+
+Spring은 이 값을 검색 요청에 실어 보내는 역할만 하며 해석하지 않습니다. 두 파트가 서로 다른 Profile을 갖는 것은 단일 주입이 아니라 **검색 요청의 런타임 대조**로 막습니다 — 불일치면 FastAPI가 422로 거절하고 빈 결과를 돌려주지 않습니다.
+
+`@ConfigurationProperties`로 바인딩합니다.
+
+> **정정 기록 (S15P11A705-135, 2026-07-29).** 이 절은 원래 다음 둘이 현재 구현·상위 계약과 어긋나 있었습니다. 백엔드가 발견해 `CLAUDE.md` 9번대로 표시만 남겼고, **AI 파트(중앙)가 그 판정을 받아 수정 권한을 위임해** 같은 PR에서 고쳤습니다.
 >
-> 1. **`internal-token: ${PINLOG_AI_INTERNAL_TOKEN}`** — 구현과 `ai` 레포는 `pinlog.ai.internal-secret` / `PINLOG_AI_INTERNAL_SECRET` / 헤더 `X-Internal-Secret`을 씁니다(S15P11A705-96, back#83). 이 절의 YAML만 옛 이름입니다.
-> 2. **"배포 환경의 단일 설정에서 주입합니다" · "값 자체는 코드에 상수로 두지 않습니다"** — 상위 계약 `Team-PinLog/docs` `static/05_AI_설계.md` §7.1이 **2026-07-29에 이 규칙을 뒤집었습니다.** 개정 후 정본은 코드이고(`ai` 레포 `app/core/config.py`의 기본값) 환경변수 주입은 실험·롤백용 덮어쓰기이며 필수가 아닙니다. 두 파트의 불일치는 단일 주입이 아니라 **검색 요청의 런타임 대조**(Profile 불일치 시 422)로 막습니다.
+> 1. **`internal-token: ${PINLOG_AI_INTERNAL_TOKEN}`** → `internal-secret: ${PINLOG_AI_INTERNAL_SECRET:}`. 구현과 `ai` 레포는 처음부터 `secret` 이름을 썼습니다. §7의 헤더 표기는 back#83(S15P11A705-96)이 이미 고쳤으나 **이 설정 키가 남아 있었습니다** — 당시 전수 검색이 `X-Internal[-_]?(Token|Secret)` 패턴이라 헤더만 잡고 설정 키를 놓쳤습니다. `internal.token|INTERNAL_TOKEN|internal-token`으로 넓혀 `back`·`docs`·`ai` 세 레포를 다시 훑었고, 이 줄 외 잔존은 없습니다(`docs/ai/WORKLOG.md`의 back#83 기술은 이력 기록이므로 그대로 둡니다).
+> 2. **"배포 환경의 단일 설정에서 주입합니다" · "값 자체는 코드에 상수로 두지 않습니다"** → 위 본문. 상위 계약 `Team-PinLog/docs` `static/05_AI_설계.md` §7.1이 **2026-07-29에 이 규칙을 뒤집었습니다**(정본이 배포 설정 → 코드, 환경변수는 필수 → 덮어쓰기).
 >
-> 백엔드는 개정된 §7.1을 따라 `application.yml`에 리터럴 + 환경변수 덮어쓰기로 구현했습니다 — 근거는 [BD-39](../../backend/decisions/BD-39-embedding-profile-in-application-config.md). 이 문서를 상위 계약에 맞추는 것은 AI 파트의 몫입니다.
+> 함께 고친 것: `base-url`도 리터럴로 적혀 있어 실제 형태(`${PINLOG_AI_BASE_URL:...}`)로 맞췄습니다. 같은 블록에 알면서 틀린 줄을 남기면 back#83의 불완전한 정정을 되풀이하게 됩니다.
+>
+> 백엔드 쪽 취득 경로 결정의 근거는 [BD-39](../../backend/decisions/BD-39-embedding-profile-in-application-config.md)입니다.
 
 ## 3. 타임아웃
 

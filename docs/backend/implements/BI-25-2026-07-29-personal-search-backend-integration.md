@@ -152,10 +152,19 @@ Record는 내 것인데 Context id만 남의 것이 섞인 응답도 통과하�
   드는데, 확인 시점(2026-07-29) `config.py`의 `embedding_profile`에는 기본값이 없고 P45 파일도 없다.
   계약이 먼저 가고 구현이 따라오지 않은 상태다. 이 티켓의 결정은 어느 쪽이든 성립한다(Spring은 자기
   설정값을 실어 보낼 뿐이다).
-- **`docs/ai/spec/ai-integration.md` §2.1이 개정 전 §7.1을 그대로 담고 있다.** *"배포 환경의 단일
-  설정에서 주입합니다"* — 오늘 뒤집힌 규칙이다. 같은 절의 `internal-token: ${PINLOG_AI_INTERNAL_TOKEN}`도
-  구현(`pinlog.ai.internal-secret`)과 다르다. 그 문서는 AI 파트 소유 구역이라 고치지 않고
-  CLAUDE.md 9번에 따라 해당 지점에 표시만 남겼다.
+- **~~`docs/ai/spec/ai-integration.md` §2.1이 구현·상위 계약과 어긋난다~~ → 위임받아 고쳤다.**
+  처음에는 AI 파트 소유 구역이라 CLAUDE.md 9번대로 표시만 남겼고, **AI 파트(중앙)가 그 판정을 받아
+  수정 권한을 위임해** 같은 PR에서 고쳤다. 두 지점이다 — (1) `internal-token: ${PINLOG_AI_INTERNAL_TOKEN}`
+  → `internal-secret: ${PINLOG_AI_INTERNAL_SECRET:}` (2) "배포 환경의 단일 설정에서 주입합니다" ·
+  "값 자체는 코드에 상수로 두지 않습니다" → 개정된 §7.1과 BD-39에 맞춘 본문. `base-url`도 리터럴로
+  적혀 있어 함께 맞췄다 — 같은 블록에 알면서 틀린 줄을 남기면 아래 불완전 정정을 되풀이하게 된다.
+
+  > **`internal-token` 재검색.** §7의 헤더 표기는 back#83(S15P11A705-96)이 이미 고쳤는데 이 설정 키만
+  > 남은 이유는 **당시 전수 검색이 `X-Internal[-_]?(Token|Secret)` 패턴이라 헤더만 잡고 설정 키를
+  > 놓쳤기 때문**이다(그 PR 본문의 "잔존 0건"은 사실과 달랐다). 패턴을 `internal.token|INTERNAL_TOKEN|
+  > internal-token`으로 넓혀 `back`·`docs`·`ai` 세 레포를 다시 훑었다 — `docs` 0건, `ai` 0건,
+  > `back`은 이 줄 하나뿐이었다. `docs/ai/WORKLOG.md`의 back#83 기술은 옛 값을 인용하는 **이력
+  > 기록**이므로 그대로 둔다.
 - **검색 질의 길이 상한이 08 §1.9에 없다.** 위 "곁다리" 참조. 백엔드 방어로 500을 두었고 명세 반영을
   기다린다.
 - **`FeedKeywordRepository`와 `ContextKeywordRepository`가 둘 다 `ai.context_keyword`를 읽는다.**
