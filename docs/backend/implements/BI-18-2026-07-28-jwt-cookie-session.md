@@ -1,4 +1,4 @@
-# BI-08. 쿠키 기반 세션 JWT — 발급·검증·회전
+# BI-18. 쿠키 기반 세션 JWT — 발급·검증·회전
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-28
@@ -89,7 +89,7 @@ nimbus `DefaultJWTClaimsVerifier`의 기본 시계 오차다. 처음에 `-1초` 
 
 세 번째는 **동작 변경**이다. `requiredStringValue`로 진입점에서 끊는다. Spring이 `user-name-attribute: sub` 설정으로 앞단에서 걸러 주긴 하지만 그 보증이 설정에만 있고 타입에는 없어, 설정이 바뀌면 조용히 뚫린다.
 
-`global/web`·`global/response`·`global/common`은 그대로 뒀다. BD-27이 명시적으로 제외한 범위이고 이 티켓의 산출물도 아니다. BD-27의 재검토 트리거("마킹 패키지가 늘어 혼재가 부담이 될 때 → 레포 전체 도입 논의")에 근접했으나, 전체 도입은 다른 파트 소유 파일까지 감사해야 하므로 이 PR 범위 밖으로 판단했다.
+`global/web`·`global/response`·`global/common`은 그대로 뒀다. [BD-29](../decisions/BD-29-nullmarked-security-package.md)가 명시적으로 제외한 범위이고 이 티켓의 산출물도 아니다. BD-29의 재검토 트리거("마킹 패키지가 늘어 혼재가 부담이 될 때 → 레포 전체 도입 논의")에 근접했으나, 전체 도입은 다른 파트 소유 파일까지 감사해야 하므로 이 PR 범위 밖으로 판단했다.
 
 ## `global/security` 책임 분리
 
