@@ -32,10 +32,7 @@ import tools.jackson.databind.json.JsonMapper;
  * 접근 권한표(API 명세 12장)와 공개 범위 규약(데이터모델 5장)의 행별 검증.
  * 타인에게 Context 원문·신원 정보가 어떤 형태로도 나가지 않는 것이 이 클래스의 존재 이유다.
  */
-@SpringBootTest(properties = {
-	"management.health.redis.enabled=false",
-	"pinlog.auth.stub.enabled=true"
-})
+@SpringBootTest
 @AutoConfigureMockMvc
 class PublicCollectionApiTests extends IntegrationContainerSupport {
 

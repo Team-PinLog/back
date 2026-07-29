@@ -2,6 +2,7 @@ package com.pinlog.pinlogback.domain.member.entity;
 
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
+import org.jspecify.annotations.Nullable;
 
 import com.pinlog.pinlogback.global.common.BaseEntity;
 
@@ -65,7 +66,8 @@ public class SocialAccount extends BaseEntity {
 	/**
 	 * @param email 공급자가 제공하지 않거나 사용자가 동의하지 않으면 null이다.
 	 */
-	public static SocialAccount create(Member member, SocialProvider provider, String providerUserId, String email) {
+	public static SocialAccount create(
+		Member member, SocialProvider provider, String providerUserId, @Nullable String email) {
 		return new SocialAccount(member, provider, providerUserId, email);
 	}
 

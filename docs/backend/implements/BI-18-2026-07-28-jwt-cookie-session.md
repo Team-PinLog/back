@@ -123,6 +123,18 @@ nimbus `DefaultJWTClaimsVerifier`의 기본 시계 오차다. 처음에 `-1초` 
 
 그리고 **버그 하나를 잡았다** — `logged_in` 쿠키를 프론트가 읽을 수 없었다([BT-04](../troubleshooting/BT-04-logged-in-cookie-path-unreadable.md)). `Path=/api/core`로 발급하고 있었고, `HttpOnly`가 아니라는 것만 확인하는 테스트로는 잡히지 않았다. **`HttpOnly`가 아니라는 것은 읽을 수 있다는 뜻이 아니다.**
 
+## 감수한 것 — 장애 때 판단이 빨라지도록
+
+**Redis가 로그인·재발급의 경성 의존이 됐다.** 순단이 나면 콜백과 `POST /v1/auth/refresh`가 실패한다. [BD-28](../decisions/BD-28-readiness-includes-db.md)대로 readiness에는 Redis가 없으므로 **파드는 Ready인데 로그인만 전부 실패하는 상태**가 된다.
+
+이미 발급된 Access는 최대 30분 계속 동작하므로 전면 장애는 아니다 — 로그인한 사용자는 30분간 정상, 새 로그인과 재발급만 막힌다. [BD-21](../decisions/BD-21-auth-token-model.md)이 "Redis 장애 시 재발급이 막혀 세션이 30분 안에 끊긴다"로 적어 둔 범위가 **로그인까지** 넓어진 것이다.
+
+readiness에 Redis를 넣지 않은 판단은 BD-28에 있고 여기서 뒤집지 않는다. 다만 **장애 시 증상이 "파드 정상 + 로그인 불가"라는 것**을 여기 적어 둔다 — 이걸 모르면 원인 찾는 데 시간이 걸린다.
+
+**인가 요청 쿠키가 Java 직렬화를 쓴다.** `OAuth2AuthorizationRequest`의 직렬화 형식은 Spring Security 버전 간 호환이 보장되지 않아, **라이브러리를 올려 배포하는 순간 왕복 중이던 로그인은 전부 실패한다.** 사용자에게는 재로그인으로 끝나므로 치명적이지 않고, 배포 창에 진행 중인 로그인 수도 적다. 필요한 필드만 뽑아 JSON으로 담으면 이 결합이 없어진다 — 후속으로 남긴다([BD-30](../decisions/BD-30-authorization-request-in-cookie.md)).
+
+**공급자 응답이 규격을 벗어나면 우리 실패 경로를 타지 못한다.** 예를 들어 `sub`가 빈 문자열이면 Spring 내부(`OAuth2AuthorizedClient` 생성)에서 `IllegalArgumentException`으로 먼저 죽는다. `AbstractAuthenticationProcessingFilter`는 `AuthenticationException`만 실패 핸들러로 넘기므로 이 예외는 그냥 빠져나가고, 사용자는 `OAUTH_FAILED` 복귀 대신 오류 페이지를 본다. 우리 핸들러 바깥이라 감쌀 자리가 없다. Google이 규격을 지키는 한 발생하지 않는다고 보고 넘어간다.
+
 ## 남은 것
 
 - **키 회전** — `kid`만 선반영했고 다중 키 검증은 없다. 지금 키를 바꾸면 전면 로그아웃이다.

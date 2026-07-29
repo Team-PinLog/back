@@ -2,7 +2,7 @@
 
 - **상태**: 해결됨
 - **발견**: 2026-07-28, 실제 Google 로그인 수동 검증 중 (S15P11A705-63)
-- **관련**: [BD-21](../decisions/BD-21-auth-token-model.md) · [BI-17](../implements/BI-17-2026-07-28-jwt-cookie-session.md)
+- **관련**: [BD-21](../decisions/BD-21-auth-token-model.md) · [BI-18](../implements/BI-18-2026-07-28-jwt-cookie-session.md)
 
 ## 증상
 

@@ -37,15 +37,32 @@ public class CookieOAuth2AuthorizationRequestRepository
 
 	static final String COOKIE_NAME = "oauth2_auth_request";
 
-	/** 로그인 왕복에 필요한 시간만. 사용자가 공급자 화면에서 머무는 시간을 감안한 값이다. */
-	private static final int MAX_AGE_SECONDS = 180;
+	/**
+	 * 로그인 왕복에 필요한 시간. 사용자가 공급자 화면에 머무는 시간을 감안한다.
+	 *
+	 * <p>처음엔 180초였는데 실사용에 빠듯하다. 계정 선택 + 비밀번호 재입력 + 2단계 인증을 거치면
+	 * 3분을 넘기는 경우가 있고, 넘기면 콜백에서 인가 요청을 찾지 못해 사용자는 이유도 모른 채
+	 * {@code OAUTH_FAILED}로 돌아온다. 10분으로 늘렸다 — 이 쿠키가 들고 있는 것은 state와 PKCE
+	 * verifier뿐이고 한 번 쓰면 즉시 지우므로, 늘려서 커지는 위험은 크지 않다.
+	 */
+	private static final int MAX_AGE_SECONDS = 600;
 
 	/**
 	 * 쿠키에서 읽은 바이트를 역직렬화하므로 허용 클래스를 제한한다.
 	 * 제한하지 않으면 조작된 쿠키로 임의 클래스를 만들어내는 gadget 공격에 노출된다.
+	 *
+	 * <p><b>클래스 허용목록만으로는 부족하다.</b> {@code java.util.**}이 열려 있으면 중첩
+	 * {@code HashSet}/{@code HashMap}으로 해시를 증폭시키는 자원 고갈(SerialDOS)이 그대로
+	 * 통과한다 — {@code readObject}가 {@code hashCode()}를 재귀 호출해서, 수 KB짜리 쿠키 하나로
+	 * CPU를 수 분간 태울 수 있다. 이 경로는 <b>인증 이전</b>에 돌고 입력은 전적으로 클라이언트가
+	 * 준다. 그래서 클래스 제한 앞에 자원 한도를 함께 건다.
+	 *
+	 * <p>한도는 정상 payload(state 문자열 + PKCE verifier + 소수의 파라미터)보다 넉넉하되 증폭을
+	 * 막을 수 있는 값으로 잡았다.
 	 */
 	private static final ObjectInputFilter DESERIALIZATION_FILTER = ObjectInputFilter.Config.createFilter(
-		"org.springframework.security.oauth2.core.**;java.util.**;java.lang.**;!*");
+		"maxdepth=20;maxrefs=1000;maxbytes=8192;maxarray=1000;"
+			+ "org.springframework.security.oauth2.core.**;java.util.**;java.lang.**;!*");
 
 	@Override
 	public @Nullable OAuth2AuthorizationRequest loadAuthorizationRequest(HttpServletRequest request) {

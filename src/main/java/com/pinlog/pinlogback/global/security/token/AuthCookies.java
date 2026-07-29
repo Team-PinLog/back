@@ -57,6 +57,10 @@ public class AuthCookies {
 	public void write(HttpServletResponse response, String accessToken, String refreshToken) {
 		add(response, accessToken(accessToken, properties.accessTokenTtl()));
 		add(response, refreshToken(refreshToken, properties.refreshTokenTtl()));
+		// Access(30분)가 아니라 Refresh(7일) 수명을 따른다. 세션이 살아 있는 기간과 맞추려는
+		// 것이다 — Access에 맞추면 30분마다 UI가 로그아웃 상태로 깜빡인다. 대가는 반대쪽이다:
+		// 30분 방치한 탭은 재발급이 돌기 전까지 로그인 상태로 표시된다. 이 쿠키는 UI 힌트일
+		// 뿐이고 실제 요청은 401로 정확히 갈리므로 표시가 잠깐 앞서는 것을 감수한다.
 		add(response, loggedIn("1", properties.refreshTokenTtl()));
 	}
 

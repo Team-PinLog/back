@@ -30,10 +30,7 @@ import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-@SpringBootTest(properties = {
-	"management.health.redis.enabled=false",
-	"pinlog.auth.stub.enabled=true"
-})
+@SpringBootTest
 @AutoConfigureMockMvc
 class DeletionApiTests extends IntegrationContainerSupport {
 

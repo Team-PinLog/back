@@ -32,6 +32,9 @@ final class StubOAuthProvider {
 	 */
 	private volatile String subject = "google-sub-default";
 
+	/** userinfo가 돌려줄 이메일. 저장 실패 경로를 태우려면 컬럼 상한을 넘기는 값이 필요하다. */
+	private volatile String email = EMAIL;
+
 	private StubOAuthProvider(HttpServer server) {
 		this.server = server;
 	}
@@ -46,7 +49,7 @@ final class StubOAuthProvider {
 				{"access_token":"stub-access-token","token_type":"Bearer","expires_in":3600}""");
 		});
 		server.createContext("/userinfo", exchange -> respond(exchange, """
-			{"sub":"%s","email":"%s"}""".formatted(stub.subject, EMAIL)));
+			{"sub":"%s","email":"%s"}""".formatted(stub.subject, stub.email)));
 
 		server.start();
 		return stub;
@@ -56,6 +59,11 @@ final class StubOAuthProvider {
 	String useSubject(String value) {
 		this.subject = value;
 		return value;
+	}
+
+	/** 저장 실패 경로 검증용. 다음 테스트에 새지 않도록 호출한 테스트가 되돌린다. */
+	void useEmail(String value) {
+		this.email = value;
 	}
 
 	void stop() {

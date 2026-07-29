@@ -11,11 +11,14 @@ import com.pinlog.pinlogback.global.security.token.JwtTokenProvider;
 import com.pinlog.pinlogback.global.security.token.JwtTokenProvider.IssuedRefreshToken;
 import com.pinlog.pinlogback.global.security.token.JwtTokenProvider.RefreshTokenClaims;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * 세션 토큰의 발급·회전·폐기(API 명세 3.2~3.4).
  *
  * @see RefreshTokenStore 회전 상태를 들고 있는 곳
  */
+@Slf4j
 @Service
 public class AuthTokenService {
 
@@ -50,6 +53,10 @@ public class AuthTokenService {
 	public TokenPair rotate(@Nullable String refreshToken) {
 		RefreshTokenClaims claims = parse(refreshToken).orElseThrow(UnauthorizedException::new);
 		if (!refreshTokenStore.consume(claims.memberId(), claims.tokenId())) {
+			// 서명·만료는 통과했는데 이미 소비된 토큰이다. 정상 흐름에서는 나오지 않는다 —
+			// 유출됐거나 클라이언트가 같은 토큰을 두 번 보냈다는 뜻이다.
+			// 여기서 이 회원의 다른 세션을 끊지는 않는다. 왜 안 하는지는 BD-32에 적혀 있다.
+			log.warn("refresh token reuse detected: memberId={}", claims.memberId());
 			throw new UnauthorizedException();
 		}
 		return issue(claims.memberId());

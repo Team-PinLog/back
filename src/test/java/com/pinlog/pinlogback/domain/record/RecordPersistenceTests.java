@@ -18,7 +18,7 @@ import com.pinlog.pinlogback.domain.record.entity.Record;
 import com.pinlog.pinlogback.domain.record.repository.RecordRepository;
 import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
-@SpringBootTest(properties = "management.health.redis.enabled=false")
+@SpringBootTest
 class RecordPersistenceTests extends IntegrationContainerSupport {
 
 	@Autowired

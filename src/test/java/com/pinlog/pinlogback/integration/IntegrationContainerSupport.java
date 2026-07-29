@@ -38,16 +38,16 @@ public abstract class IntegrationContainerSupport {
 		new GenericContainer<>(DockerImageName.parse("redis:7.4.5-alpine")).withExposedPorts(6379);
 
 	static {
-		// Started once for the whole JVM (Testcontainers "singleton container" pattern).
-		// Deliberately NOT annotated with @Container: that annotation makes JUnit5's
-		// Testcontainers extension stop the container in afterAll of whichever test class
-		// declares it. Every subclass here shares this same static instance, so redeclaring
-		// @Container per subclass caused each class to stop-then-restart the shared
-		// container, changing its mapped port. A later test class with an identical
-		// @SpringBootTest configuration then reused a cached Spring context whose DataSource
-		// still pointed at the old, now-dead port, failing every DB call with a connection
-		// timeout. Manual start here keeps one container alive for the whole run; Ryuk
-		// reaps it when the JVM exits.
+		// JVM 전체에서 한 번만 띄운다(Testcontainers 싱글턴 컨테이너 패턴).
+		//
+		// @Container를 일부러 붙이지 않았다. 그 애노테이션을 붙이면 JUnit5 확장이 그것을 선언한
+		// 테스트 클래스의 afterAll에서 컨테이너를 멈춘다. 여기 하위 클래스들은 모두 이 static
+		// 인스턴스 하나를 공유하므로, 클래스마다 @Container를 다시 선언하면 클래스가 끝날 때마다
+		// 공유 컨테이너가 멈췄다 다시 떠서 매핑 포트가 바뀐다. 그러면 @SpringBootTest 설정이 같아
+		// 캐시된 컨텍스트를 재사용하는 뒤 클래스가 죽은 포트를 가리키는 DataSource를 물고, 모든 DB
+		// 호출이 연결 타임아웃으로 실패한다(BT-01).
+		//
+		// 여기서 수동으로 시작하면 컨테이너 하나가 실행 내내 살아 있고, 정리는 JVM 종료 시 Ryuk가 한다.
 		POSTGRES.start();
 		REDIS.start();
 	}

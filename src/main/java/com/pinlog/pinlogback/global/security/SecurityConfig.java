@@ -5,7 +5,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
@@ -13,6 +12,7 @@ import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequest
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
 
 import com.pinlog.pinlogback.domain.auth.controller.SocialLoginController;
@@ -70,6 +70,26 @@ public class SecurityConfig {
 		return resolver;
 	}
 
+	/**
+	 * CSRF 토큰 저장소. {@code CsrfConfigurer.spa()}의 기본 저장소를 그대로 쓰지 않는 이유는
+	 * <b>{@code Path}</b> 하나다.
+	 *
+	 * <p>기본 구현({@code CookieCsrfTokenRepository})은 {@code cookiePath}가 비어 있으면 요청의
+	 * context path를 쓴다. 우리는 {@code /api/core}라서 쿠키가 그 경로로 저장되는데, 프론트
+	 * 페이지는 {@code /}·{@code /auth/callback} 아래에서 돈다. 그러면 이 쿠키가
+	 * {@code document.cookie}에 나타나지 않아 <b>클라이언트가 {@code X-XSRF-TOKEN}에 넣을 값을
+	 * 구할 수 없고, 상태 변경 요청이 전부 403이 된다.</b>
+	 *
+	 * <p>{@code logged_in}에서 같은 판단을 내렸다(BT-04). 읽는 주체가 브라우저 JS인 쿠키는
+	 * {@code Path}가 {@code /}여야 한다.
+	 */
+	@Bean
+	public CookieCsrfTokenRepository csrfTokenRepository() {
+		CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+		repository.setCookiePath("/");
+		return repository;
+	}
+
 	@Bean
 	public SecurityFilterChain securityFilterChain(
 		HttpSecurity http,
@@ -79,6 +99,7 @@ public class SecurityConfig {
 		CookieOAuth2AuthorizationRequestRepository authorizationRequestRepository,
 		OAuthLoginSuccessHandler successHandler,
 		OAuthLoginFailureHandler failureHandler,
+		CookieCsrfTokenRepository csrfTokenRepository,
 		JwtTokenProvider jwtTokenProvider
 	) throws Exception {
 		return http
@@ -96,9 +117,12 @@ public class SecurityConfig {
 				.requestMatchers(PUBLIC_AUTH).permitAll()
 				.requestMatchers(PUBLIC_API_DOCS).permitAll()
 				.anyRequest().authenticated())
-			// 쿠키 인증이라 CSRF 방어가 필요하다. spa()가 XSRF-TOKEN 쿠키(HttpOnly 아님) 발급과
-			// X-XSRF-TOKEN 헤더 검증을 함께 설정한다(08 §1.7).
-			.csrf(CsrfConfigurer::spa)
+			// 쿠키 인증이라 CSRF 방어가 필요하다(08 §1.7). spa()가 요청 핸들러와 저장소를 함께
+			// 잡아 주는데, 저장소만 우리 것으로 덮어쓴다 — Path 때문이다(csrfTokenRepository() 참고).
+			// spa()의 핸들러는 CsrfConfigurer 내부 클래스라 직접 지정할 수 없어 이 순서가 필요하다.
+			.csrf(csrf -> csrf
+				.spa()
+				.csrfTokenRepository(csrfTokenRepository))
 			// spa()의 토큰은 지연 로딩이라 조회 요청에서는 쿠키가 나가지 않는다. 그러면 클라이언트가
 			// 첫 상태 변경 요청에 넣을 토큰을 구할 방법이 없다. CsrfFilter 뒤에서 해석을 강제한다.
 			.addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)

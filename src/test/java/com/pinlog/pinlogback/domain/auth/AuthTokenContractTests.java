@@ -67,6 +67,56 @@ class AuthTokenContractTests extends SocialLoginTestSupport {
 	}
 
 	@Test
+	@DisplayName("XSRF-TOKEN 쿠키를 프론트 페이지에서 읽을 수 있다")
+	void csrfCookieIsReadableFromClientPages() throws Exception {
+		// logged_in과 같은 이유다(BT-04). 프론트가 document.cookie로 읽어 X-XSRF-TOKEN 헤더에
+		// 넣어야 하는데, Path가 API 경로면 루트 아래 페이지에서 보이지 않아 값을 구할 방법이 없다.
+		// 그러면 상태 변경 요청이 전부 403이 된다.
+		//
+		// 이 테스트가 Set-Cookie 원문을 보는 것이 핵심이다. postWithCsrf는 헤더에서 값을 직접
+		// 꺼내 쓰므로 브라우저의 Path 제한을 우회한다 — 그래서 정상 경로 테스트가 통과해도
+		// 실제 브라우저에서는 깨질 수 있었다.
+		HttpResponse<String> response = send(
+			HttpRequest.newBuilder().uri(uri(port, "/api/core/actuator/health")).GET().build());
+
+		String csrf = setCookie(response, CSRF_COOKIE);
+		assertThat(attribute(csrf, "Path"))
+			.as("프론트가 읽어야 한다. API 경로로 좁히면 헤더에 넣을 값을 구할 수 없다")
+			.isEqualTo("/");
+		assertThat(csrf)
+			.as("JS가 읽어야 하므로 HttpOnly면 안 된다")
+			.doesNotContain("HttpOnly");
+	}
+
+	@Test
+	@DisplayName("콜백 처리 중 예외가 나도 500이 아니라 실패 복귀 경로로 돌아간다")
+	void callbackFailureRedirectsInsteadOfServerError() throws Exception {
+		// 성공 핸들러는 필터 체인 안에서 돌아 @RestControllerAdvice를 타지 않는다. 감싸지 않으면
+		// 공통 envelope도 명세가 정한 복귀도 아닌 컨테이너 기본 500 페이지가 나간다.
+		//
+		// 트리거는 컬럼 상한(email VARCHAR(255))을 넘기는 값이다. 저장 실패가 성공 핸들러 안에서
+		// 터지므로 우리가 감싼 경로를 정확히 탄다.
+		provider.useEmail("x".repeat(300) + "@example.com");
+		try {
+			HttpResponse<String> callback = completeLogin(port, "google-sub-callback-failure");
+
+			assertThat(callback.statusCode())
+				.as("500이 아니라 리다이렉트여야 한다. body=%s", callback.body())
+				.isBetween(300, 399);
+			assertThat(callback.headers().firstValue("Location"))
+				.get().asString()
+				.contains("/auth/callback")
+				.contains("error=OAUTH_FAILED");
+			assertThat(callback.headers().allValues("Set-Cookie"))
+				.as("실패했으므로 인증 쿠키가 나가면 안 된다")
+				.noneMatch(header -> header.startsWith(ACCESS_COOKIE + "=")
+					|| header.startsWith(REFRESH_COOKIE + "="));
+		} finally {
+			provider.useEmail(StubOAuthProvider.EMAIL);
+		}
+	}
+
+	@Test
 	@DisplayName("콜백 응답 본문에 토큰 문자열이 없다")
 	void callbackResponseBodyCarriesNoToken() throws Exception {
 		// 쿠키를 택한 이유가 여기 있으므로 회귀로 고정한다(BD-21, 인증 PR 계약 5).
