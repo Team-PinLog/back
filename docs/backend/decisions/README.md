@@ -93,6 +93,8 @@
 | [BD-29](BD-29-nullmarked-security-package.md) | `global/security`를 패키지 단위 `@NullMarked`로 선언(파라미터별 `@NonNull` 대신) | Accepted | S15P11A705-63 |
 | [BD-30](BD-30-authorization-request-in-cookie.md) | 인가 요청(state·PKCE verifier)을 `HttpSession` 대신 쿠키에 — 서명 없이 역직렬화 허용목록으로 | Accepted | S15P11A705-63 |
 | [BD-31](BD-31-jwt-rs256-key-management.md) | 세션 JWT를 RS256으로 서명, 키는 환경변수 주입 + 운영 fail-fast (`kid` 선반영, JWKS 없음) | Accepted | S15P11A705-63 |
-| [BD-32](BD-32-refresh-reuse-no-family-revocation.md) | Refresh 재사용을 감지해도 세션 계열을 폐기하지 않는다 (당분간) — 감지·WARN만, 폐기는 후속 | Accepted | S15P11A705-63 |
+| [BD-32](BD-32-refresh-reuse-no-family-revocation.md) | Refresh 재사용을 감지해도 세션 계열을 폐기하지 않는다 (당분간) — 감지·WARN만, 폐기는 후속 | Superseded by BD-35 | S15P11A705-63 |
 | [BD-33](BD-33-published-at-database-invariant.md) | 발행된 Collection의 `published_at`을 DB `CHECK`로 강제 | Accepted | S15P11A705-125 |
 | [BD-34](BD-34-feed-deterministic-pagination-without-session-cache.md) | Feed 페이지네이션을 Redis Session Cache 대신 `requestId` seed 기반 결정적 재계산으로 | Accepted | S15P11A705-120 |
+| [BD-35](BD-35-refresh-reuse-family-revocation.md) | Refresh 재사용을 유출로 간주해 그 회원의 세션을 전부 폐기 — 회원별 `jti` 인덱스, 오탐 시 전체 로그아웃 감수 | Accepted | S15P11A705-131 |
+| [BD-37](BD-37-ai-derived-invalidation-inside-deletion-transaction.md) | AI 파생 데이터 무효화를 삭제 트랜잭션 안에서 백엔드가 직접 쓴다 | Accepted | S15P11A705-124 |

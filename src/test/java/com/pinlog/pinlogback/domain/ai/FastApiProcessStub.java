@@ -8,6 +8,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -107,6 +108,17 @@ final class FastApiProcessStub {
 	/** 호출이 오지 <b>않았음</b>을 확인할 때 쓴다. 짧게 기다린 뒤 비어 있으면 참으로 본다. */
 	boolean noCallWithin(long millis) throws InterruptedException {
 		return received.poll(millis, TimeUnit.MILLISECONDS) == null;
+	}
+
+	/**
+	 * 대역을 쓰는 클래스가 끝날 때 닫는다. {@code stop}은 실행자를 건드리지 않으므로 직접 내린다 —
+	 * 그러지 않으면 non-daemon 스레드 둘이 JVM 끝까지 남는다.
+	 */
+	void stop() {
+		server.stop(0);
+		if (server.getExecutor() instanceof ExecutorService executor) {
+			executor.shutdownNow();
+		}
 	}
 
 	private void handle(HttpExchange exchange) throws IOException {

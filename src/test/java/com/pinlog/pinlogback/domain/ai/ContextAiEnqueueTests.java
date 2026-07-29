@@ -6,14 +6,19 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
+import com.pinlog.pinlogback.domain.ai.event.ContextAiRequested;
 import com.pinlog.pinlogback.domain.member.entity.Member;
 import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
 import com.pinlog.pinlogback.domain.record.dto.ContextMutationResponse;
@@ -63,9 +68,25 @@ class ContextAiEnqueueTests extends IntegrationContainerSupport {
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
 
+	@Autowired
+	private ApplicationEventPublisher events;
+
+	@Autowired
+	private PlatformTransactionManager transactionManager;
+
 	@BeforeEach
 	void resetStub() {
 		STUB.reset(FastApiProcessStub.Mode.ACCEPTED);
+	}
+
+	/**
+	 * 컨테이너와 달리 이 대역은 이 클래스만 쓰므로 닫는다. {@code HttpServer}는 스레드 풀을 물고
+	 * 있어 두면 JVM 종료까지 남는다({@code IntegrationContainerSupport}가 컨테이너를 닫지 않는
+	 * 이유는 여러 클래스가 공유하기 때문이고, 여기엔 그 사정이 없다).
+	 */
+	@AfterAll
+	static void stopStub() {
+		STUB.stop();
 	}
 
 	/**
@@ -128,8 +149,15 @@ class ContextAiEnqueueTests extends IntegrationContainerSupport {
 	 * 1건일 때만 의미가 있으므로, 2개 이상 남겨 두고 검증하면 순서가 뒤집혀도 아무 일이 일어나지
 	 * 않아 이 테스트가 순서의 프록시 노릇을 못 한다.
 	 *
-	 * <p>구 Context의 CANCELLED 전이는 이 PR의 범위가 아니다(back#80). 구 상태 행이 그대로
-	 * {@code PENDING}인 것까지 단언해 경계를 못박는다 — 여기서 손대기 시작하면 삭제 경로가 두 곳이 된다.
+	 * <p><b>구 Context의 CANCELLED 전이는 이 PR이 하지 않는다.</b> 그 일은 삭제 경로가 맡고
+	 * (back#80, {@code BD-37}), {@code replaceContext}가 {@code old.softDelete()} 직후
+	 * {@code aiDerivedDataRepository.invalidate}를 부르는 것으로 붙어 있다. 여기서 구 상태가
+	 * {@code CANCELLED}인 것을 단언하는 이유는 이 PR이 그렇게 만들어서가 아니라, <b>두 경로가
+	 * 실제로 맞물려 돈다</b>는 것이 교체 시나리오에서만 드러나기 때문이다 — 생성(PENDING)과
+	 * 무효화(CANCELLED)가 한 트랜잭션에서 각자의 context_id에 정확히 적용돼야 한다.
+	 *
+	 * <p>이 단언은 처음에 {@code PENDING}이었다. back#80 병합 전에 작성돼 무효화가 아직 없었기
+	 * 때문이고, 병합 후 실측에서 뒤집혔다. 낡은 전제였지 결함이 아니다.
 	 */
 	@Test
 	void replacingTheOnlyContextEnqueuesTheNewOneAndLeavesTheOldStateToTheDeletionPath() throws Exception {
@@ -161,8 +189,9 @@ class ContextAiEnqueueTests extends IntegrationContainerSupport {
 			.containsEntry("embedding_status", "PENDING")
 			.containsEntry("keyword_status", "PENDING");
 		assertThat(stateOf(oldContextId))
-			.as("구 Context의 CANCELLED 전이는 삭제 경로(back#80)의 몫이다")
-			.containsEntry("embedding_status", "PENDING");
+			.as("구 Context는 소프트 삭제와 같은 트랜잭션에서 무효화된다 — 늦게 도착한 구 결과를 CANCELLED가 막는다")
+			.containsEntry("embedding_status", "CANCELLED")
+			.containsEntry("keyword_status", "CANCELLED");
 	}
 
 	/**
@@ -196,6 +225,74 @@ class ContextAiEnqueueTests extends IntegrationContainerSupport {
 		long contextId = onlyContextId(created.recordId());
 		assertThat(contextRepository.findById(contextId)).isPresent();
 		assertThat(stateOf(contextId)).containsEntry("embedding_status", "PENDING");
+	}
+
+	/**
+	 * 롤백된 트랜잭션에서는 호출이 나가지 않는다.
+	 *
+	 * <p>{@code ContextAiRequestedListener}의 Javadoc이 *"롤백된 트랜잭션에서는 이 리스너가 아예
+	 * 실행되지 않으므로, 저장되지 않은 Context로 호출이 나가는 경로가 없다"*고 주장하는데 그것을
+	 * 고정하는 테스트가 없었다. 주장만 있고 근거가 없으면 {@code AFTER_COMMIT}을
+	 * {@code fallbackExecution = true}로 바꾸거나 리스너 단계를 옮기는 변경이 조용히 통과한다.
+	 *
+	 * <p>바깥 트랜잭션을 열고 {@code addContext}(REQUIRED)를 참여시킨 뒤 롤백시킨다. 커밋이 없으므로
+	 * {@code AFTER_COMMIT} 리스너가 뜨지 않아야 하고, Context 자체도 남지 않아야 한다.
+	 */
+	@Test
+	void rollingBackTheTransactionNeverReachesFastApi() throws Exception {
+		long memberId = newMemberId();
+		RecordCreateResponse created = recordService.create(memberId, createRequest("ai-enqueue-7", "이건 남는다"));
+		STUB.awaitCall();
+		long recordId = created.recordId();
+		STUB.reset(FastApiProcessStub.Mode.ACCEPTED);
+
+		new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+			recordService.addContext(memberId, recordId, "이건 롤백된다");
+			status.setRollbackOnly();
+		});
+
+		assertThat(STUB.noCallWithin(500))
+			.as("커밋되지 않은 Context로는 호출이 나가지 않아야 한다")
+			.isTrue();
+		assertThat(contextRepository.countByRecordId(recordId))
+			.as("롤백됐으므로 Context도 처음 하나만 남는다")
+			.isEqualTo(1);
+	}
+
+	/**
+	 * 이미 삭제된 Context는 FastAPI로 보내지 않는다.
+	 *
+	 * <p>{@code ContextProcessRequestAssembler}가 Context를 찾지 못하면 {@code Optional.empty()}로
+	 * 호출을 생략하는데, 그 경로에도 테스트가 없었다. 늦게 뜬 이벤트가 이미 지워진 Context의 본문을
+	 * 실어 보내면 <b>삭제된 기록으로 임베딩이 만들어진다</b> — 무효화(back#80)가 막으려는 것과 같은
+	 * 종류의 누출이다.
+	 *
+	 * <p>{@code replaceContext}가 구 Context를 소프트 삭제하므로 그 id를 그대로 쓴다. 존재하지 않는
+	 * 임의의 id로도 같은 분기를 타지만, 그것은 "없는 행"이지 "지워진 행"이 아니다 —
+	 * {@code @SQLRestriction}이 소프트 삭제를 실제로 걸러 내는지까지 확인하려면 지워진 것이어야 한다.
+	 */
+	@Test
+	void anAlreadyDeletedContextIsNotSentToFastApi() throws Exception {
+		long memberId = newMemberId();
+		RecordCreateResponse created = recordService.create(memberId, createRequest("ai-enqueue-8", "교체 전 이유"));
+		STUB.awaitCall();
+		long recordId = created.recordId();
+		long deletedContextId = onlyContextId(recordId);
+
+		recordService.replaceContext(memberId, recordId, deletedContextId, "교체 후 이유");
+		STUB.awaitCall();
+		assertThat(contextRepository.findById(deletedContextId))
+			.as("구 Context는 소프트 삭제돼 조회되지 않아야 한다 — 이 테스트의 전제")
+			.isEmpty();
+		STUB.reset(FastApiProcessStub.Mode.ACCEPTED);
+
+		// 재스캔·재시도가 늦게 발행한 이벤트를 흉내낸다. 리스너는 커밋 이후에만 뜨므로 트랜잭션이 필요하다.
+		new TransactionTemplate(transactionManager).executeWithoutResult(status ->
+			events.publishEvent(new ContextAiRequested(deletedContextId, memberId, recordId)));
+
+		assertThat(STUB.noCallWithin(500))
+			.as("지워진 Context의 본문을 실어 보내면 삭제된 기록으로 임베딩이 만들어진다")
+			.isTrue();
 	}
 
 	private long newMemberId() {

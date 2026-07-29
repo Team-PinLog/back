@@ -7,8 +7,11 @@ import java.util.List;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.util.Assert;
 
 import com.pinlog.pinlogback.domain.ai.event.ContextAiRequested;
+import com.pinlog.pinlogback.domain.ai.repository.AiDerivedDataRepository;
 import com.pinlog.pinlogback.domain.ai.repository.ContextAiStateRepository;
 import com.pinlog.pinlogback.domain.place.entity.Place;
 import com.pinlog.pinlogback.domain.place.repository.PlaceRepository;
@@ -41,15 +44,17 @@ public class RecordService {
 	private final RecordRepository recordRepository;
 	private final ContextRepository contextRepository;
 	private final ContextAiStateRepository contextAiStateRepository;
+	private final AiDerivedDataRepository aiDerivedDataRepository;
 	private final ApplicationEventPublisher events;
 
 	public RecordService(PlaceRepository placeRepository, RecordRepository recordRepository,
 		ContextRepository contextRepository, ContextAiStateRepository contextAiStateRepository,
-		ApplicationEventPublisher events) {
+		AiDerivedDataRepository aiDerivedDataRepository, ApplicationEventPublisher events) {
 		this.placeRepository = placeRepository;
 		this.recordRepository = recordRepository;
 		this.contextRepository = contextRepository;
 		this.contextAiStateRepository = contextAiStateRepository;
+		this.aiDerivedDataRepository = aiDerivedDataRepository;
 		this.events = events;
 	}
 
@@ -111,8 +116,10 @@ public class RecordService {
 	 *
 	 * <p>AI 관점에서 이 메서드는 <b>생성 동기화 + 삭제 동기화</b>다(AI 파트 소유 명세
 	 * {@code docs/ai/spec/context-state-sync.md} 5장). 여기서 붙이는 것은 신 Context의 {@code PENDING}
-	 * 생성이고, 구 Context의 {@code CANCELLED} 전이는 삭제 경로가 담당한다. 구 상태를 신 Context로
-	 * 승계하지 않는다 — 신 {@code context_id}는 새 처리 단위라 {@code retry_count}도 0에서 시작한다.
+	 * 생성이고, 구 Context는 소프트 삭제되므로 AI 파생 데이터도 같은 트랜잭션에서 무효화한다. 구 상태를
+	 * 신 Context로 승계하지 않는다 — 신 {@code context_id}는 새 처리 단위라 {@code retry_count}도 0에서
+	 * 시작한다. 새 Context의 임베딩·Keyword는 비동기로 새로 생성되며, 늦게 도착한 구 Context의 결과는
+	 * State의 {@code CANCELLED}가 막는다.
 	 */
 	@Transactional
 	public ContextMutationResponse replaceContext(Long memberId, Long recordId, Long contextId, String body) {
@@ -128,6 +135,7 @@ public class RecordService {
 		Context replacement = contextRepository.saveAndFlush(Context.replacing(old, body));
 		enqueueAiProcessing(replacement);
 		old.softDelete();
+		aiDerivedDataRepository.invalidate(old.getId());
 		record.touch();
 		return ContextMutationResponse.from(replacement);
 	}
@@ -160,8 +168,16 @@ public class RecordService {
 	 * <p>INSERT를 Core 저장과 같은 트랜잭션에 두는 것도 같은 이유다. 떼어 내면 "Record는 저장됐는데
 	 * AI State가 없어 영원히 처리되지 않는 Context"가 생긴다. {@code core}와 {@code ai}는 같은
 	 * PostgreSQL 인스턴스라 이것이 단일 로컬 트랜잭션으로 성립한다.
+	 *
+	 * <p>트랜잭션 활성 여부를 단언하는 이유는 {@code @TransactionalEventListener}의
+	 * {@code fallbackExecution} 기본값이 {@code false}이기 때문이다. 트랜잭션 없이 발행된 이벤트는
+	 * <b>예외도 로그도 없이 버려진다.</b> 그러면 {@code PENDING}은 써지고 호출은 나가지 않는 상태가
+	 * 조용히 만들어진다 — 이 메서드가 없애려는 바로 그 상태다. 지금은 호출 지점 셋이 모두
+	 * {@code @Transactional}이지만, 그것을 관습이 아니라 구조로 붙들어 둔다.
 	 */
 	private void enqueueAiProcessing(Context context) {
+		Assert.state(TransactionSynchronizationManager.isActualTransactionActive(),
+			"AI 접수는 트랜잭션 안에서만 유효하다 — AFTER_COMMIT 리스너가 뜨지 않아 호출이 조용히 사라진다");
 		contextAiStateRepository.initializePending(context.getId());
 		events.publishEvent(
 			new ContextAiRequested(context.getId(), context.getMemberId(), context.getRecordId()));

@@ -1,6 +1,6 @@
 # BD-32. Refresh 재사용을 감지해도 세션 계열을 폐기하지 않는다 (당분간)
 
-- **상태**: Accepted
+- **상태**: **Superseded by [BD-35](BD-35-refresh-reuse-family-revocation.md)** (2026-07-29) — 아래 재검토 트리거대로 [back#73](https://github.com/Team-PinLog/back/pull/73) 병합 직후 계열 폐기를 구현했다([S15P11A705-131](https://ssafy.atlassian.net/browse/S15P11A705-131)). 이 문서가 기록한 "감수하는 것"은 **더 이상 유효하지 않다.**
 - **날짜**: 2026-07-29
 - **관련**: S15P11A705-63 · [BD-21](BD-21-auth-token-model.md)(토큰 모델) · [BI-18](../implements/BI-18-2026-07-28-jwt-cookie-session.md)
 - **작성 시점**: 2026-07-29 — 코드 리뷰에서 지적받아 정리
