@@ -171,6 +171,8 @@ FastAPI는 User 인증을 판단하지 않습니다. Spring은 **서비스 간 �
 X-Internal-Token: <pinlog.ai.internal-token>
 ```
 
+> 검토 필요 (S15P11A705-102): 헤더 이름이 구현과 어긋납니다. ai 레포는 `X-Internal-Secret`을 요구하며(`app/core/security.py`의 `INTERNAL_SECRET_HEADER`, `tests/test_api.py`, `tools/e2e/_common.py`), 공용 계약 `static/05_AI_설계.md` §13은 *"실제 Route와 Schema가 구현되면 ai 레포 코드가 실행 가능한 계약의 원본"*이라고 정합니다. back 구현은 그에 따라 `X-Internal-Secret`과 설정 키 `pinlog.ai.internal-secret`을 씁니다. 이 문서는 AI 파트 소유이므로 CLAUDE.md 9번 규칙에 따라 임의로 고치지 않고 표시만 남깁니다.
+
 - 토큰 값은 환경 변수로 주입하며 저장소에 커밋하지 않습니다.
 - 요청 상관관계 추적을 위해 `X-Request-Id`를 함께 전달합니다. Spring이 생성하고 로그 양쪽에 남깁니다.
 - `userId`는 인증값이 아니라 **검색 범위 필터값**으로 전달합니다. FastAPI는 이 값을 신뢰하며 검증하지 않으므로, 요청 User와 `userId`의 일치는 Spring이 호출 전에 보장해야 합니다.

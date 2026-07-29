@@ -74,6 +74,17 @@ pinlog:
       access-token-ttl: 30m
       refresh-token-ttl: 7d
       issuer: pinlog
+  # FastAPI AI Server 연동. 정본은 AI 파트가 소유한 docs/ai/spec/ai-integration.md 2.1이다.
+  ai:
+    base-url: ${PINLOG_AI_BASE_URL:http://localhost:8000}
+    # 서비스 간 공유 시크릿. 저장소가 public이므로 실제 값을 파일에 적지 않는다.
+    # 헤더 이름(X-Internal-Secret)의 원본은 ai 레포 app/core/security.py다.
+    internal-secret: ${PINLOG_AI_INTERNAL_SECRET:}
+    process:
+      # 202 접수 확인만 받으므로 짧다. 초과해도 PENDING이 남아 재스캔이 복구하므로,
+      # 여기서 오래 기다리는 것은 사용자 요청 스레드를 붙잡아 두는 손해뿐이다.
+      connect-timeout: 1s
+      read-timeout: 3s
   # Feed 추천 정책값. 정본은 AI 파트가 소유한 docs/ai/spec/feed-scoring.md이며 여기서 임의로
   # 바꾸지 않는다. 상수로 박지 않고 설정으로 두는 이유는 튜닝 대상이기 때문이다 — 재배포 없이
   # 조정할 수 있어야 하고, 가중치를 바꿔도 순위가 안 바뀌는 회귀를 테스트가 잡을 수 있어야 한다.
