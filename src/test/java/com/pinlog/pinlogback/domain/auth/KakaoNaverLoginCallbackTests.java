@@ -9,9 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 
 import com.pinlog.pinlogback.domain.member.entity.SocialProvider;
@@ -33,16 +31,10 @@ class KakaoNaverLoginCallbackTests extends SocialLoginTestSupport {
 	@Autowired
 	private SocialAccountRepository socialAccountRepository;
 
-	@Autowired
-	private JdbcTemplate jdbcTemplate;
-
-	@Value("${local.server.port}")
-	private int port;
-
 	@ParameterizedTest(name = "{0}")
 	@CsvSource({"kakao, KAKAO, 811001", "naver, NAVER, naver-id-new"})
 	@DisplayName("신규 사용자는 콜백에서 회원과 소셜 계정이 함께 생성된다")
-	void callbackCreatesMemberForNewUser(String registrationId, SocialProvider provider, String subject)
+	void callbackCreatesMemberForNewUser(String registrationId, SocialProvider expected, String subject)
 		throws Exception {
 		long membersBefore = countMembers();
 
@@ -50,7 +42,7 @@ class KakaoNaverLoginCallbackTests extends SocialLoginTestSupport {
 
 		assertThat(callback.statusCode()).isBetween(300, 399);
 		assertThat(countMembers()).isEqualTo(membersBefore + 1);
-		assertThat(socialAccountRepository.findByProviderAndProviderUserId(provider, subject))
+		assertThat(socialAccountRepository.findByProviderAndProviderUserId(expected, subject))
 			.as("식별자는 공급자가 준 값을 문자열로 그대로 저장해야 한다")
 			.isPresent();
 	}
@@ -70,11 +62,11 @@ class KakaoNaverLoginCallbackTests extends SocialLoginTestSupport {
 	@ParameterizedTest(name = "{0}")
 	@CsvSource({"kakao, KAKAO, 811003", "naver, NAVER, naver-id-no-email"})
 	@DisplayName("이메일이 없는 응답에서도 가입이 성공한다")
-	void callbackSucceedsWithoutEmail(String registrationId, SocialProvider provider, String subject)
+	void callbackSucceedsWithoutEmail(String registrationId, SocialProvider expected, String subject)
 		throws Exception {
 		// 공급자가 이메일을 주지 않거나 사용자가 동의하지 않으면 속성 자체가 없다(06 2.2).
 		// 이 경로가 막히면 Kakao에서 가입이 통째로 실패한다 — 이메일 동의는 선택 항목이다.
-		provider().useEmail(null);
+		provider.useEmail(null);
 		try {
 			HttpResponse<String> callback = completeLogin(port, registrationId, subject);
 
@@ -84,10 +76,10 @@ class KakaoNaverLoginCallbackTests extends SocialLoginTestSupport {
 			assertThat(callback.headers().firstValue("Location"))
 				.get().asString()
 				.doesNotContain("error=");
-			assertThat(socialAccountRepository.findByProviderAndProviderUserId(provider, subject))
+			assertThat(socialAccountRepository.findByProviderAndProviderUserId(expected, subject))
 				.isPresent();
 		} finally {
-			provider().useEmail(StubOAuthProvider.EMAIL);
+			provider.useEmail(StubOAuthProvider.EMAIL);
 		}
 	}
 
@@ -111,14 +103,4 @@ class KakaoNaverLoginCallbackTests extends SocialLoginTestSupport {
 				.findByProviderAndProviderUserId(SocialProvider.NAVER, shared).orElseThrow().getId());
 	}
 
-	/** 상위 클래스의 static 필드를 가린 이름 없이 쓰기 위한 접근자. */
-	private StubOAuthProvider provider() {
-		return provider;
-	}
-
-	private long countMembers() {
-		Long count = jdbcTemplate.queryForObject(
-			"SELECT count(*) FROM core.member WHERE deleted_at IS NULL", Long.class);
-		return count == null ? 0 : count;
-	}
 }

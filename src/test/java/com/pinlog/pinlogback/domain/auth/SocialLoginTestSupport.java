@@ -9,6 +9,9 @@ import java.net.http.HttpResponse;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.util.MultiValueMap;
@@ -29,6 +32,25 @@ import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 public abstract class SocialLoginTestSupport extends IntegrationContainerSupport {
 
 	protected static StubOAuthProvider provider;
+
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
+
+	/** 콜백을 타는 테스트는 대부분 자기 포트로 요청을 만들어야 한다. */
+	@Value("${local.server.port}")
+	protected int port;
+
+	/**
+	 * 활성 회원 수. 신규 가입인지 기존 회원 재사용인지 가르는 기준이라 콜백 테스트마다 필요하다.
+	 *
+	 * <p>{@code deleted_at IS NULL} 조건을 여기 한 곳에만 둔다 — 복제하면 소프트 삭제 규칙이
+	 * 바뀔 때 고쳐야 할 곳이 늘어난다.
+	 */
+	protected long countMembers() {
+		Long count = jdbcTemplate.queryForObject(
+			"SELECT count(*) FROM core.member WHERE deleted_at IS NULL", Long.class);
+		return count == null ? 0 : count;
+	}
 
 	@BeforeAll
 	static void startStubProvider() throws IOException {

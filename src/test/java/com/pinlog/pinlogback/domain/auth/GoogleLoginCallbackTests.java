@@ -9,9 +9,7 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
 
 import com.pinlog.pinlogback.domain.member.entity.SocialProvider;
@@ -30,12 +28,6 @@ class GoogleLoginCallbackTests extends SocialLoginTestSupport {
 
 	@Autowired
 	private SocialAccountRepository socialAccountRepository;
-
-	@Autowired
-	private JdbcTemplate jdbcTemplate;
-
-	@Value("${local.server.port}")
-	private int port;
 
 	@Test
 	@DisplayName("신규 사용자는 콜백에서 회원과 소셜 계정이 함께 생성된다")
@@ -93,9 +85,4 @@ class GoogleLoginCallbackTests extends SocialLoginTestSupport {
 			.toList();
 	}
 
-	private long countMembers() {
-		Long count = jdbcTemplate.queryForObject(
-			"SELECT count(*) FROM core.member WHERE deleted_at IS NULL", Long.class);
-		return count == null ? 0 : count;
-	}
 }

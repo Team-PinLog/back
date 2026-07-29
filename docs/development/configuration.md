@@ -84,6 +84,10 @@ spring:
 | `JWT_PRIVATE_KEY` | **운영 필수** | 운영 프로파일은 **기동 실패**. 로컬·테스트는 임시 키쌍 생성 |
 | `GOOGLE_CLIENT_ID` | 로그인에 필요 | `unset`으로 기동은 되고 인가 요청 URL 생성까지만 동작 |
 | `GOOGLE_CLIENT_SECRET` | 로그인에 필요 | 위와 같음 |
+| `KAKAO_CLIENT_ID` · `KAKAO_CLIENT_SECRET` | Kakao 로그인에 필요 | 위와 같음 (S15P11A705-64) |
+| `NAVER_CLIENT_ID` · `NAVER_CLIENT_SECRET` | Naver 로그인에 필요 | 위와 같음 (S15P11A705-64) |
+
+**쓰지 않는 키는 빈 값으로 두지 말고 정의 자체를 하지 않습니다.** `application.yml`이 `spring.config.import`로 `.env`를 프로퍼티로 올리므로, `KAKAO_CLIENT_ID=`처럼 정의만 하면 프로퍼티가 "없음"이 아니라 **빈 문자열**이 되어 `${KAKAO_CLIENT_ID:unset}`의 기본값이 적용되지 않습니다. 그러면 `Client id of registration 'kakao' must not be empty`로 **기동이 실패합니다.** 로컬 `.env`도, 운영 Secret도 같습니다 — 자격증명을 아직 받지 못한 공급자는 주입하지 않는 것이 정상 상태입니다([BT-05](../backend/troubleshooting/BT-05-dotenv-empty-value-overrides-default.md)).
 
 `JWT_PRIVATE_KEY`는 RSA 2048 이상 PKCS#8 PEM입니다. 셋 중 **이것만 기동을 막습니다** — 임시 키를 만들면 파드마다 서명 키가 달라져 스케일아웃·재시작 때 전면 로그아웃이 되므로, 조용히 망가지는 것보다 뜨지 않는 편을 택했습니다([BD-31](../backend/decisions/BD-31-jwt-rs256-key-management.md)).
 
