@@ -1,6 +1,7 @@
 package com.pinlog.pinlogback.integration;
 
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.test.context.TestPropertySource;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
@@ -22,6 +23,26 @@ import org.testcontainers.utility.DockerImageName;
 // 컨테이너는 JVM 전체가 공유하는 싱글턴이라 닫지 않는다. try-with-resources로 감싸면 첫
 // 테스트 클래스가 끝날 때 죽어 나머지가 죽은 포트를 보게 된다. 정리는 Ryuk가 JVM 종료 시 한다.
 @SuppressWarnings("resource")
+// AI 연동 기본값이 테스트 밖으로 새지 않게 막는다.
+//
+// pinlog.ai.base-url 의 기본값은 로컬 편의를 위한 http://localhost:8000 인데, Context 를 만드는
+// 통합 테스트는 대부분 @Transactional 이 아니라 실제로 커밋한다 → AFTER_COMMIT 리스너가 뜬다 →
+// 로컬에 FastAPI 를 띄워 둔 채 테스트를 돌리면 진짜 요청이 나간다. Testcontainers 의 임시
+// context_id 로 실제 임베딩 작업이 시작되어 dev DB 에 쓸모없는 행이 남고 임베딩 API 비용이
+// 나간다. CI 에서는 연결 거부로 삼켜져 무해하므로 "로컬에서만 터지고 CI 는 조용한" 문제다.
+// 127.0.0.1:1 은 즉시 연결 거부를 받는 주소라 타임아웃을 기다리지 않는다.
+//
+// internal-secret 도 채운다. 비워 두면 컨텍스트 기동마다 경고가 찍혀 봐야 할 로그를 덮는다.
+//
+// @DynamicPropertySource 가 아니라 @TestPropertySource 인 이유: 대역으로 실제 호출을 검증하는
+// 테스트(ContextAiEnqueueTests)는 자기 @DynamicPropertySource 로 base-url 을 stub 포트로 덮어야
+// 하는데, 두 쪽 다 @DynamicPropertySource 면 상위 클래스 쪽이 나중에 등록돼 하위를 덮어버린다
+// (실측: 그 클래스 테스트 5개가 전부 "호출이 오지 않음"으로 깨졌다). DynamicValuesPropertySource
+// 는 우선순위가 가장 높으므로, 기본값을 @TestPropertySource 로 한 단계 낮춰 두면 하위가 이긴다.
+@TestPropertySource(properties = {
+	"pinlog.ai.base-url=http://127.0.0.1:1",
+	"pinlog.ai.internal-secret=test-internal-secret"
+})
 public abstract class IntegrationContainerSupport {
 
 	/** {@code org.testcontainers.containers.PostgreSQLContainer}는 2.x에서 deprecated다. */
@@ -51,4 +72,5 @@ public abstract class IntegrationContainerSupport {
 		POSTGRES.start();
 		REDIS.start();
 	}
+
 }

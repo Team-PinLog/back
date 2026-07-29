@@ -202,6 +202,8 @@ class AiDerivedDataInvalidationTests extends IntegrationContainerSupport {
 		long noEmbeddingContextId = addContext(memberId, recordId, "State만 있음");
 		long bareContextId = addContext(memberId, recordId, "State도 Embedding도 없음");
 		insertState(noEmbeddingContextId, "PENDING", "PENDING");
+		// 생성이 자동으로 남긴 PENDING을 걷어내야 "State도 없음"이 실제로 성립한다.
+		clearDerivedState(bareContextId);
 
 		mockMvc.perform(delete("/v1/records/{recordId}/contexts/{contextId}", recordId, noEmbeddingContextId)
 				.with(loginAs(memberId)))
@@ -222,6 +224,7 @@ class AiDerivedDataInvalidationTests extends IntegrationContainerSupport {
 		long memberId = newMemberId();
 		long recordId = createRecord(memberId, "ai-inv-none-rec-1", "유일한 맥락");
 		long contextId = firstContextId(memberId, recordId);
+		clearDerivedState(contextId);
 
 		mockMvc.perform(delete("/v1/records/{recordId}/force", recordId).with(loginAs(memberId)))
 			.andExpect(status().isNoContent());
@@ -318,11 +321,34 @@ class AiDerivedDataInvalidationTests extends IntegrationContainerSupport {
 			""", contextId, memberId, recordId, zeroVector());
 	}
 
+	/**
+	 * 상태를 원하는 값으로 만든다.
+	 *
+	 * <p><b>UPSERT인 이유</b>: S15P11A705-102부터 Context를 만들면 그 트랜잭션이 {@code PENDING}
+	 * 행을 함께 넣는다. 이 테스트들은 그보다 앞서 작성돼 행이 없다고 전제하고 INSERT만 했고,
+	 * 두 변경이 만나자 전부 중복키로 깨졌다. 여기서 검증하려는 것은 "지정한 상태에서 삭제하면
+	 * CANCELLED가 된다"이므로, 행의 존재 여부가 아니라 <b>값</b>이 전제다.
+	 */
 	private void insertState(long contextId, String embeddingStatus, String keywordStatus) {
 		jdbcTemplate.update("""
 			INSERT INTO ai.context_ai_state (context_id, embedding_status, keyword_status)
 			VALUES (?, ?, ?)
+			ON CONFLICT (context_id) DO UPDATE SET
+				embedding_status = EXCLUDED.embedding_status,
+				keyword_status = EXCLUDED.keyword_status
 			""", contextId, embeddingStatus, keywordStatus);
+	}
+
+	/**
+	 * 파생 데이터가 <b>하나도 없는</b> 상태를 만든다.
+	 *
+	 * <p>Context 생성이 {@code PENDING}을 자동으로 남기게 된 뒤로는(S15P11A705-102) 그 상태가
+	 * 저절로 생기지 않는다. 그래도 검증할 값이 있다 — AI 워커가 아직 아무것도 만들지 않았거나
+	 * 재스캔이 행을 정리한 뒤 삭제가 들어오는 경우이고, 그때 {@code UPDATE 0건}이 예외 없이
+	 * 지나가야 한다. 자동 삽입에 기대면 이 경로를 영영 못 밟으므로 명시적으로 지운다.
+	 */
+	private void clearDerivedState(long contextId) {
+		jdbcTemplate.update("DELETE FROM ai.context_ai_state WHERE context_id = ?", contextId);
 	}
 
 	/** {@code VECTOR(1536)}은 NOT NULL이라 값이 필요하다. 유사도를 보지 않으므로 영벡터로 채운다. */
