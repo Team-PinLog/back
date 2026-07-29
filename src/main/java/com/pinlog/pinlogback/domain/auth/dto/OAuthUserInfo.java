@@ -1,6 +1,5 @@
 package com.pinlog.pinlogback.domain.auth.dto;
 
-import java.util.Locale;
 import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
@@ -22,7 +21,8 @@ public record OAuthUserInfo(
 ) {
 
 	public static OAuthUserInfo from(String registrationId, Map<String, Object> attributes) {
-		SocialProvider provider = toProvider(registrationId);
+		SocialProvider provider = SocialProvider.from(registrationId)
+			.orElseThrow(() -> new UnsupportedSocialProviderException(registrationId));
 		return switch (provider) {
 			case GOOGLE -> new OAuthUserInfo(
 				provider,
@@ -46,15 +46,6 @@ public record OAuthUserInfo(
 		return attributes.get(wrapper) instanceof Map<?, ?> inner ? inner.get(key) : null;
 	}
 
-	private static SocialProvider toProvider(String registrationId) {
-		for (SocialProvider candidate : SocialProvider.values()) {
-			if (candidate.name().equalsIgnoreCase(registrationId)) {
-				return candidate;
-			}
-		}
-		throw new UnsupportedSocialProviderException(registrationId);
-	}
-
 	/**
 	 * 식별자는 없으면 로그인을 이어 갈 수 없다. user-name-attribute이므로 Spring이 앞단에서 걸러
 	 * 주지만, 그 보증이 설정에 있고 타입에는 없어 여기서 한 번 더 끊는다. 조용히 통과시키면
@@ -74,9 +65,5 @@ public record OAuthUserInfo(
 	private static @Nullable String stringValue(@Nullable Object attribute) {
 		// 공급자에 따라 숫자로 오기도 한다. 저장은 항상 문자열이다(06 2.2).
 		return attribute == null ? null : String.valueOf(attribute);
-	}
-
-	public String registrationId() {
-		return provider.name().toLowerCase(Locale.ROOT);
 	}
 }
