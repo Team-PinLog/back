@@ -18,7 +18,8 @@ Feed는 Spring Backend의 기능입니다. **Feed 요청 처리 중 다음을 �
 - LLM API를 호출하지 않습니다.
 - 요청 시점에 벡터 유사도를 계산하지 않습니다.
 
-Feed는 **이미 저장된 AI 파생 데이터와 Cache만** 사용합니다. 구체적으로 `ai.context_keyword`와 `ai.keyword_preset`을 읽기 조인하고, Place의 region·category metadata를 사용합니다.
+Feed는 **이미 저장된 AI 파생 데이터와 Cache만** 사용합니다. MVP에서는
+`ai.context_keyword`와 `ai.keyword_preset`을 읽기 조인하며 Place region·category는 사용하지 않습니다.
 
 이 경계를 두는 이유:
 
@@ -50,7 +51,6 @@ Profile 구성:
 
 - 본인의 `PUBLIC` Keyword 분포
 - 본인의 `PRIVATE_ONLY` Keyword 분포
-- 본인의 Place region·category 분포
 - 팔로우 중인 `followee_member_id` 집합
 
 `PRIVATE_ONLY`는 여기에만 쓰입니다. 타인 Collection의 특징 계산에는 절대 사용하지 않습니다. `BLOCKED`는 Profile 계산에서도 제외합니다.
@@ -61,10 +61,11 @@ Profile 구성:
 
 - 최신 발행 Collection
 - 팔로우한 Shelf의 Collection
-- 지역·카테고리 근접 Collection
 - 탐색용 무작위 Collection
 
 이 단계는 **id만** 다룹니다. 본문이나 특징을 함께 조회하지 않습니다. 채널별 쿼리와 배분은 [`feed-scoring.md`](feed-scoring.md)를 참조합니다.
+
+최신 발행 채널의 배분을 60에서 100으로 올린 것은 P42에서 Place region 항이 빠지면서 AI 미완료 Collection이 점수를 얻던 경로가 사라진 데 대한 **부분적 보상**입니다. 후보 진입 기회만 넓힐 뿐 점수 열세는 해소하지 않습니다. 근거는 [`feed-scoring.md`](feed-scoring.md) 2.1에 있습니다.
 
 본인 Collection과 이미 팔로우 관계가 아닌 탈퇴 User의 Collection은 후보에서 제외합니다.
 
@@ -75,8 +76,8 @@ Profile 구성:
 타인 Collection의 특징으로 사용할 수 있는 것은 다음뿐입니다.
 
 - `PUBLIC` Keyword
-- Place region
-- Place category
+- `record_count`
+- `published_at`
 
 `PRIVATE_ONLY`와 `BLOCKED`는 이 쿼리의 WHERE 절에서 제외합니다. 자바 코드에서 거르지 않습니다.
 
@@ -116,14 +117,17 @@ Keyword가 없는 Collection은 빈 배열로 응답합니다. 오류가 아닙�
 ## 4. API
 
 ```text
-GET  /feed?cursor={requestId}:{offset}&size=10
-POST /feed/events
+GET  /api/core/v1/feed/collections?cursor={opaqueCursor}&size=20
+POST /api/core/v1/feed/events
 ```
 
-- 한 페이지는 기본 10건입니다.
-- `requestId`는 Feed Session 식별자입니다. 첫 요청에서 서버가 생성해 응답에 담고, 이후 페이지 요청이 같은 값을 재사용합니다. 같은 Session 안에서는 동일 후보 풀과 동일 정렬을 유지해 페이지 간 중복·누락을 방지합니다.
+- 한 페이지는 기본 20건입니다. `size`는 공통 커서 계약을 그대로 따릅니다 — 기본값 `CursorPage.DEFAULT_SIZE`(20), 서버 방어 상한 `CursorPage.MAX_SIZE`(100), 범위 밖 값은 `CursorPage.normalizeSize`가 보정합니다. Feed 전용 상한을 따로 두지 않습니다(S15P11A705-117이 세운 "서버 방어 상한의 답은 하나" 규약).
+- `requestId`는 Feed Session 식별자이며 응답 본문과 CLICK·SAVE 이벤트 payload의 별도 필드입니다.
+- `cursor`는 내부 구조를 노출하지 않는 opaque 문자열입니다. 서버는 cursor로 같은 Session의 다음 위치를 복원해 페이지 간 중복·누락을 방지합니다.
 - 후보 풀 자체는 Session 단위로 Redis에 짧게 보관합니다. 매 페이지마다 후보를 다시 생성하면 정렬이 흔들립니다.
-- `POST /feed/events`는 클라이언트가 CLICK·SAVE를 보고하는 엔드포인트입니다. 상세는 [`feed-event.md`](feed-event.md)를 참조합니다.
+- Collection 상세는 Feed 전용 URL을 만들지 않고 공통 `GET /api/core/v1/collections/{collectionId}`를 재사용합니다.
+- AI 처리가 끝나지 않은 Collection도 후보에 포함하며 응답에는 `keywords: []`를 넣습니다.
+- `POST /api/core/v1/feed/events`는 클라이언트가 CLICK·SAVE를 보고하는 엔드포인트입니다. 상세는 [`feed-event.md`](feed-event.md)를 참조합니다.
 
 ## 5. 실패 처리
 

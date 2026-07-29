@@ -13,8 +13,8 @@ Cache는 Feed 요청 시 LLM·Embedding을 호출하지 않고도 특징 기반 
 
 | Cache | Key | TTL | 내용 |
 |---|---|---|---|
-| 사용자 관심 Profile | `feed:profile:{memberId}` | **6시간** | 본인 Keyword 분포, region·category 분포, 팔로우 집합 |
-| Collection 특징 | `feed:coll:{collectionId}` | **1시간** | `PUBLIC` Keyword 분포, region·category 분포, `record_count`, `published_at` |
+| 사용자 관심 Profile | `feed:profile:{memberId}` | **6시간** | 본인 Keyword 분포, 팔로우 집합 |
+| Collection 특징 | `feed:coll:{collectionId}` | **1시간** | `PUBLIC` Keyword 분포, `record_count`, `published_at` |
 
 TTL이 다른 이유:
 
@@ -40,8 +40,6 @@ pinlog:
 {
   "memberId": 42,
   "keywordWeights": { "QUIET": 0.31, "WITH_FRIENDS": 0.22, "WORK": 0.11 },
-  "regionWeights":  { "서울 마포구": 0.4, "서울 성동구": 0.25 },
-  "categoryWeights":{ "CAFE": 0.5, "RESTAURANT": 0.3 },
   "followeeIds": [7, 19, 105],
   "recordCount": 37,
   "builtAt": "2026-07-22T09:00:00Z"
@@ -62,8 +60,6 @@ pinlog:
   "collectionId": 1024,
   "ownerId": 7,
   "keywordWeights": { "QUIET": 0.5, "WITH_FRIENDS": 0.5 },
-  "regions": ["서울 마포구"],
-  "categories": ["CAFE"],
   "recordCount": 4,
   "publishedAt": "2026-07-20T11:30:00Z",
   "builtAt": "2026-07-22T09:00:00Z"

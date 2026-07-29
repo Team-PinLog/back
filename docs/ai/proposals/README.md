@@ -20,6 +20,7 @@
 | [P21](P21-flyway-migration-convention.md) | Flyway 마이그레이션 파트별 번호 구간 | Accepted | AI |
 | [P22](P22-feed-event-ownership.md) | `core.feed_event`를 AI 구간(V102)에 배치 | Accepted | AI |
 | [P24](P24-flyway-schemas-unspecified.md) | `flyway.schemas` 미지정 — 이력 테이블을 public에 | Accepted | 백엔드 |
+| [P42](P42-feed-mvp-without-place-metadata.md) | MVP Feed에서 Place category·region 제외 | Accepted | AI |
 
 ## 백엔드 관련 제안 — 전수
 
@@ -34,6 +35,7 @@
 | P25 | `V1` 스키마 `IF NOT EXISTS` 없이 생성(경계 보호), extension만 IF NOT EXISTS | Accepted | [implements](../implements/2026-07-23-flyway-ai-schema-migration.md) |
 | P33 | back/docs README 백엔드 공통 허브화(AI 편중 시정) | Accepted | [../README.md](../README.md) |
 | P39 | compose 이미지 `postgres:latest` → `pgvector/pgvector:pg16` | Accepted | [implements](../implements/2026-07-23-flyway-ai-schema-migration.md) |
+| P42 | MVP Feed 후보·점수·Cache에서 Place category·region 제외 | Accepted | [P42](P42-feed-mvp-without-place-metadata.md) |
 
 ## 미결 (백엔드 관련)
 
