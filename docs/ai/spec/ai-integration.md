@@ -168,10 +168,10 @@ FastAPI는 User 인증을 판단하지 않습니다. Spring은 **서비스 간 �
 - 모든 내부 호출에 공유 시크릿 헤더를 붙입니다.
 
 ```text
-X-Internal-Token: <pinlog.ai.internal-token>
+X-Internal-Secret: <INTERNAL_SHARED_SECRET>
 ```
 
-- 토큰 값은 환경 변수로 주입하며 저장소에 커밋하지 않습니다.
+- 시크릿 값은 환경 변수 `INTERNAL_SHARED_SECRET`로 주입하며 저장소에 커밋하지 않습니다.
 - 요청 상관관계 추적을 위해 `X-Request-Id`를 함께 전달합니다. Spring이 생성하고 로그 양쪽에 남깁니다.
 - `userId`는 인증값이 아니라 **검색 범위 필터값**으로 전달합니다. FastAPI는 이 값을 신뢰하며 검증하지 않으므로, 요청 User와 `userId`의 일치는 Spring이 호출 전에 보장해야 합니다.
 - Client는 FastAPI를 직접 호출하지 않습니다. Spring이 FastAPI URL을 응답에 노출하지 않습니다.
