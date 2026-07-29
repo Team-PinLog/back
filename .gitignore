@@ -43,7 +43,9 @@ out/
 .worktrees/
 
 # Local environment
-.env
+# .env* 로 넓혀 둔다 — .env.bak·.env.local 처럼 파생 이름으로 실수로 만든 파일까지 막는다.
+# 정확히 .env 만 무시하면 그런 파일이 추적 대상이 되고, 그 안에는 실제 자격증명이 들어 있다.
+.env*
 !.env.example
 
 # Claude Code — settings.json(공용 deny)·skills는 커밋, 개인 영역은 무시.

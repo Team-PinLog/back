@@ -51,6 +51,19 @@ public abstract class SocialLoginTestSupport extends IntegrationContainerSupport
 		registry.add(base + "provider.google.token-uri", () -> provider.baseUrl() + "/token");
 		registry.add(base + "provider.google.user-info-uri", () -> provider.baseUrl() + "/userinfo");
 		registry.add(base + "provider.google.user-name-attribute", () -> "sub");
+
+		// Kakao·Naver도 같은 대역을 쓰되 userinfo 경로만 갈라 각자의 응답 형태를 받는다.
+		// user-name-attribute는 운영 설정과 같은 값을 둔다 — 이 키가 틀리면 Spring이
+		// DefaultOAuth2User 생성에서 먼저 죽고 우리 정규화까지 오지 않는다.
+		for (String registrationId : new String[] {"kakao", "naver"}) {
+			registry.add(base + "registration." + registrationId + ".client-id", () -> "stub-client-id");
+			registry.add(base + "registration." + registrationId + ".client-secret", () -> "stub-client-secret");
+			registry.add(base + "provider." + registrationId + ".authorization-uri",
+				() -> provider.baseUrl() + "/authorize");
+			registry.add(base + "provider." + registrationId + ".token-uri", () -> provider.baseUrl() + "/token");
+			registry.add(base + "provider." + registrationId + ".user-info-uri",
+				() -> provider.baseUrl() + "/userinfo/" + registrationId);
+		}
 	}
 
 	/** 쿠키를 보관하고 리다이렉트를 따라가지 않는 클라이언트. 인가 요청 URL을 직접 봐야 한다. */
@@ -64,15 +77,26 @@ public abstract class SocialLoginTestSupport extends IntegrationContainerSupport
 	/** 로그인 진입 → 공급자 → 콜백까지 한 흐름을 돌고 콜백 응답을 돌려준다. */
 	protected HttpResponse<String> completeLogin(int port, String subject)
 		throws IOException, InterruptedException {
+		return completeLogin(port, "google", subject);
+	}
+
+	/** 공급자를 지목해 같은 흐름을 돈다. */
+	protected HttpResponse<String> completeLogin(int port, String registrationId, String subject)
+		throws IOException, InterruptedException {
 		provider.useSubject(subject);
 		HttpClient client = newClient();
-		return callback(client, port, startLoginAndCaptureState(client, port));
+		return callback(client, port, registrationId, startLoginAndCaptureState(client, port, registrationId));
 	}
 
 	/** 로그인 진입 → 인가 엔드포인트까지 따라가 공급자 URL의 state를 돌려준다. */
 	protected String startLoginAndCaptureState(HttpClient client, int port)
 		throws IOException, InterruptedException {
-		String current = "/api/core/v1/auth/google/login";
+		return startLoginAndCaptureState(client, port, "google");
+	}
+
+	protected String startLoginAndCaptureState(HttpClient client, int port, String registrationId)
+		throws IOException, InterruptedException {
+		String current = "/api/core/v1/auth/" + registrationId + "/login";
 		for (int hop = 0; hop < 3; hop++) {
 			HttpResponse<String> response = get(client, port, current);
 			String location = response.headers().firstValue("Location").orElseThrow();
@@ -88,7 +112,13 @@ public abstract class SocialLoginTestSupport extends IntegrationContainerSupport
 
 	protected HttpResponse<String> callback(HttpClient client, int port, String state)
 		throws IOException, InterruptedException {
-		return get(client, port, "/api/core/v1/auth/google/callback?code=stub-code&state=" + state);
+		return callback(client, port, "google", state);
+	}
+
+	protected HttpResponse<String> callback(HttpClient client, int port, String registrationId, String state)
+		throws IOException, InterruptedException {
+		return get(client, port,
+			"/api/core/v1/auth/" + registrationId + "/callback?code=stub-code&state=" + state);
 	}
 
 	protected HttpResponse<String> get(HttpClient client, int port, String path)
