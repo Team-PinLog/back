@@ -1,4 +1,4 @@
-# BD-28. 인가 요청(state·PKCE verifier)을 세션이 아니라 쿠키에 담는다
+# BD-30. 인가 요청(state·PKCE verifier)을 세션이 아니라 쿠키에 담는다
 
 - **상태**: Accepted
 - **날짜**: 2026-07-28 (`7f1e8ed`·`1ed1dbe` 구현 시점)
