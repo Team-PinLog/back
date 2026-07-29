@@ -175,10 +175,62 @@ class AuthTokenContractTests extends SocialLoginTestSupport {
 		assertThat(secondRefresh).isNotEqualTo(firstRefresh);
 		assertThat(cookieValue(rotated, ACCESS_COOKIE)).isNotBlank();
 
+		// 회전 후 토큰은 계속 유효하다 — 회전이 사슬로 이어진다. 재사용 검사보다 앞에 둔다:
+		// 재사용이 감지되면 이 토큰까지 폐기되므로(BD-35) 뒤에서는 확인할 수 없다.
+		assertThat(postWithCsrf("/api/core/v1/auth/refresh", secondRefresh).statusCode()).isEqualTo(204);
+
 		// 회전 전 Refresh 재사용은 401이다(인증 PR 계약 5).
 		assertThat(postWithCsrf("/api/core/v1/auth/refresh", firstRefresh).statusCode()).isEqualTo(401);
-		// 회전 후 토큰은 계속 유효하다.
-		assertThat(postWithCsrf("/api/core/v1/auth/refresh", secondRefresh).statusCode()).isEqualTo(204);
+	}
+
+	@Test
+	@DisplayName("Refresh 재사용이 감지되면 그 회원의 다른 세션도 전부 끊긴다")
+	void reuseDetectionRevokesEveryRefreshOfTheMember() throws Exception {
+		// 유출 시나리오: 공격자가 먼저 회전하면 정상 사용자만 401로 끊기고 공격자가 방금 받은
+		// 토큰은 유효하다. 그래서 재사용을 유출 신호로 보고 전부 폐기한다(RFC 9700 §4.14.2, BD-35).
+		String subject = "reuse-revokes-family";
+		HttpResponse<String> deviceALogin = login(subject);
+		HttpResponse<String> deviceBLogin = login(subject);
+
+		// 전제를 단언으로 만든다. 두 로그인이 서로 다른 회원이면 아래는 "다른 회원까지 끊는다"는
+		// 정반대 사실을 통과시킨다.
+		assertThat(subjectOf(cookieValue(deviceALogin, ACCESS_COOKIE)))
+			.as("같은 subject로 로그인했으면 같은 회원이어야 한다")
+			.isEqualTo(subjectOf(cookieValue(deviceBLogin, ACCESS_COOKIE)));
+
+		String deviceARefresh = cookieValue(deviceALogin, REFRESH_COOKIE);
+		String deviceBRefresh = cookieValue(deviceBLogin, REFRESH_COOKIE);
+		assertThat(deviceARefresh).isNotEqualTo(deviceBRefresh);
+
+		// 공격자가 먼저 회전한 상태를 만든다.
+		HttpResponse<String> rotated = postWithCsrf("/api/core/v1/auth/refresh", deviceARefresh);
+		assertThat(rotated.statusCode()).isEqualTo(204);
+		String rotatedRefresh = cookieValue(rotated, REFRESH_COOKIE);
+
+		// 소비된 토큰이 다시 들어온다 = 재사용 감지.
+		assertThat(postWithCsrf("/api/core/v1/auth/refresh", deviceARefresh).statusCode()).isEqualTo(401);
+
+		assertThat(postWithCsrf("/api/core/v1/auth/refresh", deviceBRefresh).statusCode())
+			.as("재사용이 감지됐으면 다른 기기의 Refresh도 끊겨야 한다")
+			.isEqualTo(401);
+		assertThat(postWithCsrf("/api/core/v1/auth/refresh", rotatedRefresh).statusCode())
+			.as("회전으로 갓 발급된 토큰도 폐기 대상이다 — 공격자가 들고 있을 토큰이다")
+			.isEqualTo(401);
+	}
+
+	@Test
+	@DisplayName("정상 회전은 다른 기기의 세션을 끊지 않는다")
+	void normalRotationKeepsOtherSessionsAlive() throws Exception {
+		// 폐기가 재사용 감지 밖으로 새는 것을 잡는다. 새면 세션 독립성(BD-21)이 조용히 깨진다.
+		String subject = "normal-rotation-keeps-sessions";
+		String deviceARefresh = cookieValue(login(subject), REFRESH_COOKIE);
+		String deviceBRefresh = cookieValue(login(subject), REFRESH_COOKIE);
+
+		assertThat(postWithCsrf("/api/core/v1/auth/refresh", deviceARefresh).statusCode()).isEqualTo(204);
+
+		assertThat(postWithCsrf("/api/core/v1/auth/refresh", deviceBRefresh).statusCode())
+			.as("재사용이 아닌 정상 회전이었다. 다른 기기는 그대로 살아 있어야 한다")
+			.isEqualTo(204);
 	}
 
 	@Test
