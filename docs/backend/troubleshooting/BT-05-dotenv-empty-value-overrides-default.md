@@ -17,13 +17,22 @@ Caused by: java.lang.IllegalStateException:
 
 ## 원인
 
-**Spring Boot 4는 작업 디렉터리의 `.env`를 자동으로 읽는다.** 그리고 `.env.example`이 키를 **빈 값으로 정의**하고 있었다.
+`application.yml`이 `.env`를 **프로퍼티 소스로 올린다.** Spring Boot가 `.env`를 자동으로 읽어 주지는 않아서 S15P11A705-63에서 명시적으로 넣은 설정이다(`1ed1dbe`).
+
+```yaml
+config:
+  import: optional:file:.env[.properties]
+```
+
+그리고 `.env.example`이 키를 **빈 값으로 정의**하고 있었다.
 
 ```
 KAKAO_CLIENT_ID=
 ```
 
 이 파일을 복사해 만든 `.env`가 있으면 `KAKAO_CLIENT_ID`는 **"없음"이 아니라 "빈 문자열"** 이 된다. `${KAKAO_CLIENT_ID:unset}`의 기본값은 프로퍼티를 **해석할 수 없을 때만** 적용되므로, 빈 문자열은 그대로 통과해 OAuth2 클라이언트 검증에서 걸린다.
+
+**처음에는 원인을 "Spring Boot 4가 `.env`를 자동 로드한다"로 적었는데 틀렸다.** 증상과 해결은 같지만 기전이 다르다 — 자동이 아니라 우리가 켠 것이고, 그 사실이 `application.yml` 주석에 이미 적혀 있었다. 읽지 않고 프레임워크 기본 동작으로 단정한 결과다.
 
 Google이 멀쩡했던 것은 그 값만 실제로 채워져 있었기 때문이다. **즉 이 함정은 Kakao·Naver를 추가하면서 생긴 것이 아니라, 원래 있었는데 드러나지 않았을 뿐이다** — `.env.example`을 그대로 복사한 사람은 처음부터 앱을 띄울 수 없었다.
 

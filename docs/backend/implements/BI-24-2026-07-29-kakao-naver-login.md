@@ -57,4 +57,4 @@
 
 ## 검증
 
-`./gradlew clean check --no-daemon` — **309개 통과, 실패 0.**
+`./gradlew clean check --no-daemon` — **326개 통과, 실패 0**(dev 리베이스 후 기준. 이 티켓이 더한 것은 6개다).
