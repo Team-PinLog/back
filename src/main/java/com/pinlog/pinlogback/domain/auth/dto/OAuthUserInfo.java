@@ -1,6 +1,5 @@
 package com.pinlog.pinlogback.domain.auth.dto;
 
-import java.util.Locale;
 import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
@@ -22,36 +21,43 @@ public record OAuthUserInfo(
 ) {
 
 	public static OAuthUserInfo from(String registrationId, Map<String, Object> attributes) {
-		SocialProvider provider = toProvider(registrationId);
+		SocialProvider provider = SocialProvider.from(registrationId)
+			.orElseThrow(() -> new UnsupportedSocialProviderException(registrationId));
 		return switch (provider) {
 			case GOOGLE -> new OAuthUserInfo(
 				provider,
-				requiredStringValue(attributes, "sub"),
+				required(attributes.get("sub"), "sub"),
 				stringValue(attributes.get("email")));
-			// Kakao(kakao_account.email)·Naver(response.id)는 응답이 한 겹 감싸여 있어 별도 추출이
-			// 필요하다. 두 공급자를 등록하는 티켓에서 함께 구현한다.
-			case KAKAO, NAVER -> throw new UnsupportedSocialProviderException(registrationId);
+			// Kakao는 식별자를 최상위 id로 주고 이메일만 kakao_account 아래에 둔다.
+			case KAKAO -> new OAuthUserInfo(
+				provider,
+				required(attributes.get("id"), "id"),
+				stringValue(nested(attributes, "kakao_account", "email")));
+			// Naver는 본문 전체를 response로 한 겹 감싼다. 최상위에는 resultcode·message만 있다.
+			case NAVER -> new OAuthUserInfo(
+				provider,
+				required(nested(attributes, "response", "id"), "response.id"),
+				stringValue(nested(attributes, "response", "email")));
 		};
 	}
 
-	private static SocialProvider toProvider(String registrationId) {
-		for (SocialProvider candidate : SocialProvider.values()) {
-			if (candidate.name().equalsIgnoreCase(registrationId)) {
-				return candidate;
-			}
-		}
-		throw new UnsupportedSocialProviderException(registrationId);
+	/** 한 겹 감싼 응답에서 값을 꺼낸다. 감싼 키가 없거나 Map이 아니면 {@code null}이다. */
+	private static @Nullable Object nested(Map<String, Object> attributes, String wrapper, String key) {
+		return attributes.get(wrapper) instanceof Map<?, ?> inner ? inner.get(key) : null;
 	}
 
 	/**
-	 * 식별자는 없으면 로그인을 이어 갈 수 없다. {@code sub}는 user-name-attribute이므로 Spring이
-	 * 앞단에서 걸러 주지만, 그 보증이 설정에 있고 타입에는 없어 여기서 한 번 더 끊는다.
-	 * 조용히 통과시키면 {@code provider_user_id} NOT NULL 위반이 되어 원인이 DB까지 내려간다.
+	 * 식별자는 없으면 로그인을 이어 갈 수 없다. user-name-attribute이므로 Spring이 앞단에서 걸러
+	 * 주지만, 그 보증이 설정에 있고 타입에는 없어 여기서 한 번 더 끊는다. 조용히 통과시키면
+	 * {@code provider_user_id} NOT NULL 위반이 되어 원인이 DB까지 내려간다.
+	 *
+	 * <p>Naver는 예외다 — user-name-attribute가 감싼 키({@code response})라서 Spring이 검사하는
+	 * 것은 감싼 Map의 존재뿐이고 그 안의 {@code id}는 보지 않는다. 이 검사가 유일한 방어선이다.
 	 */
-	private static String requiredStringValue(Map<String, Object> attributes, String key) {
-		String value = stringValue(attributes.get(key));
+	private static String required(@Nullable Object attribute, String path) {
+		String value = stringValue(attribute);
 		if (value == null || value.isBlank()) {
-			throw new IllegalStateException("공급자 응답에 필수 속성이 없다: " + key);
+			throw new IllegalStateException("공급자 응답에 필수 속성이 없다: " + path);
 		}
 		return value;
 	}
@@ -59,9 +65,5 @@ public record OAuthUserInfo(
 	private static @Nullable String stringValue(@Nullable Object attribute) {
 		// 공급자에 따라 숫자로 오기도 한다. 저장은 항상 문자열이다(06 2.2).
 		return attribute == null ? null : String.valueOf(attribute);
-	}
-
-	public String registrationId() {
-		return provider.name().toLowerCase(Locale.ROOT);
 	}
 }

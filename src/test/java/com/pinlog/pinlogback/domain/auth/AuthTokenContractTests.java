@@ -11,7 +11,6 @@ import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 
@@ -36,9 +35,6 @@ class AuthTokenContractTests extends SocialLoginTestSupport {
 	private static final String LOGGED_IN_COOKIE = "logged_in";
 	private static final String CSRF_COOKIE = "XSRF-TOKEN";
 	private static final String PROTECTED_PATH = "/api/core/v1/test-authenticated/me";
-
-	@Value("${local.server.port}")
-	private int port;
 
 	@Test
 	@DisplayName("콜백이 Access·Refresh·logged_in 쿠키를 계약된 속성으로 내려준다")

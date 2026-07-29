@@ -6,6 +6,8 @@ import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.jspecify.annotations.Nullable;
+
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 
@@ -32,8 +34,11 @@ final class StubOAuthProvider {
 	 */
 	private volatile String subject = "google-sub-default";
 
-	/** userinfo가 돌려줄 이메일. 저장 실패 경로를 태우려면 컬럼 상한을 넘기는 값이 필요하다. */
-	private volatile String email = EMAIL;
+	/**
+	 * userinfo가 돌려줄 이메일. 저장 실패 경로를 태우려면 컬럼 상한을 넘기는 값이 필요하고,
+	 * {@code null}이면 이메일 속성 자체를 응답에서 빼 미제공·미동의 상황을 만든다.
+	 */
+	private volatile @Nullable String email = EMAIL;
 
 	private StubOAuthProvider(HttpServer server) {
 		this.server = server;
@@ -48,11 +53,29 @@ final class StubOAuthProvider {
 			respond(exchange, """
 				{"access_token":"stub-access-token","token_type":"Bearer","expires_in":3600}""");
 		});
-		server.createContext("/userinfo", exchange -> respond(exchange, """
-			{"sub":"%s","email":"%s"}""".formatted(stub.subject, stub.email)));
+		// 공급자마다 응답 형태가 다르므로 경로를 나눈다. 등록정보의 user-info-uri가 갈리므로
+		// 대역이 상태를 들고 갈아입을 필요가 없다.
+		server.createContext("/userinfo", exchange -> respond(exchange,
+			"{\"sub\":\"%s\"%s}".formatted(stub.subject, stub.emailField("email"))));
+
+		// Kakao는 이메일을 kakao_account 아래에 두고, id를 **숫자로** 준다. 문자열로 저장하는지
+		// 확인하려면 대역도 숫자로 줘야 한다(#33).
+		server.createContext("/userinfo/kakao", exchange -> respond(exchange,
+			"{\"id\":%s,\"kakao_account\":{%s}}"
+				.formatted(stub.subject, stub.emailField("email").replaceFirst("^,", ""))));
+
+		// Naver는 본문을 response로 한 겹 감싸고 resultcode를 함께 준다.
+		server.createContext("/userinfo/naver", exchange -> respond(exchange,
+			"{\"resultcode\":\"00\",\"message\":\"success\",\"response\":{\"id\":\"%s\"%s}}"
+				.formatted(stub.subject, stub.emailField("email"))));
 
 		server.start();
 		return stub;
+	}
+
+	/** 이메일이 {@code null}이면 속성을 아예 내보내지 않는다 — 미제공·미동의 상황이다. */
+	private String emailField(String key) {
+		return email == null ? "" : ",\"%s\":\"%s\"".formatted(key, email);
 	}
 
 	/** @return 설정한 식별자. 테스트에서 그대로 검증에 쓴다. */
@@ -61,8 +84,8 @@ final class StubOAuthProvider {
 		return value;
 	}
 
-	/** 저장 실패 경로 검증용. 다음 테스트에 새지 않도록 호출한 테스트가 되돌린다. */
-	void useEmail(String value) {
+	/** 저장 실패·미제공 경로 검증용. 다음 테스트에 새지 않도록 호출한 테스트가 되돌린다. */
+	void useEmail(@Nullable String value) {
 		this.email = value;
 	}
 

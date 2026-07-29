@@ -67,6 +67,28 @@ class SocialLoginRedirectTests extends IntegrationContainerSupport {
 	}
 
 	@Test
+	@DisplayName("Kakao 로그인 진입은 Kakao 인가 페이지로 리다이렉트한다")
+	void kakaoLoginRedirectsToProvider() throws Exception {
+		String location = followUntilProvider("/api/core/v1/auth/kakao/login");
+
+		assertThat(location).startsWith("https://kauth.kakao.com/oauth/authorize");
+		assertThat(location).contains("response_type=code");
+		assertThat(URLDecoder.decode(location, StandardCharsets.UTF_8))
+			.contains("/api/core/v1/auth/kakao/callback");
+	}
+
+	@Test
+	@DisplayName("Naver 로그인 진입은 Naver 인가 페이지로 리다이렉트한다")
+	void naverLoginRedirectsToProvider() throws Exception {
+		String location = followUntilProvider("/api/core/v1/auth/naver/login");
+
+		assertThat(location).startsWith("https://nid.naver.com/oauth2.0/authorize");
+		assertThat(location).contains("response_type=code");
+		assertThat(URLDecoder.decode(location, StandardCharsets.UTF_8))
+			.contains("/api/core/v1/auth/naver/callback");
+	}
+
+	@Test
 	@DisplayName("지원하지 않는 provider는 404를 반환한다")
 	void unknownProviderIsNotFound() throws Exception {
 		HttpResponse<String> response = get("/api/core/v1/auth/unknown/login");
