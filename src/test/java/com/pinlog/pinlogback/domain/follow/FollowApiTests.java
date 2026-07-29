@@ -186,6 +186,29 @@ class FollowApiTests extends IntegrationContainerSupport {
 		assertThat(page2.at("/data/items/0/collectionId").asLong()).isEqualTo(first);
 	}
 
+	/**
+	 * 작성자가 탈퇴한 Collection은 공개 대상이 아니므로 팔로우 진입도 막힌다. 미발행과 같은 404여야
+	 * 한다 — 존재를 노출하면 탈퇴 회원의 Shelf가 있었다는 사실이 새어 나간다.
+	 */
+	@Test
+	void followingWithdrawnOwnersShelfIs404() throws Exception {
+		Member owner = memberRepository.save(Member.create());
+		Member me = memberRepository.save(Member.create());
+		long collectionId = publishedCollection(owner.getId());
+
+		owner.softDelete();
+		memberRepository.saveAndFlush(owner);
+
+		mockMvc.perform(post("/v1/follows").with(loginAs(me.getId()))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"collectionId\": " + collectionId + "}"))
+			.andExpect(status().isNotFound());
+
+		long rows = jdbcTemplate.queryForObject(
+			"SELECT count(*) FROM core.follow WHERE follower_member_id = ?", Long.class, me.getId());
+		assertThat(rows).isZero();
+	}
+
 	@Test
 	void withdrawnFolloweeDisappearsFromLibrary() throws Exception {
 		Member owner = memberRepository.save(Member.create());

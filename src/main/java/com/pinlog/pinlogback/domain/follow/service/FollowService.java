@@ -63,7 +63,7 @@ public class FollowService {
 			.filter(Collection::isPublished)
 			.orElseThrow(ResourceNotFoundException::new);
 		Long followeeMemberId = collection.getMemberId();
-		if (memberRepository.findById(followeeMemberId).isEmpty()) {
+		if (!memberRepository.isActive(followeeMemberId)) {
 			// 작성자가 탈퇴한 Collection은 공개 대상이 아니다 — 존재를 노출하지 않는다.
 			throw new ResourceNotFoundException();
 		}
@@ -125,7 +125,7 @@ public class FollowService {
 	public CursorPage<FollowedCollectionResponse> listFollowedCollections(Long memberId, Long followId,
 		String cursor, Integer size) {
 		Follow follow = ownedFollow(memberId, followId);
-		if (memberRepository.findById(follow.getFolloweeMemberId()).isEmpty()) {
+		if (!memberRepository.isActive(follow.getFolloweeMemberId())) {
 			return CursorPage.empty();
 		}
 		int pageSize = CursorPage.normalizeSize(size);

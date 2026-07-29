@@ -137,7 +137,7 @@ public class CollectionService {
 		if (!collection.isPublished()) {
 			throw new ResourceNotFoundException();
 		}
-		if (memberRepository.findById(collection.getMemberId()).isEmpty()) {
+		if (!memberRepository.isActive(collection.getMemberId())) {
 			throw new ResourceNotFoundException();
 		}
 		FollowStatusResponse follow = followRepository
