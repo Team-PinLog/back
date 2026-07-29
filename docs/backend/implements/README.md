@@ -35,3 +35,4 @@
 | BI-17 | 별칭 수정 요청의 키 생략 동작을 계약으로 고정 (S15P11A705-116) | ✅ 완료 | [BI-17](BI-17-2026-07-28-alias-key-omission-contract.md) |
 | BI-18 | 쿠키 기반 세션 JWT — RS256 발급·검증 필터·Redis Refresh 회전 (S15P11A705-63) | ✅ 완료 | [BI-18](BI-18-2026-07-28-jwt-cookie-session.md) |
 | BI-19 | Collection `published_at` DB 불변식 (back#58) | ✅ 완료 | [BI-19](BI-19-2026-07-28-published-at-invariant.md) |
+| BI-20 | Feed 추천 MVP — 후보 3채널·결정적 점수·opaque cursor (S15P11A705-120) | ✅ 완료 | [BI-20](BI-20-2026-07-29-feed-recommendation-mvp.md) |

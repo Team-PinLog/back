@@ -1,0 +1,146 @@
+package com.pinlog.pinlogback.domain.feed.service;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
+
+import com.pinlog.pinlogback.domain.feed.dto.FeedCollectionsResponse;
+import com.pinlog.pinlogback.domain.feed.dto.FeedEventCollectRequest;
+import com.pinlog.pinlogback.domain.feed.dto.FeedEventItemRequest;
+import com.pinlog.pinlogback.domain.feed.entity.FeedEventType;
+import com.pinlog.pinlogback.domain.feed.repository.FeedCandidateRepository;
+import com.pinlog.pinlogback.domain.feed.repository.FeedCollectionCard;
+import com.pinlog.pinlogback.domain.feed.repository.FeedEventRepository;
+import com.pinlog.pinlogback.domain.feed.repository.FeedKeywordRepository;
+import com.pinlog.pinlogback.global.exception.InvalidRequestException;
+
+/**
+ * 폴백 경로 검증. DB로는 재현하기 어려운 상황(후보 0건, Profile 계산 실패, 이벤트 기록 실패)을
+ * 여기서 고정한다 — <b>Feed는 어떤 경우에도 AI·Cache 때문에 500을 내지 않는다</b>는 계약이
+ * 이 클래스의 존재 이유다(feed-recommendation 5장).
+ *
+ * <p>공유 컨테이너를 쓰는 통합 테스트로는 "후보 0건"을 만들 수 없다 — 다른 테스트가 만든
+ * Collection이 항상 후보에 들어오기 때문이다. 그래서 이 경로만 대역으로 고정한다.
+ */
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
+class FeedServiceTests {
+
+	private static final long ME = 42L;
+
+	@Mock
+	private FeedCandidateRepository candidateRepository;
+
+	@Mock
+	private FeedKeywordRepository keywordRepository;
+
+	@Mock
+	private FeedEventRepository eventRepository;
+
+	private FeedService feedService;
+
+	@BeforeEach
+	void setUp() {
+		FeedProperties properties = FeedPropertiesFixture.defaults();
+		feedService = new FeedService(candidateRepository, keywordRepository, eventRepository,
+			new FeedScorer(properties), new FeedRanker(properties), properties);
+
+		when(keywordRepository.findProfile(anyLong())).thenReturn(FeedProfile.empty());
+		when(candidateRepository.findRecent(anyLong(), anyInt())).thenReturn(List.of());
+		when(candidateRepository.findFollowed(anyLong(), anyInt())).thenReturn(List.of());
+		when(candidateRepository.findRandomSample(anyLong(), anyInt(), anyLong())).thenReturn(List.of());
+	}
+
+	/** 후보 0건이어도 빈 목록으로 정상 응답한다. 오류가 아니다. */
+	@Test
+	void emptyCandidatePoolReturnsEmptyPage() {
+		FeedCollectionsResponse response = feedService.recommend(ME, null, null);
+
+		assertThat(response.items()).isEmpty();
+		assertThat(response.hasNext()).isFalse();
+		assertThat(response.nextCursor()).isNull();
+		assertThat(response.requestId()).isNotNull();
+		verify(eventRepository, never()).insertAll(any());
+	}
+
+	/** 후보가 0건이면 특징·노출 조회를 아예 하지 않는다 — 빈 IN 절로 왕복하지 않는다. */
+	@Test
+	void emptyCandidatePoolSkipsFeatureQueries() {
+		feedService.recommend(ME, null, null);
+
+		verify(keywordRepository, never()).findPublicKeywordWeights(any());
+		verify(eventRepository, never()).countRecentImpressions(anyLong(), any(), any());
+		verify(candidateRepository, never()).findVerifiedCards(any());
+	}
+
+	/** D7 — Profile 계산이 실패해도 Cold Start로 폴백하고 응답은 정상이다. */
+	@Test
+	void profileFailureFallsBackToColdStart() {
+		when(keywordRepository.findProfile(ME)).thenThrow(new IllegalStateException("ai 스키마 조회 실패"));
+
+		assertThatCode(() -> feedService.recommend(ME, null, null)).doesNotThrowAnyException();
+	}
+
+	/** E2 — IMPRESSION 기록이 실패해도 Feed 응답은 정상이다. */
+	@Test
+	void impressionFailureDoesNotBreakTheResponse() {
+		stubSingleCandidate();
+		doThrow(new IllegalStateException("feed_event 기록 실패")).when(eventRepository).insertAll(any());
+
+		FeedCollectionsResponse response = feedService.recommend(ME, null, null);
+
+		assertThat(response.items()).hasSize(1);
+		assertThat(response.items().get(0).keywords()).isEmpty();
+	}
+
+	/** 응답으로 나간 항목은 position과 함께 IMPRESSION으로 기록된다(E1). */
+	@Test
+	void respondedItemsAreRecordedAsImpressions() {
+		stubSingleCandidate();
+
+		FeedCollectionsResponse response = feedService.recommend(ME, null, null);
+
+		verify(eventRepository).insertAll(List.of(new FeedEventRepository.FeedEventRow(
+			ME, 7L, null, FeedEventType.IMPRESSION, response.requestId(), 0)));
+	}
+
+	/** E3 — IMPRESSION은 서버가 기록하는 값이므로 클라이언트가 보내면 400이다. */
+	@Test
+	void clientReportedImpressionIsRejected() {
+		FeedEventCollectRequest request = new FeedEventCollectRequest(UUID.randomUUID(),
+			List.of(new FeedEventItemRequest(FeedEventType.IMPRESSION, 7L, null, 0)));
+
+		assertThatThrownBy(() -> feedService.collect(ME, request))
+			.isInstanceOf(InvalidRequestException.class);
+		verify(eventRepository, never()).insertAll(any());
+	}
+
+	private void stubSingleCandidate() {
+		when(candidateRepository.findRecent(anyLong(), anyInt()))
+			.thenReturn(List.of(new FeedCandidate(7L, 9L, Instant.now(), false, false)));
+		when(keywordRepository.findPublicKeywordWeights(List.of(7L))).thenReturn(Map.of());
+		when(eventRepository.countRecentImpressions(anyLong(), any(), any())).thenReturn(Map.of());
+		when(candidateRepository.findVerifiedCards(List.of(7L)))
+			.thenReturn(List.of(new FeedCollectionCard(7L, "책", 3, Instant.now())));
+	}
+}

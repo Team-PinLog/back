@@ -1,0 +1,40 @@
+package com.pinlog.pinlogback.domain.feed.dto;
+
+import java.time.Instant;
+import java.util.List;
+
+import com.pinlog.pinlogback.domain.feed.repository.FeedCollectionCard;
+
+/**
+ * Feed 목록의 항목 하나(API 명세 10.1).
+ *
+ * <p><b>소유자 식별 정보를 담는 필드가 없다.</b> 조건부 직렬화나 상속으로 감추지 않고 자리를
+ * 없앤다 — 실수가 유출이 아니라 컴파일 오류로 실패해야 한다(BD-13·BD-14). Context 원문도 같다.
+ *
+ * @param position 응답 목록에서의 0-based 순서. 클라이언트가 CLICK 이벤트에 그대로 돌려보낸다
+ * @param collectionId 대상 Collection
+ * @param title Collection 제목
+ * @param recordCount 담긴 Record 수
+ * @param keywords 공개 가능한 {@code PUBLIC} Keyword code. AI 처리가 끝나지 않았으면 빈 배열이며
+ *                 <b>오류가 아니다</b>(feed-recommendation 3.7)
+ * @param createdAt Collection 생성 시각
+ */
+public record FeedCollectionItemResponse(
+	int position,
+	Long collectionId,
+	String title,
+	int recordCount,
+	List<String> keywords,
+	Instant createdAt
+) {
+
+	public FeedCollectionItemResponse {
+		keywords = List.copyOf(keywords);
+	}
+
+	public static FeedCollectionItemResponse of(int position, FeedCollectionCard card,
+		List<String> keywords) {
+		return new FeedCollectionItemResponse(
+			position, card.collectionId(), card.title(), card.recordCount(), keywords, card.createdAt());
+	}
+}

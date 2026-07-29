@@ -28,6 +28,16 @@ public final class InputLimits {
 	 */
 	public static final int CONTEXT_BODY_MAX = 500;
 
+	/**
+	 * 한 요청이 담을 수 있는 Feed 이벤트 수(API 명세 10.2). {@code RECORD_IDS_MAX}·
+	 * {@code CursorPage.MAX_SIZE}와 <b>같은 값</b>으로 둔다 — 요청 배열마다 상한을 따로 정하면
+	 * "서버 방어 상한이 얼마인가"에 답이 여러 개가 된다(S15P11A705-117 규약).
+	 *
+	 * <p>초과 요청은 초과분만 잘라내지 않고 {@code 400 INVALID_INPUT}으로 거절한다. 잘라내면
+	 * 관측 이벤트가 조용히 유실되고 클라이언트가 그것을 알 방법이 없다.
+	 */
+	public static final int FEED_EVENTS_MAX = 100;
+
 	private InputLimits() {
 	}
 }
