@@ -21,7 +21,10 @@ services:
       start_period: 10s
 
   redis:
+    # 테스트 컨테이너(PostgresRedisContainerSupport)도 같은 태그를 쓴다.
     image: redis:7.4.5-alpine
+    labels:
+      org.springframework.boot.service-connection: redis
     ports:
       - "${REDIS_PORT:-16379}:6379"
     healthcheck:

@@ -10,8 +10,5 @@ spring:
       host: localhost
       port: 16379
 
-# 인증 스텁(back#28 계약). 인증 PR이 오면 이 프로퍼티와 X-Debug-Member-Id 분기를 반드시 제거한다.
-pinlog:
-  auth:
-    stub:
-      enabled: true
+# JWT_PRIVATE_KEY를 주지 않으면 기동할 때 임시 키쌍을 만든다(BD-31). 재시작하면 기존 토큰이
+# 무효가 되니 고정하고 싶으면 .env에 PEM을 넣는다 — 절차는 authentication.md 8장.

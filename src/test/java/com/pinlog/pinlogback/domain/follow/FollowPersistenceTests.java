@@ -12,10 +12,10 @@ import com.pinlog.pinlogback.domain.follow.entity.Follow;
 import com.pinlog.pinlogback.domain.follow.repository.FollowRepository;
 import com.pinlog.pinlogback.domain.member.entity.Member;
 import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
-import com.pinlog.pinlogback.integration.PostgresContainerSupport;
+import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
-@SpringBootTest(properties = "management.health.redis.enabled=false")
-class FollowPersistenceTests extends PostgresContainerSupport {
+@SpringBootTest
+class FollowPersistenceTests extends IntegrationContainerSupport {
 
 	@Autowired
 	private MemberRepository memberRepository;

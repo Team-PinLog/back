@@ -30,7 +30,7 @@ import org.springframework.test.annotation.DirtiesContext;
  */
 @SpringBootTest
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-class FlywayOutOfOrderTests extends PostgresContainerSupport {
+class FlywayOutOfOrderTests extends IntegrationContainerSupport {
 
 	private static final String SCRATCH_DATABASE = "bt02_out_of_order";
 	private static final String FIRST_BACKEND_VERSION = "2";
@@ -68,7 +68,7 @@ class FlywayOutOfOrderTests extends PostgresContainerSupport {
 		assertThat(reapplied.migrationsExecuted)
 			.as("앞선 migrate가 이미 적용을 마쳤으므로 두 번째 호출은 아무것도 적용하지 않는다")
 			.isZero();
-		assertThat(appliedVersions(url)).contains("1", FIRST_BACKEND_VERSION, "3", "100", "101", "102");
+		assertThat(appliedVersions(url)).contains("1", FIRST_BACKEND_VERSION, "3", "4", "100", "101", "102");
 		assertThat(memberTableExists(url))
 			.as("out-of-order로 적용된 백엔드 마이그레이션이 실제로 테이블을 만들었는지")
 			.isTrue();

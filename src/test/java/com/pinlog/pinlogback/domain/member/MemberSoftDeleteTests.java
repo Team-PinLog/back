@@ -9,7 +9,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import com.pinlog.pinlogback.domain.member.entity.Member;
 import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
-import com.pinlog.pinlogback.integration.PostgresContainerSupport;
+import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
 /**
  * soft delete의 두 경로를 각각 고정한다.
@@ -19,8 +19,8 @@ import com.pinlog.pinlogback.integration.PostgresContainerSupport;
  * 테스트도 나눠 둔다 — 안전망 쪽 테스트가 깨지면 "실수해도 행이 남는다"는 보장이 사라진 것이고, 정식
  * 경로 쪽이 깨지면 도메인 코드가 쓰는 API가 깨진 것이다(규약은 database-conventions.md).
  */
-@SpringBootTest(properties = "management.health.redis.enabled=false")
-class MemberSoftDeleteTests extends PostgresContainerSupport {
+@SpringBootTest
+class MemberSoftDeleteTests extends IntegrationContainerSupport {
 
 	@Autowired
 	private MemberRepository memberRepository;

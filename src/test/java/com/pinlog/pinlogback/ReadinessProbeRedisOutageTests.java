@@ -14,7 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 
-import com.pinlog.pinlogback.integration.PostgresContainerSupport;
+import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
 /**
  * Redis 장애가 readiness로 번지지 않는지 검증한다(BD-28).
@@ -36,7 +36,7 @@ import com.pinlog.pinlogback.integration.PostgresContainerSupport;
 	}
 )
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-class ReadinessProbeRedisOutageTests extends PostgresContainerSupport {
+class ReadinessProbeRedisOutageTests extends IntegrationContainerSupport {
 
 	private final HttpClient httpClient = HttpClient.newHttpClient();
 

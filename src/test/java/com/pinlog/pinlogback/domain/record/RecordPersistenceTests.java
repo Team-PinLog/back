@@ -16,10 +16,10 @@ import com.pinlog.pinlogback.domain.place.entity.Place;
 import com.pinlog.pinlogback.domain.place.repository.PlaceRepository;
 import com.pinlog.pinlogback.domain.record.entity.Record;
 import com.pinlog.pinlogback.domain.record.repository.RecordRepository;
-import com.pinlog.pinlogback.integration.PostgresContainerSupport;
+import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
-@SpringBootTest(properties = "management.health.redis.enabled=false")
-class RecordPersistenceTests extends PostgresContainerSupport {
+@SpringBootTest
+class RecordPersistenceTests extends IntegrationContainerSupport {
 
 	@Autowired
 	private MemberRepository memberRepository;

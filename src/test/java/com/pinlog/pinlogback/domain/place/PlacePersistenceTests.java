@@ -10,14 +10,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import com.pinlog.pinlogback.domain.place.entity.Place;
 import com.pinlog.pinlogback.domain.place.repository.PlaceRepository;
-import com.pinlog.pinlogback.integration.PostgresContainerSupport;
+import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
 /**
  * place는 BaseEntity를 상속하지 않으므로(deleted_at 없음) 감사 리스너를 엔티티에 직접 붙여야 한다.
  * 붙이지 않으면 created_at이 null로 INSERT되어 NOT NULL 위반으로 실패한다(데이터베이스 규약).
  */
-@SpringBootTest(properties = "management.health.redis.enabled=false")
-class PlacePersistenceTests extends PostgresContainerSupport {
+@SpringBootTest
+class PlacePersistenceTests extends IntegrationContainerSupport {
 
 	@Autowired
 	private PlaceRepository placeRepository;

@@ -18,8 +18,8 @@ import com.pinlog.pinlogback.domain.follow.dto.FollowResponse;
 import com.pinlog.pinlogback.domain.follow.dto.FollowedCollectionResponse;
 import com.pinlog.pinlogback.domain.follow.service.FollowService;
 import com.pinlog.pinlogback.global.response.CursorPage;
-import com.pinlog.pinlogback.global.security.LoginMember;
-import com.pinlog.pinlogback.global.security.MemberPrincipal;
+import com.pinlog.pinlogback.global.security.authentication.LoginMember;
+import com.pinlog.pinlogback.global.security.authentication.MemberPrincipal;
 
 import jakarta.validation.Valid;
 

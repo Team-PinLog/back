@@ -1,5 +1,6 @@
 package com.pinlog.pinlogback.global.config;
 
+import org.jspecify.annotations.Nullable;
 import org.springdoc.core.customizers.OperationCustomizer;
 import org.springframework.stereotype.Component;
 import org.springframework.web.method.HandlerMethod;
@@ -48,11 +49,12 @@ public class ApiResponseOpenApiCustomizer implements OperationCustomizer {
 		return operation;
 	}
 
-	private boolean isSuccessStatus(String status) {
+	private boolean isSuccessStatus(@Nullable String status) {
 		return status != null && status.length() == 3 && status.charAt(0) == '2';
 	}
 
-	private void wrapContent(Content content) {
+	/** 본문 없는 응답(204 등)은 content가 없다. */
+	private void wrapContent(@Nullable Content content) {
 		if (content == null) {
 			return;
 		}

@@ -25,17 +25,14 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.pinlog.pinlogback.domain.member.entity.Member;
 import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
-import com.pinlog.pinlogback.integration.PostgresContainerSupport;
+import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-@SpringBootTest(properties = {
-	"management.health.redis.enabled=false",
-	"pinlog.auth.stub.enabled=true"
-})
+@SpringBootTest
 @AutoConfigureMockMvc
-class DeletionApiTests extends PostgresContainerSupport {
+class DeletionApiTests extends IntegrationContainerSupport {
 
 	private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
