@@ -9,6 +9,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.time.OffsetDateTime;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
@@ -16,6 +18,12 @@ import org.junit.jupiter.api.Test;
 class PublishedAtMigrationTests extends IntegrationContainerSupport {
 
 	private static final String SCRATCH_DATABASE = "published_at_migration";
+
+	/** {@code core.collection}이 만들어지는 버전. 제약 이전에 존재하던 행을 심을 수 있는 가장 이른 시점이다. */
+	private static final String COLLECTION_CREATED_VERSION = "3";
+
+	/** 이 테스트가 검증하는 마이그레이션. */
+	private static final String PUBLISHED_AT_VERSION = "5";
 
 	@Test
 	void backfillsExistingNullAndEnforcesPublishedRowsCarryTimestamp() throws Exception {
@@ -25,7 +33,7 @@ class PublishedAtMigrationTests extends IntegrationContainerSupport {
 		Flyway.configure()
 			.dataSource(url, POSTGRES.getUsername(), POSTGRES.getPassword())
 			.locations("classpath:db/migration")
-			.target("3")
+			.target(COLLECTION_CREATED_VERSION)
 			.load()
 			.migrate();
 
@@ -37,12 +45,24 @@ class PublishedAtMigrationTests extends IntegrationContainerSupport {
 				""");
 		}
 
+		// 행을 심는 시점에는 제약도 백필도 아직 없다. 이 단언이 없으면 "V3까지만 적용"이라는 전제가
+		// 주석으로만 남고, 사이에 다른 마이그레이션이 끼어들어도 조용히 통과한다.
+		assertThat(appliedVersions(url))
+			.as("NULL 행을 심는 시점의 DB 상태")
+			.containsExactlyInAnyOrder("1", "2", COLLECTION_CREATED_VERSION);
+
 		Flyway.configure()
 			.dataSource(url, POSTGRES.getUsername(), POSTGRES.getPassword())
 			.locations("classpath:db/migration")
 			.outOfOrder(true)
 			.load()
 			.migrate();
+
+		// 뒤따르는 단언이 보는 상태를 만든 것이 이 실행의 V5라는 근거. V4(social_account)가 사이에
+		// 끼면서 "최신까지 적용했다"만으로는 V5가 실제로 돌았는지 알 수 없게 됐다.
+		assertThat(appliedVersions(url))
+			.as("이번 마이그레이션에서 V%s가 실제로 적용됐다", PUBLISHED_AT_VERSION)
+			.contains(PUBLISHED_AT_VERSION);
 
 		try (Connection connection = connect(url); Statement statement = connection.createStatement()) {
 			try (ResultSet row = statement.executeQuery("""
@@ -118,5 +138,18 @@ class PublishedAtMigrationTests extends IntegrationContainerSupport {
 
 	private Connection connect(String url) throws Exception {
 		return DriverManager.getConnection(url, POSTGRES.getUsername(), POSTGRES.getPassword());
+	}
+
+	private Set<String> appliedVersions(String url) throws Exception {
+		Set<String> versions = new HashSet<>();
+		try (Connection connection = connect(url);
+			Statement statement = connection.createStatement();
+			ResultSet rs = statement.executeQuery(
+				"SELECT version FROM public.flyway_schema_history WHERE success AND version IS NOT NULL")) {
+			while (rs.next()) {
+				versions.add(rs.getString("version"));
+			}
+		}
+		return versions;
 	}
 }

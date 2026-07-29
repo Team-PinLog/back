@@ -16,9 +16,13 @@
 
 ## 검증
 
-`PublishedAtMigrationTests`는 V3까지만 적용한 별도 PostgreSQL DB에 NULL 행을 만든 후 최신
-버전으로 마이그레이션하여 다음을 검증한다.
+`PublishedAtMigrationTests`는 `core.collection`이 만들어지는 V3까지만 적용한 별도 PostgreSQL DB에
+NULL 행을 만든 후 최신 버전으로 마이그레이션하여 다음을 검증한다.
 
+- 행을 심는 시점의 적용 버전이 정확히 `{1, 2, 3}`이다 — 제약도 백필도 아직 없는 상태임을 단언으로
+  고정한다.
+- 두 번째 마이그레이션의 적용 버전에 V5가 들어간다 — 뒤따르는 단언이 보는 상태를 만든 것이 이
+  마이그레이션이라는 근거다.
 - 기존 NULL 행의 `published_at`이 해당 행의 `created_at`과 같다. (백필이 빠지면 제약 추가 자체가
   실패하므로 마이그레이션이 통과한 것 자체도 백필의 증거다.)
 - `pg_constraint`에 `ck_collection_published_at`이 있고 정의가 함의 형태다.
@@ -34,3 +38,7 @@
 - 2026-07-28 초안은 `NOT NULL DEFAULT now()`였다. back#75 리뷰에서 그 형태가 `is_published`의
   전제와 모순되고 결함 있는 쓰기 경로의 실패를 기본값으로 덮는다는 지적을 받아 `CHECK` 함의형으로
   전환했다. 근거는 [BD-33](../decisions/BD-33-published-at-database-invariant.md)에 있다.
+- 2026-07-29 back#73(Google 소셜 로그인)이 먼저 병합되며 `V4`·`BD-29`·`BI-18`을 가져가, 이 작업의
+  번호를 `V5`·`BD-33`·`BI-19`로 재배정했다(`decisions/README`의 "번호는 `dev` 머지 기준" 규칙).
+  `V4`가 사이에 끼면서 "최신까지 적용했다"만으로는 이 마이그레이션이 실제로 돌았는지 알 수 없게 되어
+  적용 버전 단언 두 개를 추가했다. 제약 형태와 검증 의도는 그대로다.
