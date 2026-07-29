@@ -30,17 +30,14 @@ import com.pinlog.pinlogback.domain.member.entity.Member;
 import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
 import com.pinlog.pinlogback.domain.place.entity.Place;
 import com.pinlog.pinlogback.domain.place.repository.PlaceRepository;
-import com.pinlog.pinlogback.integration.PostgresContainerSupport;
+import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
 
-@SpringBootTest(properties = {
-	"management.health.redis.enabled=false",
-	"pinlog.auth.stub.enabled=true"
-})
+@SpringBootTest
 @AutoConfigureMockMvc
-class RecordApiTests extends PostgresContainerSupport {
+class RecordApiTests extends IntegrationContainerSupport {
 
 	@Autowired
 	private MockMvc mockMvc;

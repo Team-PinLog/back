@@ -23,7 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import com.pinlog.pinlogback.domain.member.entity.Member;
 import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
 import com.pinlog.pinlogback.domain.record.repository.RecordRepository;
-import com.pinlog.pinlogback.integration.PostgresContainerSupport;
+import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.json.JsonMapper;
@@ -32,12 +32,9 @@ import tools.jackson.databind.json.JsonMapper;
  * 접근 권한표(API 명세 12장)와 공개 범위 규약(데이터모델 5장)의 행별 검증.
  * 타인에게 Context 원문·신원 정보가 어떤 형태로도 나가지 않는 것이 이 클래스의 존재 이유다.
  */
-@SpringBootTest(properties = {
-	"management.health.redis.enabled=false",
-	"pinlog.auth.stub.enabled=true"
-})
+@SpringBootTest
 @AutoConfigureMockMvc
-class PublicCollectionApiTests extends PostgresContainerSupport {
+class PublicCollectionApiTests extends IntegrationContainerSupport {
 
 	private static final String SECRET_CONTEXT_BODY = "아무도 몰래 저장한 이유";
 

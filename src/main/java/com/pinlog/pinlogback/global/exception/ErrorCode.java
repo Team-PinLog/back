@@ -5,7 +5,10 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
 
 	INVALID_INPUT(HttpStatus.BAD_REQUEST, "잘못된 요청 형식입니다."),
+	// 미인증. 타인 소유 자원 접근은 존재를 숨기기 위해 403이 아니라 404를 쓴다(08 §1.2).
 	UNAUTHORIZED(HttpStatus.UNAUTHORIZED, "인증이 필요합니다."),
+	// CSRF 토큰 누락·불일치 전용이다(08 §1.7).
+	FORBIDDEN(HttpStatus.FORBIDDEN, "요청이 거부되었습니다."),
 	SELF_FOLLOW_NOT_ALLOWED(HttpStatus.UNPROCESSABLE_CONTENT, "자기 자신의 책장은 팔로우할 수 없습니다."),
 	DUPLICATE_FOLLOW(HttpStatus.CONFLICT, "이미 팔로우한 책장입니다."),
 	DELETE_CONFIRMATION_REQUIRED(HttpStatus.CONFLICT, "삭제 확인이 필요합니다."),

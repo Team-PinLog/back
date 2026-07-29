@@ -26,8 +26,8 @@ import com.pinlog.pinlogback.domain.record.dto.RecordDetailResponse;
 import com.pinlog.pinlogback.domain.record.dto.RecordSaveResult;
 import com.pinlog.pinlogback.domain.record.service.RecordDeletionService;
 import com.pinlog.pinlogback.domain.record.service.RecordService;
-import com.pinlog.pinlogback.global.security.LoginMember;
-import com.pinlog.pinlogback.global.security.MemberPrincipal;
+import com.pinlog.pinlogback.global.security.authentication.LoginMember;
+import com.pinlog.pinlogback.global.security.authentication.MemberPrincipal;
 
 import jakarta.validation.Valid;
 

@@ -18,8 +18,8 @@ import com.pinlog.pinlogback.domain.collection.dto.CollectionRenameRequest;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionSummaryResponse;
 import com.pinlog.pinlogback.domain.collection.service.CollectionService;
 import com.pinlog.pinlogback.global.response.CursorPage;
-import com.pinlog.pinlogback.global.security.LoginMember;
-import com.pinlog.pinlogback.global.security.MemberPrincipal;
+import com.pinlog.pinlogback.global.security.authentication.LoginMember;
+import com.pinlog.pinlogback.global.security.authentication.MemberPrincipal;
 
 import jakarta.validation.Valid;
 

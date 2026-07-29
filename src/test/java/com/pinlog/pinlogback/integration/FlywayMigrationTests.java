@@ -19,7 +19,7 @@ import org.springframework.test.annotation.DirtiesContext;
 
 @SpringBootTest
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-class FlywayMigrationTests extends PostgresContainerSupport {
+class FlywayMigrationTests extends IntegrationContainerSupport {
 
 	@Autowired
 	JdbcTemplate jdbcTemplate;
@@ -75,7 +75,9 @@ class FlywayMigrationTests extends PostgresContainerSupport {
 			"context",
 			"collection",
 			"collection_record",
-			"follow"
+			"follow",
+			// 인증 수단은 신원(member)과 분리한다(V4, 06 §2.2).
+			"social_account"
 		);
 	}
 

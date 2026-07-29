@@ -1,5 +1,9 @@
 server:
   port: 8080
+  # Traefik 뒤에서 동작하므로 X-Forwarded-* 를 신뢰해야 한다.
+  # 이게 없으면 OAuth redirect_uri가 파드 내부 주소(http://10.x:8080/...)로 만들어져
+  # 공급자 콘솔에 등록한 공개 주소와 달라지고 redirect_uri_mismatch가 난다.
+  forward-headers-strategy: framework
   # SIGTERM을 받으면 새 요청을 막고 진행 중인 요청을 끝낸 뒤 종료한다.
   # 이게 없으면 RollingUpdate 중 처리 중이던 요청이 잘린다.
   shutdown: graceful
@@ -7,6 +11,12 @@ server:
     context-path: /api/core
 
 spring:
+  # 로컬 .env를 프로퍼티로 올린다. Spring Boot는 .env를 자동으로 읽지 않아서,
+  # 이게 없으면 소셜 로그인 자격증명이 애플리케이션에 전달되지 않는다(compose만 읽는다).
+  # optional: 이므로 .env가 없는 CI·운영 컨테이너에서도 기동이 깨지지 않는다.
+  # [.properties]는 확장자 없는 파일을 properties 형식으로 읽으라는 지시다.
+  config:
+    import: optional:file:.env[.properties]
   application:
     name: pinlog-back
   lifecycle:
@@ -14,6 +24,21 @@ spring:
     # preStop sleep(5s) + 이 값(20s) < terminationGracePeriodSeconds(40s)를 지켜야
     # 배수 도중 SIGKILL로 잘리지 않는다. 매니페스트 쪽은 Infra 소유(S15P11A705-47).
     timeout-per-shutdown-phase: 20s
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            # 자격증명은 .env(로컬)·Kubernetes Secret(운영)에서 주입한다.
+            # 기본값 unset은 자격증명 없이도 컨텍스트가 뜨게 하려는 것이다. 인가 요청 URL을
+            # 만드는 데는 문자열만 필요해서, CI가 실제 키 없이 리다이렉트를 검증할 수 있다.
+            client-id: ${GOOGLE_CLIENT_ID:unset}
+            client-secret: ${GOOGLE_CLIENT_SECRET:unset}
+            # openid가 있어야 고유 식별자 sub를 받는다. profile은 저장할 곳이 없어 제외한다.
+            scope: openid,email
+            # {baseUrl}은 context-path(/api/core)까지 포함한다.
+            # registrationId가 마지막이 아니어도 된다 — 콜백은 state에서 값을 꺼내기 때문이다.
+            redirect-uri: "{baseUrl}/v1/auth/{registrationId}/callback"
   jpa:
     hibernate:
       ddl-auto: validate
@@ -33,6 +58,22 @@ spring:
     # 기존 DB에서 기동이 실패한다(BT-02). 구간 구조를 유지하기로 했으므로 out-of-order를 허용한다.
     # 감수하는 것: 적용 순서가 환경마다 달라진다(빈 DB는 V2→V100, 기존 DB는 V100→V2). 근거는 BD-26.
     out-of-order: true
+
+pinlog:
+  auth:
+    # 로그인·실패 후 브라우저를 돌려보낼 클라이언트 경로(API 명세 3.2).
+    # 요청 파라미터로 받지 않는다 — 임의 URL을 받으면 open redirect가 된다.
+    # 프론트와 같은 오리진이라 절대 경로면 충분하다.
+    client-redirect-uri: ${AUTH_CLIENT_REDIRECT_URI:/auth/callback}
+    jwt:
+      # RS256 개인키(PKCS#8 PEM). 운영은 Kubernetes Secret으로 주입한다(BD-29).
+      # 비어 있으면 로컬·테스트는 임시 키쌍을 만들고, 운영 프로파일은 기동에 실패한다 —
+      # 파드마다 서명 키가 달라지면 재시작·스케일아웃 때 전면 로그아웃이 되기 때문이다.
+      private-key: ${JWT_PRIVATE_KEY:}
+      # 수명의 원본은 BD-21이다. 여기서 임의로 바꾸지 않는다.
+      access-token-ttl: 30m
+      refresh-token-ttl: 7d
+      issuer: pinlog
 
 build:
   sha: ${BUILD_SHA:unknown}
@@ -61,10 +102,3 @@ management:
         # 넣으면 DB 순단이 Pod 재시작으로 번진다. 인프라와 합의한 정책이며 근거는 BD-28.
         readiness:
           include: readinessState,db
-
-# 인증 스텁(back#28 계약)은 기본 꺼짐이다(fail-closed). local·test에서만 켠다.
-# 인증 PR이 오면 이 프로퍼티와 스텁 분기를 반드시 제거한다 — 남기면 운영 인증 우회 구멍이 된다.
-pinlog:
-  auth:
-    stub:
-      enabled: false

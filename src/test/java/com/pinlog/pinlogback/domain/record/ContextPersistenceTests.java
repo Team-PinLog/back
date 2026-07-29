@@ -18,10 +18,10 @@ import com.pinlog.pinlogback.domain.record.entity.Context;
 import com.pinlog.pinlogback.domain.record.entity.Record;
 import com.pinlog.pinlogback.domain.record.repository.ContextRepository;
 import com.pinlog.pinlogback.domain.record.repository.RecordRepository;
-import com.pinlog.pinlogback.integration.PostgresContainerSupport;
+import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
-@SpringBootTest(properties = "management.health.redis.enabled=false")
-class ContextPersistenceTests extends PostgresContainerSupport {
+@SpringBootTest
+class ContextPersistenceTests extends IntegrationContainerSupport {
 
 	@Autowired
 	private MemberRepository memberRepository;

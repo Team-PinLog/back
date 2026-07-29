@@ -20,7 +20,7 @@ import org.springframework.test.annotation.DirtiesContext;
  *
  * <p>공유 Testcontainers 컨테이너는 JVM 전체가 하나를 쓰므로(BT-01) 멈추지 않는다. 대신 닫혀 있는
  * 포트를 향하는 DataSource로 "DB에 닿지 않는 상태"를 만든다. 그래서 이 클래스는
- * {@code PostgresContainerSupport}를 상속하지 않는다.
+ * {@code IntegrationContainerSupport}를 상속하지 않는다.
  */
 @SpringBootTest(
 	webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
