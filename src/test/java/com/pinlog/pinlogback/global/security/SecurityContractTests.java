@@ -48,16 +48,31 @@ class SecurityContractTests extends IntegrationContainerSupport {
 		assertThat(get("/api/core/v3/api-docs").statusCode()).isEqualTo(200);
 	}
 
+	/**
+	 * <b>매핑된 도메인 엔드포인트를 쓴다.</b> 전에는 존재하지 않는 {@code /v1/me/summary}를 때려서
+	 * 실제로 확인한 것이 "매핑되지 않은 URL도 401"뿐이었고, 그건
+	 * {@code DeploymentContractTests.unmappedServiceUrlRequiresAuthentication}과 같은 내용이었다.
+	 *
+	 * <p><b>다만 이 테스트가 "인가 규칙이 이 경로를 막는다"를 증명하지는 않는다.</b> 실험으로
+	 * 확인했다 — {@code /v1/collections}를 {@code permitAll}에 넣어도 이 테스트는 통과한다.
+	 * {@code LoginMemberArgumentResolver}가 fail-closed라 인증이 없으면 거기서 401을 던지기
+	 * 때문이다. 두 겹(인가 규칙 · 리졸버) 중 어느 쪽이 막았는지는 응답만 봐서 구분되지 않는다.
+	 *
+	 * <p>그래서 이 테스트가 고정하는 것은 <b>바깥에서 관측 가능한 계약</b>이다 — 실재하는 보호
+	 * 경로에 미인증으로 들어가면 401이 공통 envelope로 나온다. 어느 층이 막았는지는 계약이 아니다.
+	 */
+	private static final String PROTECTED_PATH = "/api/core/v1/collections";
+
 	@Test
 	@DisplayName("보호 경로에 인증 없이 접근하면 401을 반환한다")
 	void protectedPathReturnsUnauthorized() throws Exception {
-		assertThat(get("/api/core/v1/me/summary").statusCode()).isEqualTo(401);
+		assertThat(get(PROTECTED_PATH).statusCode()).isEqualTo(401);
 	}
 
 	@Test
 	@DisplayName("401 응답도 공통 envelope와 traceId를 따른다")
 	void unauthorizedResponseFollowsErrorContract() throws Exception {
-		HttpResponse<String> response = get("/api/core/v1/me/summary");
+		HttpResponse<String> response = get(PROTECTED_PATH);
 
 		assertThat(response.statusCode()).isEqualTo(401);
 		assertThat(response.body())

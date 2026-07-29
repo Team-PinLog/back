@@ -82,11 +82,20 @@ public class SecurityConfig {
 	 *
 	 * <p>{@code logged_in}에서 같은 판단을 내렸다(BT-04). 읽는 주체가 브라우저 JS인 쿠키는
 	 * {@code Path}가 {@code /}여야 한다.
+	 *
+	 * <p>{@code Secure}·{@code SameSite}도 직접 못박는다. 기본 구현은 {@code secure}를
+	 * {@code request.isSecure()}에 맡기는데, 그러면 이 보안 속성이 <b>프록시가 보내는
+	 * {@code X-Forwarded-Proto}가 정확한지</b>에 걸린다. {@code AuthCookies}는 같은 이유로 이미
+	 * {@code secure(true)}를 고정하고 있다 — 인증 쿠키와 CSRF 쿠키가 다른 규칙을 따를 이유가 없다.
+	 *
+	 * <p>{@code setSecure} 같은 개별 setter는 없고 {@code setCookieCustomizer}가 유일한 경로다.
+	 * 커스터마이저는 기본값을 적용한 <b>뒤에</b> 실행되므로(`saveToken`) 여기서 덮어쓸 수 있다.
 	 */
 	@Bean
 	public CookieCsrfTokenRepository csrfTokenRepository() {
 		CookieCsrfTokenRepository repository = CookieCsrfTokenRepository.withHttpOnlyFalse();
 		repository.setCookiePath("/");
+		repository.setCookieCustomizer(cookie -> cookie.secure(true).sameSite("Lax"));
 		return repository;
 	}
 

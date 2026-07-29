@@ -86,6 +86,9 @@ class AuthTokenContractTests extends SocialLoginTestSupport {
 		assertThat(csrf)
 			.as("JS가 읽어야 하므로 HttpOnly면 안 된다")
 			.doesNotContain("HttpOnly");
+		// 기본값은 request.isSecure()를 따라간다. 그러면 이 속성이 프록시의 X-Forwarded-Proto가
+		// 정확히 오는지에 걸린다 — 보안 속성을 인프라 설정에 맡기지 않는다(AuthCookies와 같은 판단).
+		assertThat(csrf).contains("Secure").contains("SameSite=Lax");
 	}
 
 	@Test
