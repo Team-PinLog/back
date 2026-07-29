@@ -36,4 +36,5 @@
 | BI-18 | 쿠키 기반 세션 JWT — RS256 발급·검증 필터·Redis Refresh 회전 (S15P11A705-63) | ✅ 완료 | [BI-18](BI-18-2026-07-28-jwt-cookie-session.md) |
 | BI-19 | Collection `published_at` DB 불변식 (back#58) | ✅ 완료 | [BI-19](BI-19-2026-07-28-published-at-invariant.md) |
 | BI-20 | Feed 추천 MVP — 후보 3채널·결정적 점수·opaque cursor (S15P11A705-120) | ✅ 완료 | [BI-20](BI-20-2026-07-29-feed-recommendation-mvp.md) |
+| BI-21 | Refresh 재사용 시 회원 단위 세션 폐기 — 회원별 `jti` 인덱스 (S15P11A705-131) | ✅ 완료 | [BI-21](BI-21-2026-07-29-refresh-reuse-family-revocation.md) |
 | BI-23 | 삭제 경로의 AI 파생 데이터 무효화 — `context_ai_state` CANCELLED·`context_embedding.is_deleted` (S15P11A705-124) | ✅ 완료 | [BI-23](BI-23-2026-07-29-ai-derived-invalidation-on-delete.md) |
