@@ -7,7 +7,6 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.pinlog.pinlogback.domain.ai.repository.AiDerivedDataRepository;
 import com.pinlog.pinlogback.domain.place.entity.Place;
 import com.pinlog.pinlogback.domain.place.repository.PlaceRepository;
 import com.pinlog.pinlogback.domain.record.dto.BoundsResponse;
@@ -23,6 +22,7 @@ import com.pinlog.pinlogback.domain.record.dto.RecordDetailResponse;
 import com.pinlog.pinlogback.domain.record.dto.RecordSaveResult;
 import com.pinlog.pinlogback.domain.record.entity.Context;
 import com.pinlog.pinlogback.domain.record.entity.Record;
+import com.pinlog.pinlogback.domain.record.repository.AiDerivedDataRepository;
 import com.pinlog.pinlogback.domain.record.repository.ContextRepository;
 import com.pinlog.pinlogback.domain.record.repository.RecordRepository;
 import com.pinlog.pinlogback.global.exception.InvalidRequestException;

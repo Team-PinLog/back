@@ -1,9 +1,9 @@
-# BD-35. AI 파생 데이터 무효화를 삭제 트랜잭션 안에서 백엔드가 직접 쓴다
+# BD-37. AI 파생 데이터 무효화를 삭제 트랜잭션 안에서 백엔드가 직접 쓴다
 
 - **상태**: Accepted
 - **날짜**: 2026-07-29
 - **관련**: S15P11A705-124, [back#61](https://github.com/Team-PinLog/back/issues/61),
-  [BI-21](../implements/BI-21-2026-07-29-ai-derived-invalidation-on-delete.md),
+  [BI-23](../implements/BI-23-2026-07-29-ai-derived-invalidation-on-delete.md),
   공용 계약 `Team-PinLog/docs` `static/06_데이터모델_및_무결성.md` §1.3·§6.4~6.9,
   `static/08_API_명세.md` "AI 파생 데이터"
 
@@ -44,6 +44,11 @@ PostgreSQL 인스턴스에 있다는 사실이 (b)·(c)의 유일한 장점(경�
 제약 안에서 고른 것은 **쓰기 범위를 코드로 좁히는 방법**이다. `AiDerivedDataRepository` 하나에
 두 UPDATE만 담고 다른 컬럼에 닿는 경로를 두지 않았다. 이 클래스의 SQL 두 개가 백엔드가 `ai`에
 쓰는 전부이며, 리뷰에서 경계 위반을 한 파일만 보고 확인할 수 있다.
+
+**(b)·(c)를 기각하며 택한 원자성은 테스트로 고정한다.** 이 결정이 실제로 서 있는지는 "무효화
+UPDATE가 나간 뒤 트랜잭션이 실패하면 그 UPDATE도 되돌아가는가"로만 확인할 수 있고, 그것을
+`invalidationRollsBackWhenTheDeletionTransactionFails`가 본다(BI-23 "검증"). 결정과 코드가 조용히
+갈라지는 것을 막는 장치이며, `REQUIRES_NEW` 분리나 트랜잭션 밖 이동이 들어오면 이 테스트가 깨진다.
 
 `CANCELLED` 전이에 조건을 걸지 않는 것도 계약이 정한 제약이다. `COMPLETED`를 남기면 임베딩
 검색에서는 걸러지지만 키워드 조회에서 삭제·탈퇴한 사용자의 Keyword가 계속 노출된다.

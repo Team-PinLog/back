@@ -96,3 +96,4 @@
 | [BD-32](BD-32-refresh-reuse-no-family-revocation.md) | Refresh 재사용을 감지해도 세션 계열을 폐기하지 않는다 (당분간) — 감지·WARN만, 폐기는 후속 | Accepted | S15P11A705-63 |
 | [BD-33](BD-33-published-at-database-invariant.md) | 발행된 Collection의 `published_at`을 DB `CHECK`로 강제 | Accepted | S15P11A705-125 |
 | [BD-34](BD-34-feed-deterministic-pagination-without-session-cache.md) | Feed 페이지네이션을 Redis Session Cache 대신 `requestId` seed 기반 결정적 재계산으로 | Accepted | S15P11A705-120 |
+| [BD-37](BD-37-ai-derived-invalidation-inside-deletion-transaction.md) | AI 파생 데이터 무효화를 삭제 트랜잭션 안에서 백엔드가 직접 쓴다 | Accepted | S15P11A705-124 |

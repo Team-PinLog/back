@@ -1,7 +1,11 @@
-package com.pinlog.pinlogback.domain.ai;
+package com.pinlog.pinlogback.domain.record;
 
+import static com.pinlog.pinlogback.domain.record.repository.AiDerivedDataRepository.CANCELLED;
 import static com.pinlog.pinlogback.support.AuthTestSupport.loginAs;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -20,10 +24,13 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.pinlog.pinlogback.domain.collection.repository.CollectionRepository;
 import com.pinlog.pinlogback.domain.member.entity.Member;
 import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
+import com.pinlog.pinlogback.domain.record.repository.AiDerivedDataRepository;
 import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
 import tools.jackson.databind.JsonNode;
@@ -44,8 +51,6 @@ import tools.jackson.databind.json.JsonMapper;
 @AutoConfigureMockMvc
 class AiDerivedDataInvalidationTests extends IntegrationContainerSupport {
 
-	private static final String CANCELLED = "CANCELLED";
-
 	private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
 	@Autowired
@@ -56,6 +61,20 @@ class AiDerivedDataInvalidationTests extends IntegrationContainerSupport {
 
 	@Autowired
 	private JdbcTemplate jdbcTemplate;
+
+	/**
+	 * 롤백 테스트에서만 던지도록 스텁해 삭제 트랜잭션을 실패시킨다. 다른 테스트에서는 스텁하지
+	 * 않으므로 실제 빈에 그대로 위임한다.
+	 */
+	@MockitoSpyBean
+	private CollectionRepository collectionRepository;
+
+	/**
+	 * 롤백 테스트에서 "무효화가 실제로 호출됐는가"만 확인한다. 스텁하지 않으므로 어느 테스트에서도
+	 * 동작이 바뀌지 않는다.
+	 */
+	@MockitoSpyBean
+	private AiDerivedDataRepository aiDerivedDataRepository;
 
 	/** 적용 지점 1 — Context 삭제(6.5). */
 	@Test
@@ -212,8 +231,15 @@ class AiDerivedDataInvalidationTests extends IntegrationContainerSupport {
 	}
 
 	/**
-	 * 409로 거절된 삭제는 파생 데이터도 건드리지 않는다. 무효화가 삭제 트랜잭션 <b>안에</b> 있다는
-	 * 사실을 이 테스트가 고정한다 — 밖으로 새어 나가면 거절된 요청이 검색에서만 Context를 지운다.
+	 * 409로 거절된 삭제는 파생 데이터도 건드리지 않는다.
+	 *
+	 * <p><b>이 테스트가 고정하는 것은 제어 흐름이다</b> — 두 경로 모두 409를 무효화 호출 <b>앞</b>에서
+	 * 던지므로 {@code invalidate}가 애초에 실행되지 않는다는 사실. 롤백과는 무관하며, 무효화를
+	 * 트랜잭션 밖으로 옮겨도 이 테스트는 통과한다. 원자성은
+	 * {@link #invalidationRollsBackWhenTheDeletionTransactionFails}가 따로 고정한다.
+	 *
+	 * <p>거절 경로에 무효화가 새어 들어오면(예: 개수 검사보다 앞에서 부르면) 거절된 요청이 검색에서만
+	 * Context를 지우는 상태가 만들어진다. 그것을 막는 것이 이 테스트의 몫이다.
 	 */
 	@Test
 	void rejectedDeleteLeavesDerivedDataUntouched() throws Exception {
@@ -234,6 +260,52 @@ class AiDerivedDataInvalidationTests extends IntegrationContainerSupport {
 		assertThat(state(contextId)).containsEntry("embedding_status", "COMPLETED")
 			.containsEntry("keyword_status", "COMPLETED");
 		assertThat(embeddingDeleted(contextId)).isFalse();
+	}
+
+	/**
+	 * <b>무효화 UPDATE가 삭제 트랜잭션과 함께 되돌아간다</b>(BD-37이 (b)·(c)를 기각하며 택한 원자성).
+	 *
+	 * <p>{@code cascadeDelete}는 {@code invalidate}를 Collection 루프 <b>앞</b>에서 부른다. 그래서
+	 * {@code findByIdForUpdate}가 던지게 만들면 무효화 UPDATE 두 개가 이미 나간 뒤 트랜잭션이 실패하는
+	 * 상황이 만들어진다. 실패 지점을 {@code AiDerivedDataRepository} <b>바깥</b>에 두는 것이 중요하다 —
+	 * 스파이의 {@code callRealMethod}로 안쪽에서 던지면 트랜잭션 프록시를 우회해 {@code REQUIRES_NEW}
+	 * 분리를 놓친다(실측).
+	 *
+	 * <p>단언 둘이 짝이다. 하나만으로는 증명이 되지 않는다:
+	 *
+	 * <ul>
+	 *   <li>{@code verify(invalidate)} — 제어 흐름이 무효화까지 갔다. 없으면 "예외 때문에 애초에
+	 *       호출되지 않았다"와 구분되지 않는다.</li>
+	 *   <li>파생 데이터가 {@code COMPLETED}·{@code is_deleted = false} 그대로 — 그 UPDATE가 core 삭제와
+	 *       함께 되돌아갔다. 없으면 롤백을 보지 못한다.</li>
+	 * </ul>
+	 *
+	 * <p>{@code REQUIRES_NEW}로 떼면 안쪽이 먼저 커밋돼 두 번째가, 커밋 후 별도 호출로 떼면 첫 번째가
+	 * 깨진다(둘 다 실측). <b>대신 이 테스트는 "무효화가 Collection 루프보다 앞"이라는 순서에 의존한다</b>
+	 * — 무효화를 루프 뒤로 옮기면 트랜잭션 안에 있어도 {@code verify}가 깨지므로, 그때는 실패 주입
+	 * 지점도 함께 뒤로 옮겨야 한다.
+	 */
+	@Test
+	void invalidationRollsBackWhenTheDeletionTransactionFails() throws Exception {
+		long memberId = newMemberId();
+		long recordId = createRecord(memberId, "ai-inv-rollback-1", "유일한 맥락");
+		long contextId = firstContextId(memberId, recordId);
+		createCollection(memberId, "함께 되돌아갈 책", List.of(recordId));
+		givenDerivedData(memberId, recordId, contextId, "COMPLETED", "COMPLETED");
+
+		doThrow(new IllegalStateException("Collection 잠금 획득 실패를 가장한다"))
+			.when(collectionRepository).findByIdForUpdate(anyLong());
+
+		mockMvc.perform(delete("/v1/records/{recordId}/force", recordId).with(loginAs(memberId)))
+			.andExpect(status().isInternalServerError());
+
+		verify(aiDerivedDataRepository).invalidate(List.of(contextId));
+		assertThat(state(contextId)).containsEntry("embedding_status", "COMPLETED")
+			.containsEntry("keyword_status", "COMPLETED");
+		assertThat(embeddingDeleted(contextId)).isFalse();
+		// core 쪽도 함께 되돌아갔다 — 한쪽만 남는 부분 실패가 이 결정이 막으려던 것이다.
+		mockMvc.perform(get("/v1/records/{recordId}", recordId).with(loginAs(memberId)))
+			.andExpect(status().isOk());
 	}
 
 	private void givenDerivedData(long memberId, long recordId, long contextId,
