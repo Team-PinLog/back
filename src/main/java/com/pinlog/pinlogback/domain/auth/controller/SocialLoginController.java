@@ -1,7 +1,6 @@
 package com.pinlog.pinlogback.domain.auth.controller;
 
 import java.net.URI;
-import java.util.Locale;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -35,18 +34,11 @@ public class SocialLoginController {
 
 	@GetMapping("/{provider}/login")
 	public ResponseEntity<Void> login(@PathVariable String provider, HttpServletRequest request) {
-		String registrationId = toRegistrationId(provider);
+		String registrationId = SocialProvider.from(provider)
+			.orElseThrow(() -> new UnsupportedSocialProviderException(provider))
+			.registrationId();
 		URI target = URI.create(request.getContextPath() + AUTHORIZATION_BASE_URI + "/" + registrationId);
 
 		return ResponseEntity.status(HttpStatus.FOUND).location(target).build();
-	}
-
-	private String toRegistrationId(String provider) {
-		for (SocialProvider supported : SocialProvider.values()) {
-			if (supported.name().equalsIgnoreCase(provider)) {
-				return supported.name().toLowerCase(Locale.ROOT);
-			}
-		}
-		throw new UnsupportedSocialProviderException(provider);
 	}
 }
