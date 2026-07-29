@@ -1,4 +1,4 @@
-package com.pinlog.pinlogback.domain.record.repository;
+package com.pinlog.pinlogback.domain.ai.repository;
 
 import java.util.List;
 import java.util.Map;
@@ -21,10 +21,10 @@ import org.springframework.stereotype.Repository;
  * AI 워커 전용이고, {@code ai.context_keyword}는 조회가 {@code context_ai_state}를 조인해 자동
  * 제외하므로 백엔드가 쓰지 않는다.
  *
- * <p><b>배치는 스키마 소유가 아니라 소비 도메인을 따른다.</b> {@code ai.keyword_preset}을 읽는
- * {@code FeedKeywordRepository}가 {@code domain/feed} 아래 있는 것과 같은 선례이고,
- * {@code docs/development/package-structure.md}도 {@code ai} 도메인을 만들지 않는 방향을 명시한다.
- * 호출부 둘({@code RecordDeletionService}·{@code RecordService})이 모두 {@code domain/record/service}다.
+ * <p><b>{@code ai} 스키마에 닿는 코드는 {@code domain/ai}에 모은다.</b> 같은 패키지의
+ * {@code ContextAiStateRepository}(S15P11A705-102)와 짝이며, 배치 기준은 호출부가 아니라 <b>닿는
+ * 외부 경계</b>다 — 소비 도메인별로 흩으면 회원 탈퇴(6.9)가 붙을 때 세 번째 위치가 생긴다.
+ * 호출부는 {@code domain/record/service} 둘이다.
  */
 @Repository
 public class AiDerivedDataRepository {

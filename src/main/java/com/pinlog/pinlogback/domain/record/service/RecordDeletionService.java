@@ -5,13 +5,13 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.pinlog.pinlogback.domain.ai.repository.AiDerivedDataRepository;
 import com.pinlog.pinlogback.domain.collection.entity.Collection;
 import com.pinlog.pinlogback.domain.collection.entity.CollectionRecord;
 import com.pinlog.pinlogback.domain.collection.repository.CollectionRecordRepository;
 import com.pinlog.pinlogback.domain.collection.repository.CollectionRepository;
 import com.pinlog.pinlogback.domain.record.entity.Context;
 import com.pinlog.pinlogback.domain.record.entity.Record;
-import com.pinlog.pinlogback.domain.record.repository.AiDerivedDataRepository;
 import com.pinlog.pinlogback.domain.record.repository.ContextRepository;
 import com.pinlog.pinlogback.domain.record.repository.RecordRepository;
 import com.pinlog.pinlogback.global.exception.DeleteConfirmationRequiredException;

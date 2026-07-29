@@ -14,17 +14,21 @@
 
 ### `AiDerivedDataRepository` — 백엔드가 `ai`에 쓰는 전부
 
-`domain/record/repository/AiDerivedDataRepository`에 `NamedParameterJdbcTemplate` 기반 SQL 두 개를
+`domain/ai/repository/AiDerivedDataRepository`에 `NamedParameterJdbcTemplate` 기반 SQL 두 개를
 담았다. JPA 엔티티로 매핑하지 않은 이유는 `FeedKeywordRepository`와 같다 — `ai` 스키마는 AI 파트
 소유이고, 백엔드가 엔티티를 들면 소유하지 않은 스키마의 형상을 코드에 고정하게 된다.
 
-**배치도 같은 선례를 따른다.** `ai.keyword_preset`을 읽는 `FeedKeywordRepository`가 소비 도메인인
-`domain/feed` 아래 있고, `package-structure.md`는 `ai` 도메인을 만들지 않는 방향을 명시한다
-(`feed` 행 비고에 `core.feed_event`가 AI 소유임을 적어 두는 방식). **스키마 소유가 AI 파트인 것과
-이 코드가 어느 패키지에 있는지는 별개다** — 호출부 둘(`RecordDeletionService`·`RecordService`)이
-모두 `domain/record/service`이므로 `domain/record/repository`가 소비 도메인이다. 회원 탈퇴가 붙어
-`domain/member`가 두 번째 소비자가 되면 승격을 다시 본다(초안은 `domain/ai`였고 back#80 리뷰에서
-이 배치로 바꿨다 — 새 도메인을 만들지 않으므로 `package-structure.md` 갱신도 필요 없다).
+**배치 기준은 호출부가 아니라 닿는 외부 경계다.** `ai` 스키마에 닿는 코드를 `domain/ai` 한곳에
+모은다 — 같은 패키지의 `ContextAiStateRepository`(S15P11A705-102, back#82)와 짝이다. 호출부
+둘(`RecordDeletionService`·`RecordService`)은 `domain/record/service`지만, 소비 도메인별로 흩으면
+회원 탈퇴(6.9)가 붙을 때 세 번째 위치가 생기고 **`ai` 스키마 접근이 세 패키지로 갈린다.**
+
+> **경위를 남긴다.** back#80 리뷰는 `domain/record/repository`를 권했고 근거는 (1) `ai.keyword_preset`을
+> 읽는 `FeedKeywordRepository`가 `domain/feed`에 있다 (2) `package-structure.md`가 `ai` 도메인을
+> 만들지 않는 방향이다, 였다. 리뷰 시점에는 맞는 말이었으나 **직후 back#82가 `domain/ai`를 정식
+> 도메인으로 만들고 `package-structure.md`에 도메인 행까지 등록**하면서 (2)의 전제가 뒤집혔다.
+> 한 번 옮겼다가 되돌렸고, 판단 근거는 "선례를 따른다"에서 "`ai` 접근을 한 패키지에 모은다"로 바뀐다.
+> `package-structure.md`는 back#82가 이미 갱신했으므로 이 PR에서 건드리지 않는다.
 
 ```sql
 UPDATE ai.context_ai_state

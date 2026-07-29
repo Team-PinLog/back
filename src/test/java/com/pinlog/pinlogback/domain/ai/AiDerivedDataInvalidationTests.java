@@ -1,6 +1,6 @@
-package com.pinlog.pinlogback.domain.record;
+package com.pinlog.pinlogback.domain.ai;
 
-import static com.pinlog.pinlogback.domain.record.repository.AiDerivedDataRepository.CANCELLED;
+import static com.pinlog.pinlogback.domain.ai.repository.AiDerivedDataRepository.CANCELLED;
 import static com.pinlog.pinlogback.support.AuthTestSupport.loginAs;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -27,10 +27,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.pinlog.pinlogback.domain.ai.repository.AiDerivedDataRepository;
 import com.pinlog.pinlogback.domain.collection.repository.CollectionRepository;
 import com.pinlog.pinlogback.domain.member.entity.Member;
 import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
-import com.pinlog.pinlogback.domain.record.repository.AiDerivedDataRepository;
 import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
 import tools.jackson.databind.JsonNode;
