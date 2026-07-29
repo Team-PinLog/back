@@ -39,3 +39,4 @@
 | BI-21 | Refresh 재사용 시 회원 단위 세션 폐기 — 회원별 `jti` 인덱스 (S15P11A705-131) | ✅ 완료 | [BI-21](BI-21-2026-07-29-refresh-reuse-family-revocation.md) |
 | BI-23 | 삭제 경로의 AI 파생 데이터 무효화 — `context_ai_state` CANCELLED·`context_embedding.is_deleted` (S15P11A705-124) | ✅ 완료 | [BI-23](BI-23-2026-07-29-ai-derived-invalidation-on-delete.md) |
 | BI-24 | Kakao·Naver 소셜 로그인 추가 — 공급자별 사용자 정보 정규화 (S15P11A705-64) | ✅ 완료 | [BI-24](BI-24-2026-07-29-kakao-naver-login.md) |
+| BI-25 | 운영 Secret 5개를 Infra SealedSecret PR로 전달하는 수동 workflow (S15P11A705-154) | ✅ 완료 | [BI-25](BI-25-2026-07-29-runtime-secret-workflow.md) |
