@@ -49,7 +49,7 @@ class SocialAccountPersistenceTests extends IntegrationContainerSupport {
 	void findsActiveAccountByProviderAndProviderUserId() {
 		Member member = memberRepository.save(Member.create());
 		socialAccountRepository.save(
-			SocialAccount.create(member, SocialProvider.KAKAO, "kakao-42", null));
+			SocialAccount.create(member, SocialProvider.KAKAO, "kakao-42", "kakao-42@example.com"));
 
 		assertThat(socialAccountRepository.findByProviderAndProviderUserId(SocialProvider.KAKAO, "kakao-42"))
 			.isPresent();
@@ -58,19 +58,15 @@ class SocialAccountPersistenceTests extends IntegrationContainerSupport {
 	}
 
 	@Test
-	@DisplayName("이메일 없이도 저장되고 컬럼에 null로 남는다")
-	void emailIsOptional() {
-		// 공급자가 이메일을 제공하지 않거나 사용자가 동의하지 않으면 null이다(06 2.2).
-		// email에 NOT NULL이 걸려 있으면 아래 flush에서 실패한다.
+	@DisplayName("이메일 없는 계정은 저장되지 않는다")
+	void emailIsRequired() {
+		// 설정 화면이 이메일을 반드시 표시해야 하므로 값 없는 계정을 두지 않는다(06 §2.2).
+		// 정규화 계층이 먼저 끊지만, 그 층이 뚫려도 여기서 막힌다 — 마지막 방어선이다.
 		Member member = memberRepository.save(Member.create());
+		SocialAccount withoutEmail = SocialAccount.create(member, SocialProvider.NAVER, "naver-7", null);
 
-		SocialAccount saved = socialAccountRepository.saveAndFlush(
-			SocialAccount.create(member, SocialProvider.NAVER, "naver-7", null));
-
-		Long rowsWithNullEmail = jdbcTemplate.queryForObject(
-			"SELECT count(*) FROM core.social_account WHERE id = ? AND email IS NULL", Long.class, saved.getId());
-
-		assertThat(rowsWithNullEmail).isEqualTo(1L);
+		assertThatThrownBy(() -> socialAccountRepository.saveAndFlush(withoutEmail))
+			.isInstanceOf(DataIntegrityViolationException.class);
 	}
 
 	@Test

@@ -2,7 +2,6 @@ package com.pinlog.pinlogback.domain.member.entity;
 
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.SQLRestriction;
-import org.jspecify.annotations.Nullable;
 
 import com.pinlog.pinlogback.global.common.BaseEntity;
 
@@ -50,7 +49,7 @@ public class SocialAccount extends BaseEntity {
 	@Column(name = "provider_user_id", nullable = false, length = 255)
 	private String providerUserId;
 
-	@Column(name = "email", length = 255)
+	@Column(name = "email", nullable = false, length = 255)
 	private String email;
 
 	protected SocialAccount() {
@@ -64,10 +63,10 @@ public class SocialAccount extends BaseEntity {
 	}
 
 	/**
-	 * @param email 공급자가 제공하지 않거나 사용자가 동의하지 않으면 null이다.
+	 * @param email 필수다. 값 없는 계정을 두지 않으므로 정규화 계층이 먼저 끊는다(06 §2.2).
 	 */
 	public static SocialAccount create(
-		Member member, SocialProvider provider, String providerUserId, @Nullable String email) {
+		Member member, SocialProvider provider, String providerUserId, String email) {
 		return new SocialAccount(member, provider, providerUserId, email);
 	}
 

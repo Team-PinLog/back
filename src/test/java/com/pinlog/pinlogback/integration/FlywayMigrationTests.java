@@ -143,6 +143,19 @@ class FlywayMigrationTests extends IntegrationContainerSupport {
 	}
 
 	@Test
+	void socialAccountEmailIsNotNull() {
+		// V6의 유일한 산출물이다. 설정 화면이 이메일을 반드시 표시해야 하므로 값 없는 계정을
+		// 두지 않는다(06 §2.2). 애플리케이션 층의 거절이 뚫려도 여기서 막힌다.
+		String isNullable = jdbcTemplate.queryForObject(
+			"SELECT is_nullable FROM information_schema.columns"
+				+ " WHERE table_schema = 'core' AND table_name = 'social_account'"
+				+ " AND column_name = 'email'",
+			String.class);
+
+		assertThat(isNullable).isEqualTo("NO");
+	}
+
+	@Test
 	void memberTableIsCreatedByBackendMigration() throws Exception {
 		try (Connection connection = dataSource.getConnection();
 			ResultSet rs = connection.getMetaData().getColumns(null, "core", "member", null)) {

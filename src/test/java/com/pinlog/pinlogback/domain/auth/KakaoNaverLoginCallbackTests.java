@@ -61,23 +61,34 @@ class KakaoNaverLoginCallbackTests extends SocialLoginTestSupport {
 
 	@ParameterizedTest(name = "{0}")
 	@CsvSource({"kakao, KAKAO, 811003", "naver, NAVER, naver-id-no-email"})
-	@DisplayName("이메일이 없는 응답에서도 가입이 성공한다")
-	void callbackSucceedsWithoutEmail(String registrationId, SocialProvider expected, String subject)
+	@DisplayName("이메일이 없는 응답이면 가입하지 않고 실패로 돌아간다")
+	void callbackWithoutEmailDoesNotSignUp(String registrationId, SocialProvider expected, String subject)
 		throws Exception {
-		// 공급자가 이메일을 주지 않거나 사용자가 동의하지 않으면 속성 자체가 없다(06 2.2).
-		// 이 경로가 막히면 Kakao에서 가입이 통째로 실패한다 — 이메일 동의는 선택 항목이다.
+		// 이메일은 필수다(06 §2.2). 설정 화면이 이 값을 반드시 표시해야 하므로 값 없는 계정을
+		// 두지 않는다. 공급자 콘솔이 이메일을 필수 동의로 두고 있어 사용자가 이 경로를 밟지는
+		// 않지만, 그 설정이 깨졌을 때 값 없는 계정이 조용히 만들어지는 것을 여기서 막는다.
+		long membersBefore = countMembers();
 		provider.useEmail(null);
 		try {
 			HttpResponse<String> callback = completeLogin(port, registrationId, subject);
 
 			assertThat(callback.statusCode())
-				.as("이메일 없음은 실패가 아니다. body=%s", callback.body())
+				.as("실패도 리다이렉트로 돌아간다. body=%s", callback.body())
 				.isBetween(300, 399);
 			assertThat(callback.headers().firstValue("Location"))
+				.as("사유별로 error 값을 가르지 않는다(08 §3.2)")
 				.get().asString()
-				.doesNotContain("error=");
+				.contains("error=OAUTH_FAILED");
+			assertThat(callback.headers().allValues("Set-Cookie"))
+				.as("가입하지 않았으므로 인증 쿠키가 나가면 안 된다")
+				.noneMatch(header -> header.startsWith("access_token=")
+					|| header.startsWith("refresh_token="));
 			assertThat(socialAccountRepository.findByProviderAndProviderUserId(expected, subject))
-				.isPresent();
+				.as("값 없는 계정을 남기지 않는다")
+				.isEmpty();
+			assertThat(countMembers())
+				.as("member도 만들어지지 않는다")
+				.isEqualTo(membersBefore);
 		} finally {
 			provider.useEmail(StubOAuthProvider.EMAIL);
 		}

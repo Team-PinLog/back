@@ -49,6 +49,14 @@ class OAuthUserInfoTest {
 				.isInstanceOf(IllegalStateException.class)
 				.hasMessageContaining("sub");
 		}
+
+		@Test
+		@DisplayName("email이 없으면 끊는다")
+		void rejectsMissingEmail() {
+			assertThatThrownBy(() -> OAuthUserInfo.from("google", Map.of("sub", "google-sub-1")))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("email");
+		}
 	}
 
 	@Nested
@@ -68,13 +76,20 @@ class OAuthUserInfoTest {
 		}
 
 		@Test
-		@DisplayName("kakao_account가 없어도 가입은 성공한다")
-		void allowsMissingEmailWrapper() {
-			// 이메일 동의는 선택이고 철회도 가능하다. 이메일 없음은 실패가 아니다.
-			OAuthUserInfo info = OAuthUserInfo.from("kakao", Map.of("id", 42L));
+		@DisplayName("kakao_account가 없으면 끊는다")
+		void rejectsMissingEmailWrapper() {
+			// 감싼 키가 통째로 없는 경우다. 이메일 자리를 찾지 못하는 것도 이메일 없음이다.
+			assertThatThrownBy(() -> OAuthUserInfo.from("kakao", Map.of("id", 42L)))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("kakao_account.email");
+		}
 
-			assertThat(info.providerUserId()).isEqualTo("42");
-			assertThat(info.email()).isNull();
+		@Test
+		@DisplayName("kakao_account 안에 email이 없으면 끊는다")
+		void rejectsMissingEmailInsideWrapper() {
+			assertThatThrownBy(() -> OAuthUserInfo.from("kakao", Map.of("id", 42L, "kakao_account", Map.of())))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("kakao_account.email");
 		}
 
 		@Test
@@ -127,11 +142,12 @@ class OAuthUserInfoTest {
 		}
 
 		@Test
-		@DisplayName("response 안에 email이 없어도 가입은 성공한다")
-		void allowsMissingEmailInsideWrapper() {
-			OAuthUserInfo info = OAuthUserInfo.from("naver", Map.of("response", Map.of("id", "naver-id-2")));
-
-			assertThat(info.email()).isNull();
+		@DisplayName("response 안에 email이 없으면 끊는다")
+		void rejectsMissingEmailInsideWrapper() {
+			assertThatThrownBy(() ->
+				OAuthUserInfo.from("naver", Map.of("response", Map.of("id", "naver-id-2"))))
+				.isInstanceOf(IllegalStateException.class)
+				.hasMessageContaining("response.email");
 		}
 	}
 
