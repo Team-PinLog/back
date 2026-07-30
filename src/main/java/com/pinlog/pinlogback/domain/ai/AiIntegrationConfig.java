@@ -24,25 +24,42 @@ public class AiIntegrationConfig {
 
 	private static final Logger log = LoggerFactory.getLogger(AiIntegrationConfig.class);
 
+	/** {@code process}용 전용 인스턴스(AI 파트 소유 명세 {@code docs/ai/spec/ai-integration.md} 2·3장). */
+	@Bean
+	public RestClient aiProcessRestClient(AiProperties properties) {
+		return restClient(properties.baseUrl(), properties.process());
+	}
+
 	/**
-	 * {@code process}용 전용 인스턴스다. {@code search}는 타임아웃과 실패 정책이 달라 Bean을
-	 * 공유하지 않는다(AI 파트 소유 명세 {@code docs/ai/spec/ai-integration.md} 2·3장).
+	 * {@code search}용 전용 인스턴스다. <b>Bean을 나눈 이유는 타임아웃과 실패 정책이 다르기
+	 * 때문</b>이다(명세 2·3장: process 3s / search 5s). 검색은 질의 임베딩 생성과 벡터 검색이 응답 경로
+	 * 안에 있어 더 오래 걸리는데, 그 값을 process에 맞추면 정상 검색이 잘리고, 반대로 맞추면 접수 확인만
+	 * 받는 process가 장애 시 사용자 스레드를 5초씩 붙잡는다.
 	 *
-	 * <p>커넥션 풀이 있는 factory를 쓰지 않는 이유: 이 호출은 본문 없는 202를 받고 끝나는 짧은
-	 * 요청이고 빈도도 Context 생성 빈도를 넘지 않는다. 풀링 클라이언트를 붙이면 의존성만 늘고
-	 * 그만큼 <b>튜닝할 것도 늘어난다.</b>
+	 * <p>타입이 같은 {@link RestClient} Bean이 둘이 되므로 <b>양쪽 주입부 모두</b>
+	 * {@code @Qualifier}로 이름을 지정해야 한다 — 붙이지 않으면 기동 시
+	 * {@code NoUniqueBeanDefinitionException}이다.
+	 */
+	@Bean
+	public RestClient aiSearchRestClient(AiProperties properties) {
+		return restClient(properties.baseUrl(), properties.search());
+	}
+
+	/**
+	 * 커넥션 풀이 있는 factory를 쓰지 않는 이유: 두 호출 모두 작은 본문을 주고받고 끝나는 짧은
+	 * 요청이고 빈도도 Context 생성·사용자 검색 빈도를 넘지 않는다. 풀링 클라이언트를 붙이면 의존성만
+	 * 늘고 그만큼 <b>튜닝할 것도 늘어난다.</b>
 	 *
 	 * <p>Boot가 주는 {@code RestClient.Builder}를 주입받지 않고 {@link RestClient#builder()}로
 	 * 시작한다. 그 Bean은 별도 starter가 있어야 생기는데, 여기서 필요한 것은 기본 메시지 컨버터가
 	 * 붙은 빈 builder 하나뿐이라 <b>연동 하나 때문에 의존성을 늘릴 이유가 없다.</b>
 	 */
-	@Bean
-	public RestClient aiProcessRestClient(AiProperties properties) {
+	private RestClient restClient(String baseUrl, AiProperties.Timeouts timeouts) {
 		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-		requestFactory.setConnectTimeout(properties.process().connectTimeout());
-		requestFactory.setReadTimeout(properties.process().readTimeout());
+		requestFactory.setConnectTimeout(timeouts.connectTimeout());
+		requestFactory.setReadTimeout(timeouts.readTimeout());
 		return RestClient.builder()
-			.baseUrl(properties.baseUrl())
+			.baseUrl(baseUrl)
 			.requestFactory(requestFactory)
 			.build();
 	}

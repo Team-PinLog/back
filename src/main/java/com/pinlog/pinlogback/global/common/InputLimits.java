@@ -29,6 +29,17 @@ public final class InputLimits {
 	public static final int CONTEXT_BODY_MAX = 500;
 
 	/**
+	 * 자연어 검색 질의 길이. Context 본문과 <b>같은 값</b>이며 이유도 같다 — 질의도 그대로 임베딩
+	 * 입력이 되어 호출 비용과 직결된다(AI 설계 9.2: 질의는 분해하지 않고 전체를 한 번 임베딩한다).
+	 *
+	 * <p><b>API 명세 1.9의 상한 표에는 이 항목이 없다.</b> 명세가 금지한 것이 아니라 아직 다루지 않은
+	 * 자리이며, 상한이 아예 없으면 임의 길이의 문자열이 곧바로 외부 임베딩 호출 비용이 되므로
+	 * 백엔드 방어로 둔다. FastAPI 쪽 스키마도 {@code min_length}만 있고 상한이 없다
+	 * (ai 레포 {@code app/schema/search.py}). 명세에 반영되면 그 값이 정본이다.
+	 */
+	public static final int SEARCH_QUERY_MAX = CONTEXT_BODY_MAX;
+
+	/**
 	 * 한 요청이 담을 수 있는 Feed 이벤트 수(API 명세 10.2). {@code RECORD_IDS_MAX}·
 	 * {@code CursorPage.MAX_SIZE}와 <b>같은 값</b>으로 둔다 — 요청 배열마다 상한을 따로 정하면
 	 * "서버 방어 상한이 얼마인가"에 답이 여러 개가 된다(S15P11A705-117 규약).

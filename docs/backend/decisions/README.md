@@ -100,3 +100,4 @@
 | [BD-36](BD-36-pending-insert-in-transaction-process-call-after-commit.md) | PENDING INSERT는 Core 트랜잭션 안에, `process` 호출은 커밋 이후 비동기로 | Accepted | S15P11A705-102 |
 | [BD-37](BD-37-ai-derived-invalidation-inside-deletion-transaction.md) | AI 파생 데이터 무효화를 삭제 트랜잭션 안에서 백엔드가 직접 쓴다 | Accepted | S15P11A705-124 |
 | [BD-38](BD-38-published-predicate-per-layer.md) | 발행 여부 판정은 층마다 자체 보유하고(아홉 곳), 대가를 각 자리를 지키는 테스트로 갚는다 | Accepted | S15P11A705-148 |
+| [BD-39](BD-39-embedding-profile-in-application-config.md) | Embedding Profile을 `application.yml` 리터럴로 두고 환경변수는 덮어쓰기로만 — 런타임 대조가 성립하려면 Spring도 값을 가져야 한다 | Accepted | S15P11A705-135 |
