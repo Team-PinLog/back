@@ -43,3 +43,4 @@
 | BI-26 | 운영 Secret 5개를 Infra SealedSecret PR로 전달하는 수동 workflow (S15P11A705-154) | ✅ 완료 | [BI-26](BI-26-2026-07-29-runtime-secret-workflow.md) |
 | BI-27 | 소셜 로그인 이메일 필수화 — 컬럼 NOT NULL·정규화 거절 (S15P11A705-152) | ✅ 완료 | [BI-27](BI-27-2026-07-30-social-login-email-required.md) |
 | BI-28 | 재스캔 Scheduler와 FAILED Finalizer — 유실·정지된 AI 처리 복구 (S15P11A705-159) | ✅ 완료 | [BI-28](BI-28-2026-07-30-ai-rescan-scheduler.md) |
+| BI-29 | 회원 탈퇴 — 마스킹·연쇄 소프트 삭제·AI 무효화·세션 폐기 (S15P11A705-65) | ✅ 완료 | [BI-29](BI-29-2026-07-30-member-withdrawal.md) |
