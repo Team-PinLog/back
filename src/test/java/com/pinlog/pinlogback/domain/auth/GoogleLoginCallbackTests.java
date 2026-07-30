@@ -68,6 +68,24 @@ class GoogleLoginCallbackTests extends SocialLoginTestSupport {
 	}
 
 	@Test
+	@DisplayName("이메일이 없는 응답이면 가입하지 않고 실패로 돌아간다")
+	void callbackWithoutEmailDoesNotSignUp() throws Exception {
+		// 이메일 필수는 공급자와 무관한 계약이다(06 §2.2). Google도 같은 방어선을 지난다.
+		long membersBefore = countMembers();
+		provider.useEmail(null);
+		try {
+			var callback = completeLogin(port, "google-sub-no-email");
+
+			assertThat(callback.headers().firstValue("Location"))
+				.get().asString()
+				.contains("error=OAUTH_FAILED");
+			assertThat(countMembers()).isEqualTo(membersBefore);
+		} finally {
+			provider.useEmail(StubOAuthProvider.EMAIL);
+		}
+	}
+
+	@Test
 	@DisplayName("인가 요청을 세션에 저장하지 않는다")
 	void loginDoesNotCreateHttpSession() throws Exception {
 		// STATELESS 선언과 어긋나지 않으려면 인가 요청이 쿠키에 담겨야 한다.
