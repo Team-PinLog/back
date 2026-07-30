@@ -3,7 +3,7 @@
 - **상태**: Accepted
 - **날짜**: 2026-07-30
 - **관련**: S15P11A705-159,
-  [BI-26](../implements/BI-26-2026-07-30-ai-rescan-scheduler.md),
+  [BI-28](../implements/BI-28-2026-07-30-ai-rescan-scheduler.md),
   [BD-17](BD-17-async-without-message-queue.md)(메시지 큐 없이 비동기),
   [BD-36](BD-36-pending-insert-in-transaction-process-call-after-commit.md),
   AI 파트 소유 명세 `docs/ai/spec/ai-rescan-scheduler.md` §3·§4.2,

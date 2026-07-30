@@ -1,4 +1,4 @@
-# BI-26. 재스캔 Scheduler와 FAILED Finalizer
+# BI-28. 재스캔 Scheduler와 FAILED Finalizer
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-30
