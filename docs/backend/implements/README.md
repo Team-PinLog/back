@@ -41,3 +41,4 @@
 | BI-24 | Kakao·Naver 소셜 로그인 추가 — 공급자별 사용자 정보 정규화 (S15P11A705-64) | ✅ 완료 | [BI-24](BI-24-2026-07-29-kakao-naver-login.md) |
 | BI-25 | 개인 자연어 검색 백엔드 연동 — FastAPI 호출·Core 재검증·Record 단위 조립 (S15P11A705-135) | ✅ 완료 | [BI-25](BI-25-2026-07-29-personal-search-backend-integration.md) |
 | BI-26 | 운영 Secret 5개를 Infra SealedSecret PR로 전달하는 수동 workflow (S15P11A705-154) | ✅ 완료 | [BI-26](BI-26-2026-07-29-runtime-secret-workflow.md) |
+| BI-28 | 재스캔 Scheduler와 FAILED Finalizer — 유실·정지된 AI 처리 복구 (S15P11A705-159) | ✅ 완료 | [BI-28](BI-28-2026-07-30-ai-rescan-scheduler.md) |

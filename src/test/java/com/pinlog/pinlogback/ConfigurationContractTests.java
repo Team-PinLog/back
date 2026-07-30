@@ -85,6 +85,32 @@ class ConfigurationContractTests {
 			.isEqualTo("${PINLOG_AI_EMBEDDING_PROFILE:openai-text-embedding-3-small-1536-cosine-v1}");
 	}
 
+	/**
+	 * 재스캔 파라미터는 AI 파트 소유 명세 {@code docs/ai/spec/ai-rescan-scheduler.md} 2장이 정본이다.
+	 * 값을 파일 자체로 고정하는 이유는 <b>어긋나도 아무 테스트가 깨지지 않기</b> 때문이다 — 만료를
+	 * 검증하는 통합 테스트는 자기 임계값을 덮어 쓰므로 기본값이 무엇이든 통과한다.
+	 *
+	 * <p>{@code interval}만 ISO-8601인 것은 실수가 아니다. 이 값은 Boot의 완화된 바인딩이 아니라
+	 * {@code @Scheduled(fixedDelayString)}이 직접 파싱하고, 그쪽은 숫자(밀리초)나 ISO-8601만 받는다.
+	 * {@code 5m}으로 적으면 {@code NumberFormatException}으로 기동이 실패한다.
+	 */
+	@Test
+	void theRescanParametersMatchTheOwningSpec() throws IOException {
+		Map<String, Object> defaults = load("application.yml");
+
+		assertThat(defaults.get("pinlog.ai.rescan.interval"))
+			.as("@Scheduled가 직접 파싱하므로 5m이 아니라 ISO-8601이어야 한다")
+			.isEqualTo("PT5M");
+		assertThat(defaults.get("pinlog.ai.rescan.pending-expiry")).isEqualTo("5m");
+		assertThat(defaults.get("pinlog.ai.rescan.processing-expiry"))
+			.as("실제로 처리 중일 가능성을 고려해 PENDING보다 길다")
+			.isEqualTo("10m");
+		assertThat(String.valueOf(defaults.get("pinlog.ai.rescan.max-retry")))
+			.as("정본은 DB의 CHECK (retry_count BETWEEN 0 AND 3)이다 — 올리면 증가 UPDATE가 실패한다")
+			.isEqualTo("3");
+		assertThat(String.valueOf(defaults.get("pinlog.ai.rescan.batch-size"))).isEqualTo("100");
+	}
+
 	@Test
 	void prodProfileStillHidesApiDocumentation() throws IOException {
 		Map<String, Object> prod = load("application-prod.yml");
