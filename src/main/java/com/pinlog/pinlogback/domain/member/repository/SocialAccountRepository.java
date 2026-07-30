@@ -1,5 +1,6 @@
 package com.pinlog.pinlogback.domain.member.repository;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -15,4 +16,7 @@ public interface SocialAccountRepository extends JpaRepository<SocialAccount, Lo
 	 * 신규 가입 흐름을 탄다(docs/static/08_API_명세.md 3.2).
 	 */
 	Optional<SocialAccount> findByProviderAndProviderUserId(SocialProvider provider, String providerUserId);
+
+	/** 탈퇴 시 마스킹 대상. 한 회원이 여러 공급자 계정을 가질 수 있어 목록이다(데이터모델 6.9). */
+	List<SocialAccount> findByMemberId(Long memberId);
 }
