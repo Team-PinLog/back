@@ -47,23 +47,39 @@ public class ContextProcessRequestAssembler {
 	 */
 	@Transactional(readOnly = true)
 	public Optional<ContextProcessRequest> assemble(ContextAiRequested event) {
-		Optional<Context> context = contextRepository.findById(event.contextId());
-		if (context.isEmpty()) {
-			return Optional.empty();
-		}
+		return contextRepository.findById(event.contextId())
+			.flatMap(context -> assembleFrom(context, event.memberId(), event.recordId()));
+	}
+
+	/**
+	 * {@code context_id}만 들고 조립한다. 재스캔이 쓰는 진입점이다
+	 * (AI 파트 소유 명세 {@code docs/ai/spec/ai-rescan-scheduler.md} 5.1).
+	 *
+	 * <p>이벤트 경로와 갈라 둔 이유는 <b>가진 정보가 다르기</b> 때문이다. 재스캔은 상태 행에서 후보를
+	 * 집으므로 {@code context_id}뿐이고, {@code member_id}·{@code record_id}는 Context의 비정규화
+	 * 컬럼에서 읽는다. 반대로 이벤트 경로는 발행 시점의 값을 그대로 쓴다 — 그쪽을 이 메서드로 바꾸면
+	 * 같은 값을 두 번 읽게 되고, 무엇보다 <b>이미 검증된 경로의 동작을 이 티켓이 건드리게 된다.</b>
+	 *
+	 * <p>Context가 없으면(소프트 삭제·수정 교체) {@link Optional#empty()}다. 이것이 재스캔에서
+	 * <b>삭제 확인</b> 그 자체다 — 별도 질의를 두지 않는다.
+	 */
+	@Transactional(readOnly = true)
+	public Optional<ContextProcessRequest> assemble(long contextId) {
+		return contextRepository.findById(contextId)
+			.flatMap(context -> assembleFrom(context, context.getMemberId(), context.getRecordId()));
+	}
+
+	private Optional<ContextProcessRequest> assembleFrom(Context context, Long memberId, Long recordId) {
 		// Place는 Record를 거쳐야 나온다. Record까지 지워졌으면 placeMeta 없이 보내지 않고 생략한다 —
 		// Record가 없다는 것은 이 Context도 이미 함께 지워졌다는 뜻이다(연쇄 삭제).
-		Optional<Record> record = recordRepository.findById(event.recordId());
-		if (record.isEmpty()) {
-			return Optional.empty();
-		}
-		return Optional.of(new ContextProcessRequest(
-			event.contextId(),
-			event.memberId(),
-			event.recordId(),
-			context.get().getBody(),
-			placeMetaOf(record.get())
-		));
+		return recordRepository.findById(recordId)
+			.map(record -> new ContextProcessRequest(
+				context.getId(),
+				memberId,
+				recordId,
+				context.getBody(),
+				placeMetaOf(record)
+			));
 	}
 
 	private ContextProcessRequest.PlaceMeta placeMetaOf(Record record) {

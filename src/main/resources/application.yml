@@ -131,6 +131,26 @@ pinlog:
       # 스레드 점유만 늘린다(AI 파트 소유 명세 docs/ai/spec/ai-integration.md 3장).
       connect-timeout: 1s
       read-timeout: 5s
+    # 유실·정지된 AI 처리를 복구하는 재스캔과 FAILED Finalizer. 정본은 AI 파트가 소유한
+    # docs/ai/spec/ai-rescan-scheduler.md 2장이며 여기서 임의로 바꾸지 않는다. 상수로 박지 않는
+    # 이유는 튜닝 대상인 것도 있지만, 무엇보다 "만료됐다"를 테스트에서 만들 수 없기 때문이다.
+    rescan:
+      # ISO-8601이다. 다른 Duration 값들처럼 5m으로 적을 수 없다 — 이 값만은 Boot의 완화된 바인딩이
+      # 아니라 @Scheduled(fixedDelayString)이 직접 파싱하고, 그쪽은 숫자(밀리초)나 ISO-8601만 받는다.
+      # 5m으로 두면 NumberFormatException으로 기동이 실패한다.
+      interval: PT5M
+      # 이 시간을 넘긴 PENDING은 요청이 유실된 것으로 본다(큐 포화·호출 실패·프로세스 종료).
+      pending-expiry: 5m
+      # PENDING보다 길다. 실제로 처리 중일 가능성을 고려한 값이며, 10분은 Embedding + LLM 판정의
+      # 정상 소요를 크게 웃돈다. 이 시간을 넘긴 PROCESSING은 워커 프로세스 종료로 유실된 것이다.
+      processing-expiry: 10m
+      # 정본은 DB의 CHECK (retry_count BETWEEN 0 AND 3)이다(V100__ai_tables.sql). 이 값만 올리면
+      # 증가 UPDATE가 제약 위반으로 실패한다. Backoff는 두지 않는다 — 주기 5분이 그 자체로 최소
+      # 간격이고, 3회뿐이라 지수 backoff의 이득이 없다.
+      max-retry: 3
+      # 재스캔과 Finalizer가 각각 한 회차에 집는 상한. 후보 건수가 계속 이 값에 붙어 있으면
+      # FastAPI가 처리량을 못 따라가고 있다는 신호다(명세 8장).
+      batch-size: 100
   # Feed 추천 정책값. 정본은 AI 파트가 소유한 docs/ai/spec/feed-scoring.md이며 여기서 임의로
   # 바꾸지 않는다. 상수로 박지 않고 설정으로 두는 이유는 튜닝 대상이기 때문이다 — 재배포 없이
   # 조정할 수 있어야 하고, 가중치를 바꿔도 순위가 안 바뀌는 회귀를 테스트가 잡을 수 있어야 한다.
