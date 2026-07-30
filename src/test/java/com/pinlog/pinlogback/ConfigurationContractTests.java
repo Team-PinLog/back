@@ -63,6 +63,28 @@ class ConfigurationContractTests {
 			.isEqualTo("${DB_PASSWORD}");
 	}
 
+	/**
+	 * BD-39를 파일 자체로 고정한다. 두 가지가 함께 참이어야 결정이 지켜진 것이다.
+	 *
+	 * <ul>
+	 *   <li><b>리터럴이 파일에 있다</b> — 정본이 코드에 있어야 Profile 교체가 PR·리뷰·git 이력을
+	 *       거친다. 값은 비밀이 아니라 공용 계약 05 §7.1 표에 공개된 문자열이다.</li>
+	 *   <li><b>기본값이 있다</b> — 환경변수는 실험·롤백용 덮어쓰기이지 필수가 아니다. 필수로 두면
+	 *       주입 누락이 <b>빈 Profile 전송</b>이 되어 모든 검색이 422로 죽는다.</li>
+	 * </ul>
+	 *
+	 * <p>이 값이 FastAPI 설정과 어긋나면 검색은 빈 결과가 아니라 오류가 된다(런타임 대조). 그 동작은
+	 * {@code RecordSearchApiTests}가 따로 고정한다 — 여기서 보는 것은 "무엇을 보내는가"뿐이다.
+	 */
+	@Test
+	void theEmbeddingProfileIsCommittedAsALiteralWithAnOptionalEnvironmentOverride() throws IOException {
+		Object profile = load("application.yml").get("pinlog.ai.embedding-profile");
+
+		assertThat(profile)
+			.as("정본은 코드다 — 배포 콘솔 편집 한 번으로 기존 임베딩 전체가 조회 대상에서 빠지면 안 된다(BD-39)")
+			.isEqualTo("${PINLOG_AI_EMBEDDING_PROFILE:openai-text-embedding-3-small-1536-cosine-v1}");
+	}
+
 	@Test
 	void prodProfileStillHidesApiDocumentation() throws IOException {
 		Map<String, Object> prod = load("application-prod.yml");

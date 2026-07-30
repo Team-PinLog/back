@@ -1,4 +1,4 @@
-# BI-25. 운영 Secret 전달 workflow
+# BI-26. 운영 Secret 전달 workflow
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-29

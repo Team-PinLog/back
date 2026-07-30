@@ -13,6 +13,15 @@ public enum ErrorCode {
 	DUPLICATE_FOLLOW(HttpStatus.CONFLICT, "이미 팔로우한 책장입니다."),
 	DELETE_CONFIRMATION_REQUIRED(HttpStatus.CONFLICT, "삭제 확인이 필요합니다."),
 	RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다."),
+	// AI 검색 실패 둘. 빈 결과로 치환하지 않는 것이 계약이다 — 빈 결과는 "일치하는 기록이 없음"으로
+	// 보여 장애·설정 오류를 숨긴다(ai 레포 docs/spec/model-profile.md 3.1). 자연어 검색에만 해당하며
+	// 저장·조회·발행에는 영향이 없다(AI 설계 응답 조립 6.4).
+	//
+	// 둘 다 503이지만 code를 가른다. 사람이 해야 할 일이 정반대이기 때문이다 — 불일치는 배포 설정을
+	// 고쳐야 풀리고(재시도해도 그대로), 그 외는 대개 기다리면 낫는다. 한 code로 뭉치면 운영자가
+	// 설정 오류를 상대 장애로 읽는다. 응답에는 code만 싣고 Profile 값 자체는 로그에만 남긴다.
+	SEARCH_PROFILE_MISMATCH(HttpStatus.SERVICE_UNAVAILABLE, "검색 설정이 일치하지 않아 검색할 수 없습니다."),
+	SEARCH_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "검색을 일시적으로 사용할 수 없습니다."),
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다."),
 	METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "허용되지 않은 요청 메서드입니다."),
 	UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 요청 형식입니다.");

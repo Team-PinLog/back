@@ -9,7 +9,6 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
@@ -26,15 +25,18 @@ class RuntimeSecretWorkflowContractTests {
 	private static final Path BACKEND_CI = Path.of(".github/workflows/backend-ci.yml");
 	private static final String ACTION =
 		"Team-PinLog/infra/.github/actions/sealedsecret-infra-pr"
-			+ "@84458bf35e341b79e91ce21a3667e9d3f7454068";
-	private static final Set<String> EXPECTED_SECRETS = Set.of(
+			+ "@b3f26ab8909ed7732e15aa64f432a720ec531401";
+	private static final List<String> OWNER_SECRETS = List.of(
 		"JWT_PRIVATE_KEY",
+		"GOOGLE_CLIENT_ID",
 		"GOOGLE_CLIENT_SECRET",
+		"KAKAO_CLIENT_ID",
 		"KAKAO_CLIENT_SECRET",
+		"NAVER_CLIENT_ID",
 		"NAVER_CLIENT_SECRET",
-		"PINLOG_AI_INTERNAL_SECRET",
-		"PINLOG_INFRA_SECRET_PR_TOKEN"
+		"PINLOG_AI_INTERNAL_SECRET"
 	);
+	private static final String BRIDGE_SECRET = "PINLOG_INFRA_SECRET_PR_TOKEN";
 
 	@Test
 	void workflowHasOnlyTheManualTriggerAndMinimumPermissions() throws IOException {
@@ -81,10 +83,20 @@ class RuntimeSecretWorkflowContractTests {
 		));
 
 		Map<Object, Object> environment = map(action.get("env"));
-		assertThat(environment.keySet()).containsExactlyInAnyOrderElementsOf(EXPECTED_SECRETS);
-		for (String secret : EXPECTED_SECRETS) {
+		assertThat(environment.keySet()).containsExactlyElementsOf(
+			List.of(
+				"JWT_PRIVATE_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET",
+				"KAKAO_CLIENT_ID", "KAKAO_CLIENT_SECRET", "NAVER_CLIENT_ID",
+				"NAVER_CLIENT_SECRET", "PINLOG_AI_INTERNAL_SECRET", BRIDGE_SECRET
+			)
+		);
+		for (String secret : OWNER_SECRETS) {
 			assertThat(environment.get(secret)).isEqualTo("${{ secrets." + secret + " }}");
 		}
+		assertThat(OWNER_SECRETS).doesNotContain(BRIDGE_SECRET);
+		assertThat(environment.get(BRIDGE_SECRET))
+			.isEqualTo("${{ secrets.PINLOG_INFRA_SECRET_PR_TOKEN }}");
+		assertThat(action).doesNotContainKey("run");
 	}
 
 	@Test
