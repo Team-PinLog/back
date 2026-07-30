@@ -47,7 +47,7 @@ com.pinlog.pinlogback
 | `feed` | 피드 조회·서빙 API | 관측 로그 `core.feed_event` 테이블은 **AI 소유(V102)** — 재정의 금지, 조회만 |
 | `auth` | 인증·인가 | **별도 인증 PR에서 생성.** 그 전에는 만들지 않음 |
 | `search` | 개인 자연어 검색 조회 API | Record를 돌려주지만 `record`에 두지 않습니다 — 진입 경로(`/v1/search/records`)와 조립 규칙(FastAPI 응답의 Core 재검증)이 Record CRUD와 다릅니다. FastAPI 호출 자체는 `ai`가 맡고 이 도메인은 그 결과를 검증·조립만 합니다 |
-| `ai` | FastAPI AI Server 연동과 `ai` 스키마 접근 | 애그리거트가 아니라 **파트 경계**입니다. 하위 계층은 `repository`(백엔드가 `ai`에 쓰는 SQL과 응답 조립용 읽기) · `client`(내부 API 호출) · `event`(커밋 이후 훅) · `service`(요청 조립) · `exception`(호출 실패를 도메인 오류로 옮김)이며, `controller`·`entity`는 없습니다 — 외부 진입점이 아니고 남의 스키마를 엔티티로 고정하지 않습니다 |
+| `ai` | FastAPI AI Server 연동과 `ai` 스키마 접근 | 애그리거트가 아니라 **파트 경계**입니다. 하위 계층은 `repository`(백엔드가 `ai`에 쓰는 SQL과 응답 조립용 읽기) · `client`(내부 API 호출) · `event`(커밋 이후 훅) · `scheduler`(시간이 촉발하는 훅) · `service`(요청 조립·트랜잭션 경계) · `exception`(호출 실패를 도메인 오류로 옮김)이며, `controller`·`entity`는 없습니다 — 외부 진입점이 아니고 남의 스키마를 엔티티로 고정하지 않습니다. `event`와 `scheduler`를 가른 기준은 **무엇이 호출을 촉발하는가**이고, 그에 따라 트랜잭션 경계도 다릅니다 — `event`는 남의 트랜잭션이 커밋된 뒤에 얹히고, `scheduler`는 자기 트랜잭션을 열고 닫습니다(S15P11A705-159) |
 
 > 검토 필요: `member` 행의 "공개 프로필·소개를 포함합니다"는 `docs/static/06_데이터모델_및_무결성.md` 2.1(익명 서비스이므로 저장하는 개인정보가 없다)과 실제 구현체(`domain/member/entity/Member` — 개인정보·프로필 컬럼 없음)에 모두 반합니다. CLAUDE.md 9번 규칙에 따라 임의로 고치지 않고 충돌로 기록만 남깁니다.
 >
