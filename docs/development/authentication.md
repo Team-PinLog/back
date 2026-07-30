@@ -214,8 +214,13 @@ public CursorPage<CollectionSummaryResponse> listMine(@LoginMember MemberPrincip
 
 ```bash
 openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 -out jwt-local.pem
-# .env 에 한 줄로: JWT_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+# .env 에 한 줄로 (따옴표 없이):
+# JWT_PRIVATE_KEY=-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----
 ```
+
+**따옴표로 감싸지 마세요.** `application.yml`이 이 파일을 `spring.config.import: optional:file:.env[.properties]`로 올리므로 **properties 형식으로 파싱**됩니다. properties에서 따옴표는 구분자가 아니라 값의 일부이고, `JwtKeyProvider.fromPem`이 지우는 것은 공백뿐이어서 그 문자가 살아남아 base64 디코딩이 `Illegal base64 character 22`로 깨집니다. 같은 파서가 `\n`은 실제 개행으로 되돌리므로 개행 표기는 이 방식이 맞습니다.
+
+운영 Secret은 반대입니다 — `\n` 두 글자가 아니라 **실제 개행이 들어간 PEM 원문**을 넣습니다([back#105](https://github.com/Team-PinLog/back/issues/105)). `fromPem`이 공백·개행을 모두 지우므로 원문이 그대로 통과합니다.
 
 ### 통합 테스트
 
