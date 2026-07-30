@@ -118,14 +118,20 @@ public class RecordSearchService {
 	 * 집계하지만 <b>Spring도 이중으로 보장한다</b>(응답 조립 명세 6.3). 앞선 것이 유사도가 높으므로
 	 * 먼저 온 것을 남기며, 그것이 곧 대표 {@code matchedContext}다.
 	 *
-	 * <p>{@code recordId}·{@code contextId}·{@code similarity}가 비어 온 항목은 버린다. 계약상 올 수
-	 * 없는 형태지만, 여기서 걸러 두지 않으면 아래 조립에서 {@code NullPointerException}이 되어
-	 * 상대 응답의 결함이 우리 500으로 나타난다.
+	 * <p>항목 자체가 {@code null}이거나 {@code recordId}·{@code contextId}·{@code similarity}가 비어 온
+	 * 항목은 버린다. 계약상 올 수 없는 형태지만, 여기서 걸러 두지 않으면 아래 조립에서
+	 * {@code NullPointerException}이 되어 상대 응답의 결함이 우리 500으로 나타난다.
+	 *
+	 * <p><b>{@code match == null}까지 보는 이유</b>는 방어 층을 맞추는 것이다.
+	 * {@link com.pinlog.pinlogback.domain.ai.client.AiSearchClient}가 최상위 {@code results == null}을
+	 * 이미 방어하는데 그것도 계약상으로는 똑같이 올 수 없는 형태다 — 최상위는 믿지 않고 원소는 믿으면
+	 * 이 메서드가 약속한 범위와 실제 방어 범위가 어긋난다.
 	 */
 	private List<AiSearchResponse.Match> distinctByRecord(List<AiSearchResponse.Match> matches) {
 		Map<Long, AiSearchResponse.Match> best = new LinkedHashMap<>();
 		for (AiSearchResponse.Match match : matches) {
-			if (match.recordId() == null || match.contextId() == null || match.similarity() == null) {
+			if (match == null || match.recordId() == null || match.contextId() == null
+				|| match.similarity() == null) {
 				continue;
 			}
 			best.putIfAbsent(match.recordId(), match);

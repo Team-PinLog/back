@@ -32,6 +32,7 @@ import com.pinlog.pinlogback.domain.record.entity.Context;
 import com.pinlog.pinlogback.domain.record.entity.Record;
 import com.pinlog.pinlogback.domain.record.repository.ContextRepository;
 import com.pinlog.pinlogback.domain.record.repository.RecordRepository;
+import com.pinlog.pinlogback.global.common.InputLimits;
 import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
 /**
@@ -248,6 +249,22 @@ class RecordSearchApiTests extends IntegrationContainerSupport {
 			.andExpect(jsonPath("$.data.items").isEmpty());
 	}
 
+	/**
+	 * 필수 필드가 빈 것이 아니라 <b>배열 원소 자체가 {@code null}</b>인 경우. 최상위
+	 * {@code results}는 못 믿는데 원소는 믿으면 방어 층이 어긋나고, 그 틈이 곧 {@code match.recordId()}
+	 * 의 {@code NullPointerException}, 즉 <b>상대 응답의 결함이 우리 500으로</b> 나타나는 자리다.
+	 */
+	@Test
+	void nullElementInResultsIsDroppedInsteadOfCrashing() throws Exception {
+		long me = newMemberId();
+		STUB.willRespondWith(FastApiSearchStub.Mode.NULL_MATCH_ELEMENT);
+
+		search(me, "질의")
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items").isEmpty())
+			.andExpect(jsonPath("$.data.bounds").value(Matchers.nullValue()));
+	}
+
 	@Test
 	void serverErrorFromFastApiBecomesAnErrorResponse() throws Exception {
 		long me = newMemberId();
@@ -414,6 +431,46 @@ class RecordSearchApiTests extends IntegrationContainerSupport {
 				Matchers.containsInAnyOrder("친구", "비 오는 날")));
 	}
 
+	/**
+	 * {@code PRIVATE_ONLY}는 05 §8.4에서 <b>본인 조회와 타인 조회를 가르는 바로 그 값</b>이다.
+	 * 이 단언이 없으면 화이트리스트를 {@code IN ('PUBLIC')}으로 좁혀도 테스트가 전부 초록이고,
+	 * 실제로는 소유자 Keyword의 절반이 조용히 사라진다 — 가시성 필터를 WHERE 절에 둔 이유가
+	 * 그 조용한 누락을 막는 것인데, 잡을 단언이 없으면 이유가 지켜지는지 알 수 없다.
+	 */
+	@Test
+	void privateOnlyKeywordsAreVisibleToTheOwner() throws Exception {
+		long me = newMemberId();
+		long recordId = newRecord(me, "search-kw-private", "37.5000000", "127.0000000");
+		long matched = newContext(recordId, me, "매칭된 맥락");
+		attachKeyword(matched, insertPreset("혼자 가기 좋은", "PRIVATE_ONLY", true));
+		attachKeyword(matched, insertPreset("모두에게 보이는", "PUBLIC", true));
+		attachKeyword(matched, insertPreset("차단된 것", "BLOCKED", true));
+		STUB.willReturn(new FastApiSearchStub.Match(recordId, matched, 0.71));
+
+		search(me, "질의")
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items[0].keywords",
+				Matchers.containsInAnyOrder("혼자 가기 좋은", "모두에게 보이는")));
+	}
+
+	/**
+	 * 폐기된 Preset은 행 삭제가 아니라 {@code is_active = false}로 처리된다. 조회 조건이 그 플래그를
+	 * 보지 않으면 이미 내린 Keyword가 계속 응답에 실린다.
+	 */
+	@Test
+	void keywordsOfARetiredPresetAreExcluded() throws Exception {
+		long me = newMemberId();
+		long recordId = newRecord(me, "search-kw-retired", "37.5000000", "127.0000000");
+		long matched = newContext(recordId, me, "매칭된 맥락");
+		attachKeyword(matched, insertPreset("살아 있는 프리셋", "PUBLIC", true));
+		attachKeyword(matched, insertPreset("폐기된 프리셋", "PUBLIC", false));
+		STUB.willReturn(new FastApiSearchStub.Match(recordId, matched, 0.66));
+
+		search(me, "질의")
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items[0].keywords", Matchers.contains("살아 있는 프리셋")));
+	}
+
 	@Test
 	void blankQueryIsRejectedBeforeFastApiIsCalled() throws Exception {
 		long me = newMemberId();
@@ -428,6 +485,42 @@ class RecordSearchApiTests extends IntegrationContainerSupport {
 		assertThat(STUB.lastCall())
 			.as("검증에서 거절된 요청으로 임베딩 비용을 쓰지 않는다")
 			.isNull();
+	}
+
+	/**
+	 * {@code SEARCH_QUERY_MAX}는 이 티켓이 <b>명세를 넘어 새로 정한 유일한 상한</b>이다(API 명세
+	 * 1.9의 상한 표에 질의 길이가 없다). 상한이 없으면 임의 길이의 문자열이 그대로 외부 임베딩 호출
+	 * 비용이 되므로, 그 방어가 실제로 서는지는 여기서만 드러난다 — 이 단언이 없으면 누가
+	 * {@code @Size}를 떼도 나머지 테스트가 전부 통과한다.
+	 */
+	@Test
+	void anOverlongQueryIsRejectedBeforeFastApiIsCalled() throws Exception {
+		long me = newMemberId();
+		STUB.willReturn();
+
+		mockMvc.perform(post(SEARCH_URL).with(loginAs(me))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"query\": \"" + "가".repeat(InputLimits.SEARCH_QUERY_MAX + 1) + "\"}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+
+		assertThat(STUB.lastCall())
+			.as("거절된 질의로 임베딩 비용을 쓰지 않는다 — 상한을 둔 이유가 바로 그 비용이다")
+			.isNull();
+	}
+
+	/** 상한값 자체는 통과해야 한다. 이 짝이 없으면 off-by-one({@code max = 499})이 드러나지 않는다. */
+	@Test
+	void queryAtTheLengthLimitIsAccepted() throws Exception {
+		long me = newMemberId();
+		STUB.willReturn();
+
+		mockMvc.perform(post(SEARCH_URL).with(loginAs(me))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"query\": \"" + "가".repeat(InputLimits.SEARCH_QUERY_MAX) + "\"}"))
+			.andExpect(status().isOk());
+
+		assertThat(STUB.lastCall().query()).hasSize(InputLimits.SEARCH_QUERY_MAX);
 	}
 
 	@Test

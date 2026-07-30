@@ -56,6 +56,13 @@ final class FastApiSearchStub {
 		MISSING_RESULTS_FIELD,
 		/** 200 + 필수 필드가 {@code null}인 항목들. 역시 계약 위반이고 역시 500이면 안 된다. */
 		MALFORMED_RESULTS,
+		/**
+		 * 200 + <b>배열 원소 자체가 {@code null}</b>. Pydantic이 {@code list[SearchResultItem]}에
+		 * null을 허용하지 않으니 진짜 FastAPI는 이 형태를 만들지 못한다. 그래도 재현하는 이유는
+		 * 최상위 {@code results}를 못 믿는 것과 원소를 믿는 것이 <b>층이 어긋나기</b> 때문이다 —
+		 * 둘 다 계약상 올 수 없는 형태인데 한쪽만 방어하면 방어 범위가 javadoc의 약속과 달라진다.
+		 */
+		NULL_MATCH_ELEMENT,
 		/** 422 + 양쪽 Profile 값(ai 레포 {@code main.py}의 {@code ProfileMismatchError} 핸들러). */
 		PROFILE_MISMATCH,
 		/** 422 + FastAPI 기본 요청 검증 오류 본문. Profile 불일치와 <b>같은 상태 코드</b>다. */
@@ -143,6 +150,7 @@ final class FastApiSearchStub {
 				{"recordId":null,"contextId":900000001,"similarity":0.9},\
 				{"recordId":900000002,"contextId":null,"similarity":0.8},\
 				{"recordId":900000003,"contextId":900000003,"similarity":null}]}""");
+			case NULL_MATCH_ELEMENT -> respond(exchange, 200, "{\"results\":[null]}");
 			case RESULTS -> respond(exchange, 200, resultsJson());
 		}
 	}

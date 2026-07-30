@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -48,6 +49,7 @@ public class AiSearchClient {
 	/** Profile 불일치 응답에만 실리는 필드(ai 레포 {@code app/main.py}의 예외 핸들러). */
 	private static final String SERVER_PROFILE_FIELD = "serverProfile";
 	private static final String REQUEST_PROFILE_FIELD = "requestProfile";
+	private static final String PROD_PROFILE = "prod";
 
 	private final RestClient restClient;
 	private final ObjectMapper objectMapper;
@@ -55,16 +57,48 @@ public class AiSearchClient {
 	private final String embeddingProfile;
 
 	/**
-	 * 시크릿이 비었을 때 기동을 실패시키는 검사는 여기 두지 않는다. 같은 설정 키를 읽는
+	 * <b>시크릿과 Profile을 다르게 다룬다.</b>
+	 *
+	 * <p>시크릿이 비었을 때 기동을 실패시키는 검사는 여기 두지 않는다. 같은 설정 키를 읽는
 	 * {@link AiProcessClient}가 이미 운영 프로파일에서 던지므로, 두 번 검사해도 막을 수 있는 상태가
 	 * 늘지 않고 실패 메시지만 둘이 된다. 검색 쪽 401은 어차피 조용하지 않다 — 오류 응답이 된다.
+	 *
+	 * <p>{@code embedding-profile}에는 그 논거가 적용되지 않는다. <b>이 클라이언트만 읽는 키라</b>
+	 * 대신 검사해 주는 곳이 없다. 그래서 {@link #requireEmbeddingProfile}로 기동 시점에 끊는다.
 	 */
 	public AiSearchClient(@Qualifier("aiSearchRestClient") RestClient aiSearchRestClient,
-		ObjectMapper objectMapper, AiProperties properties) {
+		ObjectMapper objectMapper, AiProperties properties, Environment environment) {
 		this.restClient = aiSearchRestClient;
 		this.objectMapper = objectMapper;
 		this.internalSecret = Objects.requireNonNullElse(properties.internalSecret(), "");
-		this.embeddingProfile = properties.embeddingProfile();
+		this.embeddingProfile = requireEmbeddingProfile(properties.embeddingProfile(), environment);
+	}
+
+	/**
+	 * Profile이 없을 때의 동작을 {@link AiProcessClient}의 시크릿 검사와 같은 기준으로 가른다 —
+	 * 운영은 기동 실패, 그 외는 경고.
+	 *
+	 * <p><b>{@code application.yml}의 기본값이 이 검사를 대신하지 못한다.</b> 기본값은 변수를
+	 * <b>설정하지 않은</b> 경우만 막는다. {@code PINLOG_AI_EMBEDDING_PROFILE=}처럼 빈 값으로 정의하면
+	 * 빈 문자열이 기본값을 이기고, 그러면 FastAPI가 자기 Profile과 대조해 422를 주므로 결과는
+	 * <b>모든 검색이 503</b>이다. 이 저장소는 같은 형태를 한 번 겪었다(BT-05 — {@code .env.example}이
+	 * 자격증명을 빈 값으로 정의해 무관한 테스트가 컨텍스트 실패한 건).
+	 *
+	 * <p>검사를 두는 값어치는 <b>발견 시점</b>이다. 없으면 배포 스모크나 첫 사용자 검색까지 아무도
+	 * 모른다.
+	 */
+	private static String requireEmbeddingProfile(String profile, Environment environment) {
+		if (profile != null && !profile.isBlank()) {
+			return profile;
+		}
+		if (environment.matchesProfiles(PROD_PROFILE)) {
+			throw new IllegalStateException(
+				"운영 프로파일에는 pinlog.ai.embedding-profile(PINLOG_AI_EMBEDDING_PROFILE)이 필요하다. "
+					+ "값이 비면 FastAPI가 자기 Profile과 대조해 422로 거절하므로 모든 검색이 503이 된다");
+		}
+		log.warn("pinlog.ai.embedding-profile이 비어 있다. FastAPI가 Profile 대조에서 422로 거절하므로 "
+			+ "모든 검색이 503이 된다.");
+		return "";
 	}
 
 	/**
