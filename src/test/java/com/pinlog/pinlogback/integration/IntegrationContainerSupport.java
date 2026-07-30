@@ -39,9 +39,18 @@ import org.testcontainers.utility.DockerImageName;
 // 하는데, 두 쪽 다 @DynamicPropertySource 면 상위 클래스 쪽이 나중에 등록돼 하위를 덮어버린다
 // (실측: 그 클래스 테스트 5개가 전부 "호출이 오지 않음"으로 깨졌다). DynamicValuesPropertySource
 // 는 우선순위가 가장 높으므로, 기본값을 @TestPropertySource 로 한 단계 낮춰 두면 하위가 이긴다.
+//
+// 재스캔 주기도 늘린다. @EnableScheduling 은 전역이라 모든 @SpringBootTest 가 스케줄러를 함께
+// 띄우는데, 5분 주기로 두면 컨텍스트를 오래 공유하는 스위트에서 회차가 배경에서 돌아 다른 테스트가
+// 만든 상태 행을 건드린다. 재스캔 자체를 검증하는 테스트는 주기를 기다리지 않고 runOnce() 를 직접
+// 부르므로(그래야 결정적이다) 이 값이 크면 배경 실행만 사라지고 검증은 그대로다.
+//
+// 끄지 않고 늘리는 이유: @Scheduled 등록 자체가 검증 대상이다(fixedDelay 인지, 전용 스케줄러를
+// 쓰는지). 조건부로 끄면 그 계약을 볼 수 없다.
 @TestPropertySource(properties = {
 	"pinlog.ai.base-url=http://127.0.0.1:1",
-	"pinlog.ai.internal-secret=test-internal-secret"
+	"pinlog.ai.internal-secret=test-internal-secret",
+	"pinlog.ai.rescan.interval=PT1H"
 })
 public abstract class IntegrationContainerSupport {
 
