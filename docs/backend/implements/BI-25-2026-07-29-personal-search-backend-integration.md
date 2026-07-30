@@ -145,6 +145,58 @@ Record는 내 것인데 Context id만 남의 것이 섞인 응답도 통과하�
   삭제와 검색 사이의 짧은 창을 대역으로 재현했다.
 - **실제 FastAPI와의 통합.** 대역만 썼다. 두 서버를 붙인 스모크는 배포 게이트의 몫이다.
 
+## 리뷰 반영 (2026-07-30, back#98)
+
+`dev`가 `required_conversation_resolution`이라 미해결 스레드가 병합 게이트다. 줄 단위 지적 2건과
+리뷰가 지목한 테스트 구멍 3건을 처리했다. **도메인 계약·DB·응답 형태는 바뀌지 않았다.**
+
+### 고친 것 둘
+
+- **`AiSearchClient` — `embeddingProfile` 기동 검사.** `internalSecret`은 바로 위에서
+  `requireNonNullElse`로 받는데 `embeddingProfile`은 그대로 두고 있었다. 이 값이 빈 문자열이면
+  FastAPI가 Profile 대조에서 422를 주므로 결과는 **모든 검색이 503**이고, 그 사실을 첫 검색까지
+  아무도 모른다. `application.yml`의 기본값은 변수를 **설정하지 않은** 경우만 막는다 —
+  `PINLOG_AI_EMBEDDING_PROFILE=`처럼 빈 값으로 정의하면 빈 문자열이 기본값을 이긴다(이 저장소가
+  BT-05로 한 번 겪은 형태다).
+
+  `AiProcessClient.requireSecret`와 **같은 기준**으로 갈랐다 — 운영은 기동 실패, 그 외는 경고.
+  생성자 javadoc이 "시크릿 검사를 여기 두지 않는 이유"로 든 논거("같은 키를 읽는
+  `AiProcessClient`가 이미 검사한다")는 `embedding-profile`에 적용되지 않는다. **이 클라이언트만 읽는
+  키라 대신 검사해 주는 곳이 없다.** javadoc도 그 차이를 적도록 고쳤다.
+
+  BD-39와의 관계는 [BD-39의 "좁혀진 부분"](../decisions/BD-39-embedding-profile-in-application-config.md)에
+  적었다. 요지: 이것은 기각된 (c)(기동 시 FastAPI 조회)가 **아니다** — 상대에게 묻지 않고 우리 값이
+  있는지만 본다. 그래서 **두 값이 다른 경우는 그대로 첫 검색에서 드러난다.**
+
+- **`RecordSearchService.distinctByRecord` — `match == null` 가드.** javadoc이 이 가드의 목적을
+  "상대 응답의 결함이 우리 500으로 나타나는 것을 막는다"고 적어 두었는데 `match` **자체가 null**인
+  경우가 빠져 있었다. `{"results": [null]}`이면 `match.recordId()`에서 NPE → 500이다. Pydantic이
+  `list[SearchResultItem]`에 null을 허용하지 않아 진짜 FastAPI는 이 형태를 만들지 못하지만,
+  `AiSearchClient`가 최상위 `results == null`을 이미 방어하고 있고 **그것도 계약상 똑같이 올 수 없는
+  형태**다 — 최상위는 믿지 않고 원소는 믿으면 방어 범위가 javadoc의 약속과 어긋난다. 층을 맞췄다.
+
+### 메운 테스트 구멍 셋
+
+리뷰가 지목한 대로, 셋 다 **코드는 이미 맞는데 그것을 지키는 단언이 없던** 자리다. 그래서
+RED를 관측하는 방법이 달랐다 — 각 가드를 일부러 부순 뒤(가시성 화이트리스트를 `IN ('PUBLIC')`으로
+좁히고, `kp.is_active = true`를 지우고, `@Size`를 떼고) **새 테스트만 실패하고 기존 24개가 전부
+통과하는 것**을 확인했다. 리뷰가 "그렇게 고쳐도 전부 초록"이라고 한 것이 그대로 재현됐다.
+
+| 구멍 | 새 단언 | 부수면 잡히는가 |
+|---|---|---|
+| `SEARCH_QUERY_MAX`(500) 미검증 — 이 티켓이 명세를 넘어 새로 정한 유일한 상한 | 501자 400 + **상한값 500은 통과**(off-by-one 고정) | `@Size` 제거 → 501자 테스트 실패 |
+| `PRIVATE_ONLY`를 한 번도 넣지 않음 — 05 §8.4에서 본인/타인 조회를 가르는 값 | `PRIVATE_ONLY`·`PUBLIC` 포함, `BLOCKED` 제외를 한 번에 | `IN ('PUBLIC')`으로 좁힘 → 실패 |
+| `insertPreset(..., active)`가 죽은 파라미터(세 호출 모두 `true`) | 폐기 Preset(`false`) 제외 | `kp.is_active` 조건 제거 → 실패 |
+
+`match == null` 가드 쪽은 보통의 RED였다 — 대역에 `NULL_MATCH_ELEMENT` 모드(`{"results":[null]}`)를
+넣자 **500**이 관측됐고(리뷰가 예측한 그대로), 가드를 붙여 200 + 빈 배열이 됐다.
+
+### 검증 (2026-07-30)
+
+`./gradlew clean check --no-daemon` — `BUILD SUCCESSFUL`. **370개 통과, 실패·skip 0.**
+checkstyle(main·test)·jacoco 커버리지 검증 포함. `RecordSearchApiTests`는 23개 → **28개**,
+`AiSearchClientTest`(순수 단위, `MockEnvironment`) **3개**를 새로 추가했다.
+
 ## 남긴 것
 
 - **~~`ai` 레포 쪽 §7.1 대칭이 아직 없다~~ → 해소됐다(같은 날).** 작성 시점 관측은 "`config.py`에
@@ -175,3 +227,13 @@ Record는 내 것인데 Context id만 남의 것이 섞인 응답도 통과하�
 - **`FeedKeywordRepository`와 `ContextKeywordRepository`가 둘 다 `ai.context_keyword`를 읽는다.**
   전자는 Collection·Profile 가중치 집계, 후자는 Record 단위 응답 조립이라 쿼리 목적이 다르지만,
   `ai` 접근이 두 패키지로 갈려 있는 것은 사실이다. 합칠지는 세 번째 소비자가 생길 때 판단한다.
+- **`docs/ai/spec/ai-integration.md` §2에 낡은 줄이 2개 더 남는다**(2026-07-30 리뷰가 지목). (1) 위치가
+  `com.pinlog.pinlogback.ai.client`인데 실제는 `domain.ai.client`다 (2) "`RestClient`는
+  `RestClient.Builder`로 **Bean 하나**를 만들고"는 이 PR이 Bean을 둘로 만든 뒤로 사실과 다르다 —
+  같은 문서 아래쪽의 "두 Client는 ... 별도 `RestClient` 인스턴스를 갖습니다"와 **문서 안에서
+  모순**이다. 위 §2.1 정정 때 받은 위임은 그 지점에 대한 것이었고 이 두 줄에 대한 위임은 없어,
+  CLAUDE.md 9번대로 **고치지 않고 남긴다.** 위임되면 한 줄씩이다.
+- **08 §1.5의 권장 상태 코드 표에 `503`이 없고 `SEARCH_PROFILE_MISMATCH`·`SEARCH_UNAVAILABLE`이 공용
+  계약에 등록되지 않았다**(2026-07-30 리뷰가 지목). 명세는 `code`를 "클라이언트가 분기하는 안정적인
+  문자열"로 정했는데, 프론트가 검색에서 이 둘을 분기해야 한다는 사실이 계약에 없다. `docs` 레포
+  소관이고 중앙이 판단 중이다.
