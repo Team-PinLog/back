@@ -138,14 +138,23 @@ class RuntimeSecretWorkflowContractTests {
 	/**
 	 * 스텝을 신원(이름, 없으면 {@code uses})으로 색인한다. 위치로 집으면 스텝이 중간에 삽입될 때
 	 * 무관한 단언이 엉뚱한 스텝을 검사하며 깨진다 — 실제로 #115~#119에서 그렇게 부러졌다.
+	 *
+	 * <p><b>신원이 겹치면 여기서 끊는다.</b> {@code Map.put}은 조용히 덮어쓰므로, 이름이 같은 스텝을
+	 * 하나 더 넣으면 색인은 그대로 2개로 남아 집합 단언이 통과하고 가려진 스텝은 어떤 단언도 보지
+	 * 못한다 — {@code run:}을 가진 스텝을 그렇게 숨길 수 있다. 색인 크기가 원본 리스트와 같은지
+	 * 확인해 그 경로를 닫는다.
 	 */
 	private Map<String, Map<Object, Object>> stepsByIdentity() throws IOException {
+		List<Object> steps = list(secretJob().get("steps"));
 		Map<String, Map<Object, Object>> byIdentity = new LinkedHashMap<>();
-		for (Object each : list(secretJob().get("steps"))) {
+		for (Object each : steps) {
 			Map<Object, Object> step = map(each);
 			Object identity = step.getOrDefault("name", step.get("uses"));
 			byIdentity.put(String.valueOf(identity), step);
 		}
+		assertThat(byIdentity)
+			.as("신원이 겹치는 스텝이 있어 색인에서 가려졌다: %s", steps)
+			.hasSameSizeAs(steps);
 		return byIdentity;
 	}
 
