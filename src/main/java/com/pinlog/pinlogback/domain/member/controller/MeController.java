@@ -2,10 +2,13 @@ package com.pinlog.pinlogback.domain.member.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.pinlog.pinlogback.domain.member.dto.MeSummaryResponse;
+import com.pinlog.pinlogback.domain.member.service.MemberSummaryService;
 import com.pinlog.pinlogback.domain.member.service.MemberWithdrawalService;
 import com.pinlog.pinlogback.global.security.authentication.LoginMember;
 import com.pinlog.pinlogback.global.security.authentication.MemberPrincipal;
@@ -14,7 +17,7 @@ import com.pinlog.pinlogback.global.security.token.AuthCookies;
 import jakarta.servlet.http.HttpServletResponse;
 
 /**
- * 내 계정(API 명세 3.6). context-path(/api/core)는 인프라 고정값이므로 버전 세그먼트만 명시한다.
+ * 내 계정(API 명세 3.5~3.6). context-path(/api/core)는 인프라 고정값이므로 버전 세그먼트만 명시한다.
  *
  * <p>이 경로는 <b>Refresh 쿠키의 {@code Path} 범위 밖</b>이라 Refresh가 전송되지 않는다. 따라서
  * Access 쿠키로 회원을 식별하고, 그 회원의 Refresh를 서버 쪽에서 전부 폐기한다 — 탈퇴는 모든
@@ -25,11 +28,23 @@ import jakarta.servlet.http.HttpServletResponse;
 public class MeController {
 
 	private final MemberWithdrawalService memberWithdrawalService;
+	private final MemberSummaryService memberSummaryService;
 	private final AuthCookies authCookies;
 
-	public MeController(MemberWithdrawalService memberWithdrawalService, AuthCookies authCookies) {
+	public MeController(
+		MemberWithdrawalService memberWithdrawalService,
+		MemberSummaryService memberSummaryService,
+		AuthCookies authCookies
+	) {
 		this.memberWithdrawalService = memberWithdrawalService;
+		this.memberSummaryService = memberSummaryService;
 		this.authCookies = authCookies;
+	}
+
+	/** 마이페이지 요약(API 명세 3.5). 진입 시 1회 호출한다. */
+	@GetMapping("/summary")
+	public MeSummaryResponse summary(@LoginMember MemberPrincipal me) {
+		return memberSummaryService.summarize(me.memberId());
 	}
 
 	/**
