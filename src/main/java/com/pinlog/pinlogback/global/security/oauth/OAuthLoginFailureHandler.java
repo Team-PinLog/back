@@ -37,7 +37,15 @@ public class OAuthLoginFailureHandler implements AuthenticationFailureHandler {
 		HttpServletResponse response,
 		AuthenticationException exception
 	) throws IOException {
-		log.warn("social login failed: {}", exception.getMessage());
+		// 타입까지 남기는 이유: 메시지만 남기면 Spring이 던진 OAuth 오류
+		// (authorization_request_not_found·invalid_grant)와 성공 핸들러가 감싸 넘긴 내부 실패
+		// (Redis 순단·중복키)가 한 줄로 뭉개져 사후 구별이 안 된다. 실제로 그 때문에 운영 조사가
+		// 한 번 막혔다(S15P11A705-186).
+		//
+		// 예외 객체를 함께 넘겨 스택과 cause 체인이 남게 한다(logging.md). 문자열로 이어붙이면
+		// cause가 사라진다.
+		log.warn("social login failed: [{}] {}",
+			exception.getClass().getSimpleName(), exception.getMessage(), exception);
 
 		String target = UriComponentsBuilder.fromUriString(clientRedirectUri)
 			.queryParam("error", ERROR_CODE)

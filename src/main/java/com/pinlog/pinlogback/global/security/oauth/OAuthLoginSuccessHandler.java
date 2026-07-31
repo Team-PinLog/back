@@ -69,6 +69,11 @@ public class OAuthLoginSuccessHandler implements AuthenticationSuccessHandler {
 		} catch (RuntimeException e) {
 			// 지원하지 않는 provider, 공급자 응답에 sub 없음, 토큰 발급 실패(Redis 장애 포함)가
 			// 모두 여기로 온다. 실패 핸들러에 넘겨 로그와 복귀 경로를 한 곳에서 처리한다.
+			//
+			// 어느 단계에서 터졌는지는 별도 라벨을 두지 않고 예외 타입·메시지가 말하게 한다 —
+			// 정규화는 "필수 속성이 없다"를 든 IllegalStateException, 가입 경합은
+			// DataIntegrityViolationException, 발급은 Redis 예외다. 실패 핸들러가 타입을 함께
+			// 남기므로 라벨을 더해도 정보가 늘지 않는다.
 			failureHandler.onAuthenticationFailure(
 				request, response, new InternalAuthenticationServiceException(e.getMessage(), e));
 		}
@@ -80,9 +85,16 @@ public class OAuthLoginSuccessHandler implements AuthenticationSuccessHandler {
 		OAuthUserInfo userInfo = OAuthUserInfo.from(
 			token.getAuthorizedClientRegistrationId(), principal.getAttributes());
 
-		TokenPair tokens = authTokenService.issue(loginTolerantOfFirstLoginRace(userInfo));
+		Long memberId = loginTolerantOfFirstLoginRace(userInfo);
+		TokenPair tokens = authTokenService.issue(memberId);
 		// 리다이렉트는 응답을 커밋하므로 쿠키를 먼저 실어야 한다.
 		authCookies.write(response, tokens.accessToken(), tokens.refreshToken());
+
+		// 실패 로그(WARN)와 짝지어 보려면 같은 레벨대에 있어야 한다. 요청마다 남기는 로그가 아니라
+		// 세션당 1회이므로 logging.md의 "INFO는 요청마다 남기지 않는다"에 어긋나지 않는다.
+		// 이메일·provider_user_id는 남기지 않는다 — 조사에 필요한 것은 memberId와 provider다.
+		log.info("social login succeeded: memberId={}, provider={}", memberId, userInfo.provider());
+
 		response.sendRedirect(clientRedirectUri);
 	}
 
