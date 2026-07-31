@@ -9,7 +9,7 @@
 
 ## 왜 필요했나
 
-세 층의 검증이 있었지만 어느 것도 "실제 스택에서 28개 API가 다 돌고 DB에 제대로 반영되는가"에
+세 층의 검증이 있었지만 어느 것도 "실제 스택에서 29개 API가 다 돌고 DB에 제대로 반영되는가"에
 답하지 못했다. Testcontainers 통합 테스트는 격리된 DB의 소량 데이터를 보고, `seed/smoke.sh`은
 읽기 9종만 훑고, Swagger UI는 응답에 실리지 않는 DB 상태를 못 보여준다.
 `collection.record_count`(BD-20) 같은 비정규화 컬럼은 어긋나도 200이 온다.
@@ -21,7 +21,7 @@
 
 | 조각 | 내용 |
 | --- | --- |
-| `k6/functional.js` + `k6/lib/` | 1 VU 전수 시나리오. 엔드포인트 28개, 검사 136개(상태 코드·엔벨로프·커서 계약·쿠키 속성), 만진 행 id를 `##TOUCHED##` 표식으로 출력 |
+| `k6/functional.js` + `k6/lib/` | 1 VU 전수 시나리오. 엔드포인트 29개, 검사 138개(상태 코드·엔벨로프·커서 계약·쿠키 속성), 만진 행 id를 `##TOUCHED##` 표식으로 출력 |
 | `sql/verify-by-id.sql` | 표식의 id를 지목 검증 — BD-20·BD-08·BD-25·BD-11 파급·BD-33 |
 | `sql/verify-invariants.sql` | DB 전역 불변식 17종 스윕. `owner` 열로 back/ai 소유를 가른다 |
 | `tools/run.sh` | 전제 확인 → 전용 회원 생성 → 토큰 발급 → k6 → 지목 SQL → 전역 SQL → 지연 리포트 → 정리(trap) |
@@ -33,7 +33,7 @@
 
 ## 검증 결과 (2026-07-31, member 3,007 · record 117k · context 155k)
 
-**136/136 검사 통과, 28개 전수 호출, 종료 코드 0.** 검증 중 확인된 계약: BD-12 멱등
+**138/138 검사 통과, 29개 전수 호출, 종료 코드 0.** 검증 중 확인된 계약: BD-12 멱등
 저장(같은 place 재요청 → 200 `CONTEXT_ADDED`, 같은 recordId), BD-07 교체 생성(새 contextId),
 BD-11 삭제 확인 409 + `error.impact` 두 경로, 탈퇴 파급 전량(아래), CSRF·401·404 은닉·422
 자기 팔로우, 검색의 두 분기(FastAPI 기동 시 200·미기동 시 503 `SEARCH_UNAVAILABLE`).
@@ -89,6 +89,12 @@ CANCELLED 아님)은 **0건**이다.
 - **Windows 함정 셋** — 셸 인라인 한글은 CP949로 깨져 400이 된다(UTF-8 파일로만 전달),
   `C:\WINDOWS\system32\bash.exe`는 WSL이라 openssl이 없다(Git Bash 명시), 네이티브 python은
   MSYS `/c/` 경로를 못 받는다(`sys.argv` 전달).
+- **합성 회원의 불가능 상태** — SQL로 회원 행만 만들면 `GET /v1/me/summary`가 500을 낸다.
+  가입이 회원과 소셜 계정을 한 트랜잭션에 만들므로 "소셜 계정 없는 활성 회원"은 API로 도달
+  불가능한 상태이고, `MemberSummaryService`는 그 상태를 **계약대로** `IllegalStateException`으로
+  던진다(javadoc에 명시된 동작 — 조용히 빈 값을 내면 "email은 항상 있다" 계약이 깨진 채
+  프론트로 나간다). setup이 소셜 계정까지 만들어 실제 가입 결과와 같은 모양을 갖추는 것으로
+  풀었고, 덕분에 탈퇴 시나리오가 소셜 계정 마스킹 경로까지 실제로 지나가게 됐다.
 
 ## 관측 (수정하지 않고 기록만)
 

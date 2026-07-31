@@ -1,4 +1,4 @@
-// 28개 엔드포인트 전수 시나리오. 1 VU 1 iteration으로 순서대로 돈다.
+// 29개 엔드포인트 전수 시나리오. 1 VU 1 iteration으로 순서대로 돈다.
 //
 // 시나리오가 순서 의존적이라(만든 것을 이어서 만지고 지운다) 한 파일에 둔다.
 // 도메인별 함수로 나눠 각 함수를 짧게 유지한다.
@@ -8,11 +8,12 @@ import { touch, visit, emit } from './lib/recorder.js';
 
 export const options = { vus: 1, iterations: 1, thresholds: THRESHOLDS };
 
-/** 전수 판정 기준. 28개 전부 여기 있어야 한다. */
+/** 전수 판정 기준. 29개 전부 여기 있어야 한다. */
 export const ENDPOINTS = [
   'GET /v1/auth/{provider}/login',
   'POST /v1/auth/refresh',
   'POST /v1/auth/logout',
+  'GET /v1/me/summary',
   'DELETE /v1/me',
   'POST /v1/records',
   'GET /v1/records/map',
@@ -806,6 +807,19 @@ export function runAuth(ctx) {
  */
 export function runWithdrawal(ctx) {
   const me = ctx.test;
+
+  // 마이페이지 요약(API 명세 3.5). memberId를 담지 않는 것이 계약이다(BD-14 식별자 은닉).
+  const summary = me.get('/v1/me/summary', 'detail');
+  expect(summary, 'GET /v1/me/summary', 200);
+  visit('GET /v1/me/summary');
+  const summaryData = okEnvelope(summary);
+  if (summaryData === null) {
+    console.error(`[FAIL] me/summary 응답이 성공 엔벨로프가 아니다: ${summary.body}`);
+  } else if ('memberId' in summaryData) {
+    console.error(`[FAIL] BD-14 위반: me/summary가 memberId를 노출한다: ${summary.body}`);
+  } else if (typeof summaryData.recordCount !== 'number') {
+    console.error(`[FAIL] me/summary에 recordCount가 없다: ${summary.body}`);
+  }
 
   // CSRF 없는 탈퇴는 403이다.
   expect(ctx.test.anon('DELETE', '/v1/me', 'write'), 'DELETE /v1/me (CSRF 없음)', {
