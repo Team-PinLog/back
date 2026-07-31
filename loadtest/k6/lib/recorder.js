@@ -17,7 +17,7 @@ export function touch(kind, id, note) {
   touched.push({ kind: kind, id: Number(id), note: note });
 }
 
-/** 호출한 엔드포인트를 표시한다. 27개 전수 여부를 run.sh이 판정한다. */
+/** 호출한 엔드포인트를 표시한다. 전수 목록의 호출 여부를 run.sh이 판정한다. */
 export function visit(endpointKey) {
   visited[endpointKey] = (visited[endpointKey] || 0) + 1;
 }
@@ -25,7 +25,7 @@ export function visit(endpointKey) {
 /**
  * 표식 한 줄을 출력한다. 시나리오 마지막에 정확히 한 번 부른다.
  *
- * @param allEndpointKeys {string[]} 27개 전체 키. 호출되지 않은 것을 골라낸다
+ * @param allEndpointKeys {string[]} 전수 목록의 키 전체. 호출되지 않은 것을 골라낸다
  */
 export function emit(allEndpointKeys) {
   const missed = allEndpointKeys.filter((key) => !visited[key]);

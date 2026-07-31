@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 전체 검증을 한 번에 돌린다.
-#   토큰 발급 → 전용 회원 생성 → k6 28개 전수 → SQL 지목 검증 → SQL 전역 불변식 → 리포트 → 정리
+#   전용 회원 생성 → 토큰 발급 → k6 28개 전수 → SQL 지목 검증 → SQL 전역 불변식 → 리포트 → 정리
 #
 # 종료 코드:
 #   0  계약 검사와 지목 검증이 모두 통과. 전역 불변식 위반은 리포트에만 남는다
@@ -48,6 +48,7 @@ TEST_MEMBER_ID=$("${PSQL[@]}" -t -A -v ON_ERROR_STOP=1 -f - \
 GOLDEN_BEFORE=""
 
 cleanup() {
+  local rc=$?
   log ""
   log "=== 정리 ==="
   case "$TEST_MEMBER_ID" in
@@ -76,6 +77,9 @@ cleanup() {
     log "골든 행 수 유지: $GOLDEN_AFTER"
   else
     log "[실패] 골든 행 수가 바뀌었다: $GOLDEN_BEFORE → $GOLDEN_AFTER"
+    # rc가 이미 0이 아니면(전제 조건 실패 등) 그 종료 코드를 덮어쓰지 않는다 —
+    # exit 2 같은 값이 여기서 1로 뭉개지면 원인 구분이 사라진다.
+    [ "$rc" -eq 0 ] && exit 1
   fi
 }
 trap cleanup EXIT
@@ -97,6 +101,8 @@ log ""
 log "=== 토큰 발급 ==="
 BASE_URL="$BASE_URL" bash "$HERE/tools/mint-tokens.sh" 1 2 3 2792 "$TEST_MEMBER_ID" \
   | tee -a "$REPORT"
+MINT_EXIT=${PIPESTATUS[0]}
+[ "$MINT_EXIT" -eq 0 ] || fail_precondition "토큰 발급 실패"
 
 # --- 3. k6 전수 실행 ---
 log ""
@@ -172,6 +178,7 @@ log ""
 log "=== 전역 불변식 (verify-invariants.sql) ==="
 "${PSQL[@]}" -v ON_ERROR_STOP=1 -f - \
   < "$HERE/sql/verify-invariants.sql" 2>&1 | tee -a "$REPORT"
+INV_EXIT=${PIPESTATUS[0]}
 
 # --- 7. 지연 요약 ---
 log ""
@@ -209,6 +216,20 @@ if [ "${ID_VIOLATIONS:-1}" != "0" ]; then
 fi
 if [ "$ID_EXIT" -ne 0 ]; then
   log "[실패] 지목 검증 SQL 실행 오류"
+  STATUS=1
+fi
+if [ "$INV_EXIT" -ne 0 ]; then
+  log "[실패] 전역 불변식 SQL 실행 오류"
+  STATUS=1
+fi
+K6_FAILS=$(grep -c '\[FAIL\]' "$K6_LOG" || true)
+if [ "${K6_FAILS:-0}" != "0" ]; then
+  log "[실패] k6 로그에 [FAIL] 단언 ${K6_FAILS}건 — expect() 밖의 계약 검사가 깨졌다"
+  STATUS=1
+fi
+MISSED_COUNT="${MISSED%% *}"
+if [ "${MISSED_COUNT:-1}" != "0" ]; then
+  log "[실패] 호출되지 않은 엔드포인트 ${MISSED_COUNT}개 — 전수 계약 위반"
   STATUS=1
 fi
 log "전역 불변식 위반은 종료 코드에 반영하지 않는다 — 리포트의 '소유별 합계'를 볼 것"

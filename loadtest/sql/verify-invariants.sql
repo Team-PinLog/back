@@ -172,7 +172,7 @@ FROM violations
 GROUP BY owner, check_name
 ORDER BY owner, check_name;
 
-\echo '=== 소유별 합계 (back이 0이어야 완료 조건 충족) ==='
+\echo '=== 소유별 합계 (back 기준선은 BI-30의 시드 원인 삼분류 참고) ==='
 SELECT
   count(*) FILTER (WHERE owner = 'back') AS back_violations,
   count(*) FILTER (WHERE owner = 'ai')   AS ai_violations
