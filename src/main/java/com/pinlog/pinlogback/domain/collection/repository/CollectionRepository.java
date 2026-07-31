@@ -22,6 +22,9 @@ public interface CollectionRepository extends JpaRepository<Collection, Long> {
 	 */
 	List<Collection> findByMemberId(Long memberId);
 
+	/** 마이페이지 요약의 활성 Collection 수(API 명세 3.5). */
+	long countByMemberId(Long memberId);
+
 	/**
 	 * 활성 연결 수를 세고 분기한 뒤 record_count를 쓰는 유스케이스의 행 잠금(데이터모델 6.7).
 	 */

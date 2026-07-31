@@ -28,6 +28,19 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
 	List<Follow> findAllInvolving(@Param("memberId") Long memberId);
 
 	/**
+	 * 마이페이지 요약의 팔로워 수(API 명세 3.5). 유니크가
+	 * {@code (followee_member_id, follower_member_id)}라 한 사람이 그 작성자의 Collection을 여러 개
+	 * 팔로우해도 행이 하나이므로, 별도의 {@code DISTINCT}가 필요하지 않다.
+	 *
+	 * <p>상대의 탈퇴 여부를 보지 않는다 — 탈퇴는 그 회원의 follow 행을 함께 소프트 삭제하므로
+	 * (S15P11A705-65) 활성 행만 세는 것으로 이미 걸러진다.
+	 */
+	long countByFolloweeMemberId(Long followeeMemberId);
+
+	/** 마이페이지 요약의 팔로잉 수(API 명세 3.5). */
+	long countByFollowerMemberId(Long followerMemberId);
+
+	/**
 	 * 내 팔로우 목록(Library의 팔로우 책장 축). followee가 탈퇴한 행은 제외한다 —
 	 * Member entity join에 {@code @SQLRestriction}이 적용되어 탈퇴 회원이 걸러진다(데이터모델 1.4).
 	 */

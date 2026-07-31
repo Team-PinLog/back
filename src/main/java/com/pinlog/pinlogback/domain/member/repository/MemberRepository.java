@@ -17,6 +17,10 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 	 * <p>{@code existsById}가 아니라 {@code findById}를 쓰는 것은 기존 세 경로와 같은 조회를
 	 * 유지하려는 것이다. 바꾸면 {@code @SQLRestriction}이 count 쿼리에도 적용되는지가 별개의
 	 * 질문이 되고, 그것은 중복 제거인 이 변경의 범위가 아니다(S15P11A705-147).
+	 *
+	 * <p><b>그 질문은 S15P11A705-200에서 답이 나왔다 — 적용된다.</b> 마이페이지 요약의 활성 기준
+	 * 집계 넷이 파생 {@code countBy...}만으로 성립하는 것을 뮤테이션으로 확인했다. 즉 여기를
+	 * {@code existsById}로 바꾸는 것을 막는 이유는 이제 없다. 다만 바꿀 이유도 없어 그대로 둔다.
 	 */
 	default boolean isActive(Long memberId) {
 		return findById(memberId).isPresent();

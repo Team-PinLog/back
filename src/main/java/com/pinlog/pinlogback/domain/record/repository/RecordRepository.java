@@ -22,6 +22,15 @@ public interface RecordRepository extends JpaRepository<Record, Long> {
 	/** 탈퇴 연쇄 삭제용. 그 회원의 활성 Record 전체다(데이터모델 6.9). */
 	List<Record> findByMemberId(Long memberId);
 
+	/**
+	 * 마이페이지 요약의 활성 Record 수(API 명세 3.5).
+	 *
+	 * <p>{@code @SQLRestriction("deleted_at IS NULL")}이 <b>count 쿼리에도 적용된다</b> — 파생
+	 * 쿼리로 두는 것으로 활성 기준 집계가 성립한다. `@Query`로 조건을 명시할 필요가 없고,
+	 * 명시하려다 조건을 빠뜨리면 오히려 삭제분이 섞인다(S15P11A705-200에서 뮤테이션으로 확인).
+	 */
+	long countByMemberId(Long memberId);
+
 	List<Record> findByIdInAndMemberId(List<Long> ids, Long memberId);
 
 	/**
