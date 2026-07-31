@@ -55,6 +55,8 @@ Redis는 DB 트랜잭션에 참여할 수 없다. **트랜잭션 안에서는 "�
 
 - **감수하는 것**
   - 인증된 요청마다 `SELECT ... WHERE id = ? AND deleted_at IS NULL` 한 번. PK 조회이고 트랜잭션 밖이라 커넥션을 짧게 쓰지만, 공짜는 아니다.
+  - **정확히는 조회 1회가 아니라 커넥션 체크아웃 1회가 늘어난다.** `open-in-view: false`라 필터의 `isActive`가 자체 `EntityManager`와 커넥션을 열고 닫은 뒤, 컨트롤러의 `@Transactional`이 두 번째 커넥션을 잡는다. 저트래픽에서는 보이지 않지만 인증 경로가 쓰는 풀 여유를 그만큼 깎는다([#120](https://github.com/Team-PinLog/back/pull/120) 리뷰에서 지적).
+  - **필터가 인프라 사유로 던질 수 있게 됐다.** 이 변경 전까지 이 필터는 순수 JWT 검증이라 던질 이유가 없었다. `DataAccessException`은 `DispatcherServlet` 밖이라 `@RestControllerAdvice`도 `SecurityErrorWriter`도 타지 않아 **공통 오류 envelope을 우회한다.** 어떻게 다룰지는 별도 티켓에서 정한다.
   - `global/security/authentication`이 `domain/member/repository`를 참조한다. `SecurityConfig`가 이미 `domain.auth`를 참조하는 것과 같은 방향이라 새 위반은 아니지만, 의존이 하나 늘었다.
   - 캐시가 없다. 같은 회원이 초당 여러 요청을 보내면 그만큼 조회한다.
 - **재검토 트리거**

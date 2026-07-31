@@ -3,6 +3,7 @@ package com.pinlog.pinlogback.domain.member;
 import static com.pinlog.pinlogback.domain.ai.repository.AiDerivedDataRepository.CANCELLED;
 import static com.pinlog.pinlogback.support.AuthTestSupport.loginAs;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -20,15 +21,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import com.pinlog.pinlogback.domain.auth.service.RefreshTokenStore;
 import com.pinlog.pinlogback.domain.collection.entity.Collection;
 import com.pinlog.pinlogback.domain.collection.repository.CollectionRepository;
 import com.pinlog.pinlogback.domain.member.entity.Member;
@@ -85,6 +89,10 @@ class MemberWithdrawalApiTests extends IntegrationContainerSupport {
 
 	@Autowired
 	private JwtTokenProvider tokenProvider;
+
+	/** 폐기 실패 경로만 스텁한다. 다른 테스트에서는 스텁하지 않아 실제 빈에 위임한다. */
+	@MockitoSpyBean
+	private RefreshTokenStore refreshTokenStore;
 
 	@Test
 	@DisplayName("204를 반환하고 member와 social_account를 소프트 삭제한다")
@@ -232,6 +240,31 @@ class MemberWithdrawalApiTests extends IntegrationContainerSupport {
 			.andExpect(status().isNoContent());
 
 		assertThat(refreshKeysOf(memberId)).isEmpty();
+	}
+
+	/**
+	 * 폐기를 트랜잭션 밖(커밋 이후)으로 옮기고 실패를 삼킨 판단의 근거를 고정한다. 삼키지 않으면
+	 * <b>이미 커밋된 탈퇴가 500으로 응답하고 컨트롤러에 도달하지 못해 쿠키도 지워지지 않는다</b> —
+	 * 사용자는 실패로 보는데 계정은 사라진 상태가 된다(BD-41).
+	 *
+	 * <p>남은 Refresh는 무해하다. 그것으로 받는 Access는 필터의 탈퇴 판정에 막힌다.
+	 */
+	@Test
+	@DisplayName("Refresh 폐기가 실패해도 탈퇴는 확정되고 쿠키는 지워진다")
+	void withdrawSurvivesRefreshRevocationFailure() throws Exception {
+		long memberId = newMemberId();
+		givenSocialAccount(memberId, "google-withdraw-12", "redis-down@example.com");
+		doThrow(new RedisConnectionFailureException("Redis 순단을 가장한다"))
+			.when(refreshTokenStore).revokeAll(memberId);
+
+		MvcResult result = mockMvc.perform(delete(PATH).with(loginAs(memberId)))
+			.andExpect(status().isNoContent())
+			.andReturn();
+
+		assertThat(deletedAtOf("core.member", memberId)).isNotNull();
+		assertThat(expiredCookieNames(result.getResponse().getHeaders(HttpHeaders.SET_COOKIE)))
+			.containsExactlyInAnyOrder(
+				AuthCookies.ACCESS_TOKEN, AuthCookies.REFRESH_TOKEN, AuthCookies.LOGGED_IN);
 	}
 
 	@Test
