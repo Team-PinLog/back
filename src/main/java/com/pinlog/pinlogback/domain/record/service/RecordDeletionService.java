@@ -94,7 +94,7 @@ public class RecordDeletionService {
 
 	private void cascadeDelete(Record record) {
 		Long recordId = record.getId();
-		List<CollectionRecord> links = collectionRecordRepository.findByRecordId(recordId);
+		List<CollectionRecord> links = collectionRecordRepository.findByRecordIdOrderByCollectionIdAsc(recordId);
 
 		List<Context> contexts = contextRepository.findByRecordId(recordId);
 		contexts.forEach(Context::softDelete);
@@ -132,7 +132,7 @@ public class RecordDeletionService {
 	 * 역조회한다(데이터모델 2.7).
 	 */
 	private List<Long> lastCollectionIds(Long recordId) {
-		return collectionRecordRepository.findByRecordId(recordId).stream()
+		return collectionRecordRepository.findByRecordIdOrderByCollectionIdAsc(recordId).stream()
 			.map(CollectionRecord::getCollectionId)
 			.filter(collectionId -> collectionRecordRepository.countByCollectionId(collectionId) <= 1)
 			.filter(collectionId -> collectionRepository.findById(collectionId).isPresent())
