@@ -23,6 +23,19 @@
   Record 삭제가 Collection의 record_count를 만질 때는 해당 Collection도 잠근다(6.7과 같은 경합).
   잠금 순서는 Record → Collection 단방향이라 교착이 없다(addRecords는 Collection만 잠근다).
 
+  > **정정 (2026-07-31, S15P11A705-201).** 위 마지막 문장의 근거가 불완전하다. "Record → Collection
+  > 단방향"은 **타입 사이의 순서만** 논증하고 **Collection 사이의 순서는 다루지 않는다.** 서로 다른
+  > Record를 지우는 두 트랜잭션이 같은 Collection 둘을 반대 순서로 잡으면 교착이 날 수 있고, 그
+  > 순서를 정하는 것은 `cascadeDelete`가 부르는 역조회 쿼리다.
+  >
+  > 작성 시점에 교착이 실제로 없었던 이유는 이 논증이 아니라, 실행 계획이
+  > `uq_colrec_active (collection_id, record_id)`를 훑어 `collection_id` 순서를 우연히 돌려줬기
+  > 때문이다(두 Record를 반대 순서로 담아 25회 동시 삭제해도 전부 204). 쿼리가 준 보증이 아니므로
+  > 테이블이 커져 bitmap heap scan으로 바뀌면 물리 순서가 나온다.
+  >
+  > 역조회를 `findByRecordIdOrderByCollectionIdAsc`로 바꿔 정렬을 쿼리가 보장하게 했다. 교착이 없는
+  > 근거는 이제 **"타입 사이 단방향 + Collection 사이 정렬 고정"** 두 가지다.
+
 ## 범위 제외 (Jira 댓글 기록)
 
 - **Record 재생성 시 연결 승계** — 티켓 항목이 정본(데이터모델 2.4 `previous_record_id` 없음,

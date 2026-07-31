@@ -14,7 +14,17 @@ public interface CollectionRecordRepository extends JpaRepository<CollectionReco
 
 	List<CollectionRecord> findByCollectionIdAndRecordIdIn(Long collectionId, List<Long> recordIds);
 
-	List<CollectionRecord> findByRecordId(Long recordId);
+	/**
+	 * Record 기준 역조회({@code ix_colrec_record}). <b>정렬은 편의가 아니라 락 순서다</b> —
+	 * {@code RecordDeletionService.cascadeDelete}가 이 순서대로 Collection을 잠그므로, 서로 다른
+	 * Record를 동시에 지우는 두 트랜잭션이 같은 Collection 둘을 반대 순서로 잡으면 교착이 난다.
+	 *
+	 * <p>정렬을 빼도 지금은 같은 순서가 나온다. 실행 계획이
+	 * {@code uq_colrec_active (collection_id, record_id)}를 훑기 때문이며, 이는 쿼리가 준 보증이
+	 * 아니라 계획이 우연히 준 것이다. 테이블이 커져 bitmap heap scan으로 바뀌면 물리 순서가 나온다
+	 * (BI-12 정정 노트).
+	 */
+	List<CollectionRecord> findByRecordIdOrderByCollectionIdAsc(Long recordId);
 
 	List<CollectionRecord> findByCollectionId(Long collectionId);
 
