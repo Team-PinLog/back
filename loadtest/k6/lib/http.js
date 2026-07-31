@@ -78,24 +78,27 @@ export function session(memberId) {
     return params;
   }
 
-  // CSRF 토큰은 세션당 한 번만 받아 캐시한다. 쓰기마다 예비 GET을 날리면 그 GET들이
-  // list 부류 지연 통계에 섞여 측정값을 오염시킨다.
-  let cachedXsrf = null;
-
-  /** XSRF-TOKEN 쿠키를 얻어 온다. 상태를 바꾸는 요청 전에 필요하다. */
+  /**
+   * XSRF-TOKEN을 항아리(jar)에서 매번 새로 읽는다. 캐시하면 안 된다 —
+   * 서버(CsrfCookieFilter)가 매 요청 토큰을 재발급해 응답마다 XSRF-TOKEN 쿠키가
+   * 회전하므로, 한 번 받은 값을 들고 있으면 다음 요청이 자동으로 실어 보내는 쿠키와
+   * 어긋나 403이 난다. 헤더와 쿠키는 같은 요청에서 같은 값이어야 하고 그 원본은 항상
+   * 항아리다. 항아리는 VU 공유라 어느 세션이 예비 GET을 했는지는 무관하다 — 값만 맞으면 된다.
+   *
+   * 예비 GET은 항아리에 XSRF-TOKEN이 아예 없을 때 한 번만 나간다. kind: csrf 태그로
+   * 지연 임계값 대상에서 빠진다.
+   */
   function csrf() {
-    if (cachedXsrf !== null) {
-      return cachedXsrf;
+    let cookies = http.cookieJar().cookiesForURL(BASE);
+    if (!cookies['XSRF-TOKEN'] || cookies['XSRF-TOKEN'].length === 0) {
+      http.get(`${BASE}/v1/collections`, { tags: { kind: 'csrf' }, cookies: { access_token: token } });
+      cookies = http.cookieJar().cookiesForURL(BASE);
     }
-    // 태그를 csrf로 따로 붙여 임계값 대상에서 빠지게 한다.
-    http.get(`${BASE}/v1/collections`, { tags: { kind: 'csrf' }, cookies: { access_token: token } });
-    const cookies = http.cookieJar().cookiesForURL(BASE);
     const values = cookies['XSRF-TOKEN'];
     if (!values || values.length === 0) {
       throw new Error('XSRF-TOKEN 쿠키를 받지 못했다');
     }
-    cachedXsrf = values[0];
-    return cachedXsrf;
+    return values[0];
   }
 
   function writeParams(kind, opts) {
@@ -115,7 +118,11 @@ export function session(memberId) {
     patch: (path, body, kind, opts) =>
       http.patch(BASE + path, body === null ? null : JSON.stringify(body), writeParams(kind, opts)),
     del: (path, kind, opts) => http.del(BASE + path, null, writeParams(kind, opts)),
-    /** 쿠키·CSRF 없이 보낸다. 401·403 계약 확인용. */
+    /**
+     * access_token 쿠키와 X-XSRF-TOKEN 헤더 없이 보낸다. 401·403 계약 확인용.
+     * VU 공유 항아리의 XSRF-TOKEN 쿠키까지 막지는 않지만, 서버 판정 기준은
+     * "인증 쿠키 부재 → 401"과 "헤더-쿠키 불일치(헤더 부재 포함) → 403"이라 영향이 없다.
+     */
     anon: (method, path, kind, opts) =>
       http.request(method, BASE + path, null, Object.assign({ tags: { kind: kind } }, opts || {})),
   };
