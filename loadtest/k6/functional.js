@@ -548,6 +548,248 @@ export default function () {
   if (collection.collectionId === null) {
     console.error('[FAIL] Collection 쓰기 시나리오가 collectionId를 만들지 못했다');
   }
+  runFollowWrites(ctx);
+  runFeedAndSearch(ctx);
+  runAuth(ctx);
 
   emit(ENDPOINTS);
+}
+
+export function runFollowWrites(ctx) {
+  const me = ctx.test;
+
+  // 골든 회원 1의 공개 Collection을 팔로우한다.
+  const follow = me.post('/v1/follows', { collectionId: GOLDEN.ownedCollectionId }, 'write');
+  expect(follow, 'POST /v1/follows', 201);
+  visit('POST /v1/follows');
+  const followData = okEnvelope(follow);
+  const followId = followData === null ? null : followData.followId;
+  if (followId === null) {
+    console.error(`[FAIL] follow 응답에 followId가 없다: ${follow.body}`);
+    return;
+  }
+  touch('follow', followId, 'POST /v1/follows로 생성');
+
+  // 같은 것을 다시 팔로우하면 409다.
+  expect(
+    me.post('/v1/follows', { collectionId: GOLDEN.ownedCollectionId }, 'write'),
+    'POST /v1/follows (중복)',
+    { status: 409, code: 'DUPLICATE_FOLLOW' }
+  );
+
+  // 자기 Collection 팔로우는 422다(ck_follow_self가 DB에서도 막는다).
+  // Collection 1의 주인이 골든 회원 1이므로 그 회원으로 보내면 자기 팔로우가 된다.
+  expect(
+    ctx.owner.post('/v1/follows', { collectionId: GOLDEN.ownedCollectionId }, 'write'),
+    'POST /v1/follows (자기 것)',
+    { status: 422, code: 'SELF_FOLLOW_NOT_ALLOWED' }
+  );
+
+  // 팔로우한 책장의 Collection 목록.
+  const followed = me.get(`/v1/follows/${followId}/collections`, 'list');
+  expect(followed, 'GET /v1/follows/{followId}/collections', 200);
+  visit('GET /v1/follows/{followId}/collections');
+  checkCursorPage(okEnvelope(followed), 'GET /v1/follows/{followId}/collections');
+
+  // 남의 follow는 404다.
+  expect(
+    ctx.owner.get(`/v1/follows/${followId}/collections`, 'list'),
+    'GET follows/{id}/collections (남의 것)',
+    { status: 404, code: 'RESOURCE_NOT_FOUND' }
+  );
+
+  // 별칭 설정 → 제거. null은 제거를 뜻한다(API 명세 8.3).
+  const alias = me.patch(`/v1/follows/${followId}`, { alias: '내별칭' }, 'write');
+  expect(alias, 'PATCH /v1/follows/{followId} (설정)', 200);
+  visit('PATCH /v1/follows/{followId}');
+  const aliasData = okEnvelope(alias);
+  if (aliasData === null || aliasData.alias !== '내별칭') {
+    console.error(`[FAIL] 별칭이 설정되지 않았다: ${alias.body}`);
+  }
+
+  const cleared = me.patch(`/v1/follows/${followId}`, { alias: null }, 'write');
+  expect(cleared, 'PATCH /v1/follows/{followId} (제거)', 200);
+  const clearedData = okEnvelope(cleared);
+  if (clearedData !== null && clearedData.alias !== null && clearedData.alias !== undefined) {
+    console.error(`[FAIL] 별칭이 제거되지 않았다: ${cleared.body}`);
+  }
+
+  expect(
+    me.patch(`/v1/follows/${followId}`, { alias: 'ㄱ'.repeat(21) }, 'write'),
+    'PATCH /v1/follows/{followId} (21자)',
+    { status: 400, code: 'INVALID_INPUT' }
+  );
+
+  // 언팔로우.
+  expect(me.del(`/v1/follows/${followId}`, 'write'), 'DELETE /v1/follows/{followId}', 204);
+  visit('DELETE /v1/follows/{followId}');
+  expect(
+    ctx.owner.del(`/v1/follows/${followId}`, 'write'),
+    'DELETE /v1/follows/{followId} (남의 것)',
+    { status: 404, code: 'RESOURCE_NOT_FOUND' }
+  );
+}
+
+export function runFeedAndSearch(ctx) {
+  const me = ctx.owner;
+
+  // --- Feed 후보 ---
+  const feed = me.get('/v1/feed/collections', 'feed');
+  expect(feed, 'GET /v1/feed/collections', 200);
+  visit('GET /v1/feed/collections');
+  const feedData = okEnvelope(feed);
+  if (feedData === null || !Array.isArray(feedData.items)) {
+    console.error(`[FAIL] feed 응답에 items가 없다: ${feed.body}`);
+    return;
+  }
+  if (typeof feedData.requestId !== 'string') {
+    console.error(`[FAIL] feed 응답에 requestId(UUID)가 없다: ${feed.body}`);
+  }
+
+  // --- Feed 이벤트 수집 ---
+  // core.feed_event는 AI 파트 소유(V102)다. 상태 코드 계약만 보고 DB 단정은 하지 않는다.
+  if (feedData.items.length > 0 && typeof feedData.requestId === 'string') {
+    const target = feedData.items[0];
+    const collect = me.post(
+      '/v1/feed/events',
+      {
+        requestId: feedData.requestId,
+        events: [{ event: 'CLICK', collectionId: target.collectionId, position: 0 }],
+      },
+      'write'
+    );
+    expect(collect, 'POST /v1/feed/events', 204);
+    visit('POST /v1/feed/events');
+
+    // IMPRESSION은 서버가 기록한다. 클라이언트가 보내면 거부된다(FeedEventType.isClientReportable).
+    expect(
+      me.post(
+        '/v1/feed/events',
+        {
+          requestId: feedData.requestId,
+          events: [{ event: 'IMPRESSION', collectionId: target.collectionId, position: 0 }],
+        },
+        'write'
+      ),
+      'POST /v1/feed/events (IMPRESSION 거부)',
+      { status: 400, code: 'INVALID_INPUT' }
+    );
+
+    // 배열 상한 초과는 잘라내지 않고 400으로 거절한다(InputLimits.FEED_EVENTS_MAX = 100).
+    const many = [];
+    for (let i = 0; i < 101; i += 1) {
+      many.push({ event: 'CLICK', collectionId: target.collectionId, position: i });
+    }
+    expect(
+      me.post('/v1/feed/events', { requestId: feedData.requestId, events: many }, 'write'),
+      'POST /v1/feed/events (101개)',
+      { status: 400, code: 'INVALID_INPUT' }
+    );
+  } else {
+    console.error('[FAIL] feed 후보가 0건이라 이벤트 수집을 못 돌았다');
+  }
+
+  // --- 자연어 검색 ---
+  // FastAPI(8000)가 없으면 503 SEARCH_UNAVAILABLE이 계약이다. 빈 결과로 치환하지 않는다.
+  const search = ctx.heavy.post(
+    '/v1/search/records',
+    { query: '조용한 카페', size: 5 },
+    'search'
+  );
+  visit('POST /v1/search/records');
+  if (search.status === 200) {
+    expect(search, 'POST /v1/search/records', 200);
+    const searchData = okEnvelope(search);
+    if (searchData === null || !Array.isArray(searchData.items)) {
+      console.error(`[FAIL] 검색 응답에 items가 없다: ${search.body}`);
+    } else {
+      console.log(`[측정] 검색 결과 ${searchData.items.length}건`);
+    }
+  } else {
+    expect(search, 'POST /v1/search/records (AI 서버 없음)', {
+      status: 503,
+      code: 'SEARCH_UNAVAILABLE',
+    });
+  }
+
+  expect(
+    ctx.heavy.post('/v1/search/records', { query: '' }, 'search'),
+    'POST /v1/search/records (빈 질의)',
+    { status: 400, code: 'INVALID_INPUT' }
+  );
+  expect(
+    ctx.heavy.post('/v1/search/records', { query: 'ㄱ'.repeat(501) }, 'search'),
+    'POST /v1/search/records (501자)',
+    { status: 400, code: 'INVALID_INPUT' }
+  );
+}
+
+export function runAuth(ctx) {
+  const me = ctx.test;
+
+  // --- 로그인 진입: 302 ---
+  // /v1/auth/**는 permitAll이다. 리다이렉트를 따라가면 302를 못 보므로 redirects: 0을 준다.
+  const login = me.get('/v1/auth/google/login', 'detail', { redirects: 0 });
+  visit('GET /v1/auth/{provider}/login');
+  const locationOk = String(login.headers['Location'] || '').indexOf(
+    '/api/core/v1/auth/authorize/google'
+  ) === 0;
+  if (login.status !== 302 || !locationOk) {
+    console.error(
+      `[FAIL] 로그인 진입 계약 위반 status=${login.status} Location=${login.headers['Location']}`
+    );
+  }
+
+  // 없는 provider는 404다(UnsupportedSocialProviderException → RESOURCE_NOT_FOUND).
+  expect(
+    me.get('/v1/auth/facebook/login', 'detail', { redirects: 0 }),
+    'GET /v1/auth/facebook/login',
+    { status: 404, code: 'RESOURCE_NOT_FOUND' }
+  );
+
+  // --- 재발급: refresh 쿠키가 없으면 401 ---
+  // 정상 경로는 실제 소셜 로그인 왕복이 필요해 여기서 돌 수 없다. README에 적는다.
+  const refresh = me.post('/v1/auth/refresh', null, 'write');
+  visit('POST /v1/auth/refresh');
+  expect(refresh, 'POST /v1/auth/refresh (쿠키 없음)', {
+    status: 401,
+    code: 'UNAUTHORIZED',
+  });
+
+  // CSRF 헤더 없는 재발급은 403이다.
+  expect(ctx.test.anon('POST', '/v1/auth/refresh', 'write'), 'POST refresh (CSRF 없음)', {
+    status: 403,
+    code: 'FORBIDDEN',
+  });
+
+  // --- 로그아웃: 멱등하게 204 ---
+  const logout = me.post('/v1/auth/logout', null, 'write');
+  visit('POST /v1/auth/logout');
+  expect(logout, 'POST /v1/auth/logout', 204);
+
+  // BD-21: 토큰은 쿠키로만 오간다. 응답 본문에 실리지 않는다.
+  // 로그아웃은 AuthCookies.clear()로 두 쿠키를 지우므로 여기서 쿠키 속성을 관찰할 수 있다.
+  // 발급 시점(소셜 로그인 콜백)은 실제 OAuth 왕복이 필요해 이 하네스로 못 본다.
+  if (String(logout.body || '').length !== 0) {
+    console.error(`[FAIL] BD-21 위반 의심: logout 응답에 본문이 있다: ${logout.body}`);
+  }
+  const clearedCookies = logout.cookies || {};
+  ['access_token', 'refresh_token'].forEach((name) => {
+    const entries = clearedCookies[name];
+    if (!entries || entries.length === 0) {
+      console.error(`[FAIL] logout이 ${name} 쿠키를 지우지 않았다`);
+      return;
+    }
+    if (entries[0].http_only !== true) {
+      console.error(`[FAIL] ${name}이 HttpOnly가 아니다`);
+    }
+    if (entries[0].value !== '') {
+      console.error(`[FAIL] logout인데 ${name} 값이 비어 있지 않다: ${entries[0].value}`);
+    }
+  });
+
+  expect(ctx.test.anon('POST', '/v1/auth/logout', 'write'), 'POST logout (CSRF 없음)', {
+    status: 403,
+    code: 'FORBIDDEN',
+  });
 }
