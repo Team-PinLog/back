@@ -17,6 +17,20 @@ PEM="$ART/jwt-private.pem"
 OUT="$ART/tokens.json"
 
 [ "$#" -gt 0 ] || { echo "member_id를 하나 이상 넘겨야 한다" >&2; exit 2; }
+
+# member_id를 전부 먼저 검사한다. 반드시 tokens.json을 열기 전이어야 한다.
+#
+# member_id는 JWT sub와 tokens.json 키에 그대로 들어가므로 따옴표나 역슬래시가 섞이면
+# JSON이 깨지고 그 파일을 읽는 k6 open()과 python json.load가 죽는다. 그런데 이 검사를
+# 출력 블록 안에서 하면 더 나빠진다 — 리다이렉션이 이미 파일을 비웠고, mint()는 명령 치환
+# $(mint ...) 안에서 돌기 때문에 그 안의 exit이 서브셸에 갇혀 스크립트를 멈추지 못한다.
+# 그 결과 잘못된 입력 한 번이 정상 tokens.json을 깨뜨리면서 "발급 완료"까지 찍고 0으로 끝난다.
+for member_id in "$@"; do
+  case "$member_id" in
+    ''|*[!0-9]*) echo "member_id는 숫자여야 한다: $member_id" >&2; exit 2 ;;
+  esac
+done
+
 mkdir -p "$ART"
 
 b64url() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
@@ -53,14 +67,6 @@ write_pem() {
 
 mint() {
   local member_id="$1" now jti header payload signing_input sig
-
-  # 숫자가 아니면 거절한다. member_id는 JWT sub와 tokens.json 키에 그대로 들어가므로
-  # 따옴표나 역슬래시가 섞이면 JSON이 깨지고, 그 파일을 읽는 k6 open()과 python json.load가
-  # 죽는다. 그런데도 스크립트는 "발급 완료"를 찍어 원인이 발급 단계라는 단서가 남지 않는다.
-  case "$member_id" in
-    ''|*[!0-9]*) echo "member_id는 숫자여야 한다: $member_id" >&2; exit 2 ;;
-  esac
-
   now=$(date +%s)
   jti=$(openssl rand -hex 16)
   header='{"alg":"RS256","typ":"JWT"}'
