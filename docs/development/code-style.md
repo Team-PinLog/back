@@ -10,7 +10,7 @@
 
 CI가 스타일을 **강제**합니다. 규칙이 문서상 권고에 그치지 않습니다.
 
-- **Checkstyle** 이 CI 게이트입니다. `backend-ci / check`가 실행하는 `./gradlew clean check`에 포함되며, `maxWarnings = 0`이라 위반이 하나라도 있으면 실패합니다. 룰셋은 `config/checkstyle/naver-checkstyle-rules.xml`(Naver 공식)입니다.
+- **Checkstyle** 이 CI 게이트입니다. `backend-ci / check`가 실행하는 `./gradlew check`에 포함되며, `maxWarnings = 0`이라 위반이 하나라도 있으면 실패합니다. 룰셋은 `config/checkstyle/naver-checkstyle-rules.xml`(Naver 공식)입니다. CI는 매번 새 러너라 `clean`을 붙이지 않습니다 — 로컬에서는 `build/`에 이전 결과가 남으므로 완료 보고 전 검증은 `./gradlew clean check --no-daemon` 그대로입니다.
 - **`.editorconfig`** 는 에디터/IDE가 저장 시 자동 포맷하도록 합니다(강제 아님, 편의). IntelliJ·VS Code는 기본 지원합니다.
 - **`.gitattributes`** 가 `*.java` 등 텍스트 파일을 `eol=lf`로 고정해, OS와 무관하게 개행이 일관됩니다.
 
