@@ -333,6 +333,203 @@ export function runRecordWrites(ctx) {
   return { recordId: recordId, contextId: liveContextId };
 }
 
+export function runCollectionWrites(ctx, created) {
+  const me = ctx.test;
+  if (created.recordId === null) {
+    console.error('[FAIL] recordId가 없어 Collection 시나리오를 건너뛴다');
+    return { collectionId: null };
+  }
+
+  // --- 생성: 201 ---
+  const create = me.post(
+    '/v1/collections',
+    { title: '검증컬렉션', recordIds: [created.recordId] },
+    'write'
+  );
+  expect(create, 'POST /v1/collections', 201);
+  visit('POST /v1/collections');
+  const createData = okEnvelope(create);
+  const collectionId = createData === null ? null : createData.collectionId;
+  if (collectionId === null) {
+    console.error(`[FAIL] Collection 생성 응답에 collectionId가 없다: ${create.body}`);
+    return { collectionId: null };
+  }
+  touch('collection', collectionId, 'POST /v1/collections로 생성');
+  touch('collection_record', collectionId, `record ${created.recordId} 연결됨`);
+
+  // BD-33: is_published가 참이면 published_at이 반드시 있다. 응답으로도 확인한다.
+  if (createData.publishedAt === null || createData.publishedAt === undefined) {
+    console.error(`[FAIL] BD-33 의심: 생성 직후 publishedAt이 비어 있다: ${create.body}`);
+  }
+  if (createData.recordCount !== 1) {
+    console.error(`[FAIL] 생성 직후 recordCount가 1이 아니다: ${createData.recordCount}`);
+  }
+
+  // 빈 recordIds와 title 상한 초과는 400이다(CollectionCreateRequest: @NotEmpty, @Size(max=20)).
+  expect(
+    me.post('/v1/collections', { title: '빈배열', recordIds: [] }, 'write'),
+    'POST /v1/collections (빈 recordIds)',
+    { status: 400, code: 'INVALID_INPUT' }
+  );
+  expect(
+    me.post('/v1/collections', { title: 'ㄱ'.repeat(21), recordIds: [created.recordId] }, 'write'),
+    'POST /v1/collections (title 21자)',
+    { status: 400, code: 'INVALID_INPUT' }
+  );
+
+  // --- 이름 바꾸기 ---
+  const rename = me.patch(`/v1/collections/${collectionId}`, { title: '이름바꿈' }, 'write');
+  expect(rename, 'PATCH /v1/collections/{id}', 200);
+  visit('PATCH /v1/collections/{id}');
+  const renamed = okEnvelope(rename);
+  if (renamed === null || renamed.title !== '이름바꿈') {
+    console.error(`[FAIL] 이름이 바뀌지 않았다: ${rename.body}`);
+  }
+  expect(
+    me.patch(`/v1/collections/${collectionId}`, { title: 'ㄱ'.repeat(21) }, 'write'),
+    'PATCH /v1/collections/{id} (21자)',
+    { status: 400, code: 'INVALID_INPUT' }
+  );
+
+  // --- Record 추가와 멱등성(API 명세 7.5) ---
+  const second = me.post(
+    '/v1/records',
+    { place: testPlace('b'), contextBody: '두 번째 장소의 맥락이다.' },
+    'write'
+  );
+  expect(second, 'POST /v1/records (두 번째 장소)', 201);
+  const secondData = okEnvelope(second);
+  const secondRecordId = secondData === null ? null : secondData.recordId;
+  if (secondRecordId !== null) {
+    touch('record', secondRecordId, '두 번째 검증 Record');
+  }
+
+  const add = me.post(
+    `/v1/collections/${collectionId}/records`,
+    { recordIds: [secondRecordId] },
+    'write'
+  );
+  expect(add, 'POST /v1/collections/{id}/records', 200);
+  visit('POST /v1/collections/{id}/records');
+  const added = okEnvelope(add);
+  if (added === null || added.recordCount !== 2) {
+    console.error(`[FAIL] 추가 후 recordCount가 2가 아니다: ${add.body}`);
+  }
+  touch('collection_record', collectionId, `record ${secondRecordId} 연결됨`);
+
+  // 같은 id를 다시 넣어도 200이고 recordCount는 그대로다.
+  const addAgain = me.post(
+    `/v1/collections/${collectionId}/records`,
+    { recordIds: [secondRecordId] },
+    'write'
+  );
+  expect(addAgain, 'POST /v1/collections/{id}/records (멱등)', 200);
+  const addedAgain = okEnvelope(addAgain);
+  if (addedAgain !== null && addedAgain.recordCount !== 2) {
+    console.error(`[FAIL] 멱등 위반: 재추가 후 recordCount=${addedAgain.recordCount}`);
+  }
+
+  // 상한 초과는 400이다(InputLimits.RECORD_IDS_MAX = 100).
+  const tooMany = [];
+  for (let i = 0; i < 101; i += 1) tooMany.push(created.recordId);
+  expect(
+    me.post(`/v1/collections/${collectionId}/records`, { recordIds: tooMany }, 'write'),
+    'POST /v1/collections/{id}/records (101개)',
+    { status: 400, code: 'INVALID_INPUT' }
+  );
+
+  // --- 연결 해제: 남는 것이 있으면 204 ---
+  const remove = me.del(`/v1/collections/${collectionId}/records/${secondRecordId}`, 'write');
+  expect(remove, 'DELETE /v1/collections/{id}/records/{rid}', 204);
+  visit('DELETE /v1/collections/{id}/records/{rid}');
+
+  // --- BD-11: 마지막 연결 해제는 409 + impact ---
+  const removeLast = me.del(
+    `/v1/collections/${collectionId}/records/${created.recordId}`,
+    'write'
+  );
+  expect(removeLast, 'DELETE 마지막 연결 (409 기대)', {
+    status: 409,
+    code: 'DELETE_CONFIRMATION_REQUIRED',
+  });
+  const lastErr = errorOf(removeLast);
+  if (lastErr === null || lastErr.impact === undefined) {
+    console.error(`[FAIL] BD-11 위반: 409에 error.impact가 없다: ${removeLast.body}`);
+  } else if (typeof lastErr.impact.recordDeleted !== 'boolean' ||
+             !Array.isArray(lastErr.impact.collectionIds)) {
+    console.error(`[FAIL] impact 모양 위반: ${JSON.stringify(lastErr.impact)}`);
+  }
+
+  // --- BD-11: 그 Collection의 마지막 Record 삭제도 409 + impact.collectionIds ---
+  const deleteRecord = me.del(`/v1/records/${created.recordId}`, 'write');
+  expect(deleteRecord, 'DELETE /v1/records/{id} (마지막이라 409 기대)', {
+    status: 409,
+    code: 'DELETE_CONFIRMATION_REQUIRED',
+  });
+  visit('DELETE /v1/records/{id}');
+  const recErr = errorOf(deleteRecord);
+  if (recErr === null || recErr.impact === undefined) {
+    console.error(`[FAIL] BD-11 위반: record 삭제 409에 impact가 없다: ${deleteRecord.body}`);
+  } else if (recErr.impact.collectionIds.indexOf(collectionId) === -1) {
+    console.error(
+      `[FAIL] impact.collectionIds에 ${collectionId}가 없다: ` +
+        `${JSON.stringify(recErr.impact.collectionIds)}`
+    );
+  }
+
+  // --- force로 확정 삭제 ---
+  const force = me.del(`/v1/records/${created.recordId}/force`, 'write');
+  expect(force, 'DELETE /v1/records/{id}/force', 204);
+  visit('DELETE /v1/records/{id}/force');
+  touch('record', created.recordId, 'force로 연쇄 삭제');
+  touch('collection', collectionId, 'force 연쇄로 함께 삭제되었을 수 있음');
+
+  // 남의 것 force는 404다.
+  expect(ctx.owner.del(`/v1/records/${created.recordId}/force`, 'write'), 'force (남의 것)', {
+    status: 404,
+    code: 'RESOURCE_NOT_FOUND',
+  });
+
+  // --- Collection 삭제: 별도 Collection을 하나 더 만들어 확인한다 ---
+  const spare = me.post(
+    '/v1/records',
+    { place: testPlace('c'), contextBody: '세 번째 장소의 맥락이다.' },
+    'write'
+  );
+  expect(spare, 'POST /v1/records (삭제 확인용)', 201);
+  const spareData = okEnvelope(spare);
+  const spareRecordId = spareData === null ? null : spareData.recordId;
+  if (spareRecordId !== null) {
+    touch('record', spareRecordId, '삭제 확인용 Record');
+  }
+
+  const spareCollection = me.post(
+    '/v1/collections',
+    { title: '삭제될컬렉션', recordIds: [spareRecordId] },
+    'write'
+  );
+  const spareCollectionData = okEnvelope(spareCollection);
+  const spareCollectionId =
+    spareCollectionData === null ? null : spareCollectionData.collectionId;
+
+  if (spareCollectionId !== null) {
+    touch('collection', spareCollectionId, '삭제 확인용 Collection');
+    const deleteCollection = me.del(`/v1/collections/${spareCollectionId}`, 'write');
+    expect(deleteCollection, 'DELETE /v1/collections/{id}', 204);
+    visit('DELETE /v1/collections/{id}');
+
+    expect(
+      ctx.owner.del(`/v1/collections/${spareCollectionId}`, 'write'),
+      'DELETE /v1/collections/{id} (남의 것)',
+      { status: 404, code: 'RESOURCE_NOT_FOUND' }
+    );
+  } else {
+    console.error(`[FAIL] 삭제 확인용 Collection을 못 만들었다: ${spareCollection.body}`);
+  }
+
+  return { collectionId: spareCollectionId };
+}
+
 export default function () {
   const ctx = {
     owner: session(GOLDEN.ownerMember),
@@ -346,6 +543,10 @@ export default function () {
   const created = runRecordWrites(ctx);
   if (created.recordId === null) {
     console.error('[FAIL] Record 쓰기 시나리오가 recordId를 만들지 못했다');
+  }
+  const collection = runCollectionWrites(ctx, created);
+  if (collection.collectionId === null) {
+    console.error('[FAIL] Collection 쓰기 시나리오가 collectionId를 만들지 못했다');
   }
 
   emit(ENDPOINTS);
