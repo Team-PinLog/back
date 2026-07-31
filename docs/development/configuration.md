@@ -75,21 +75,24 @@ spring:
 
 `${DB_URL}`·`${DB_USERNAME}`·`${REDIS_HOST}` 같은 이름을 새로 만들지 않습니다. 인프라가 주입하지 않는 변수를 참조하면 기동 시점에 해석 실패로 죽습니다. 새 비밀번호·API 키가 필요하면 저장소에 넣지 말고 인프라 담당자에게 요청합니다.
 
-### 인증이 추가로 요구하는 비밀값 (S15P11A705-63)
+### 애플리케이션이 추가로 요구하는 비밀값
 
-`DB_PASSWORD` 외에 아래가 필요합니다. **인프라 계약에 아직 반영되지 않았으므로 배포 전에 요청해야 합니다.**
+`DB_PASSWORD` 외에 아래가 필요합니다. 위 §5의 datasource 계약과 별개로, 이들은 **`back-owner-secrets`에 봉인돼 `envFrom`으로 주입됩니다**(S15P11A705-154). 허용 키 집합은 `infra/policy/sealedsecrets/back-prod.yaml`이 규정하므로, 새 키가 필요하면 저장소에 넣지 말고 인프라 담당자에게 요청해 그 집합에 더합니다.
 
 | 변수 | 필수 여부 | 없으면 |
 | --- | --- | --- |
 | `JWT_PRIVATE_KEY` | **운영 필수** | 운영 프로파일은 **기동 실패**. 로컬·테스트는 임시 키쌍 생성 |
-| `GOOGLE_CLIENT_ID` | 로그인에 필요 | `unset`으로 기동은 되고 인가 요청 URL 생성까지만 동작 |
-| `GOOGLE_CLIENT_SECRET` | 로그인에 필요 | 위와 같음 |
+| `PINLOG_AI_INTERNAL_SECRET` | **운영 필수** | 운영 프로파일은 **기동 실패**. 그 외는 경고 후 기동하고 AI 호출이 전부 401로 거절됨 |
+| `GOOGLE_CLIENT_ID` | 로그인에 필요 | `unset`으로 기동은 되고 인가 요청 URL 생성까지만 동작 (S15P11A705-63) |
+| `GOOGLE_CLIENT_SECRET` | 로그인에 필요 | 위와 같음 (S15P11A705-63) |
 | `KAKAO_CLIENT_ID` · `KAKAO_CLIENT_SECRET` | Kakao 로그인에 필요 | 위와 같음 (S15P11A705-64) |
 | `NAVER_CLIENT_ID` · `NAVER_CLIENT_SECRET` | Naver 로그인에 필요 | 위와 같음 (S15P11A705-64) |
 
 **쓰지 않는 키는 빈 값으로 두지 말고 정의 자체를 하지 않습니다.** `application.yml`이 `spring.config.import`로 `.env`를 프로퍼티로 올리므로, `KAKAO_CLIENT_ID=`처럼 정의만 하면 프로퍼티가 "없음"이 아니라 **빈 문자열**이 되어 `${KAKAO_CLIENT_ID:unset}`의 기본값이 적용되지 않습니다. 그러면 `Client id of registration 'kakao' must not be empty`로 **기동이 실패합니다.** 로컬 `.env`도, 운영 Secret도 같습니다 — 자격증명을 아직 받지 못한 공급자는 주입하지 않는 것이 정상 상태입니다([BT-05](../backend/troubleshooting/BT-05-dotenv-empty-value-overrides-default.md)).
 
-`JWT_PRIVATE_KEY`는 RSA 2048 이상 PKCS#8 PEM입니다. 셋 중 **이것만 기동을 막습니다** — 임시 키를 만들면 파드마다 서명 키가 달라져 스케일아웃·재시작 때 전면 로그아웃이 되므로, 조용히 망가지는 것보다 뜨지 않는 편을 택했습니다([BD-31](../backend/decisions/BD-31-jwt-rs256-key-management.md)).
+`JWT_PRIVATE_KEY`는 RSA 2048 이상 PKCS#8 PEM입니다. **기동을 막는 것은 이것과 `PINLOG_AI_INTERNAL_SECRET` 둘뿐이고 소셜 로그인 자격증명은 막지 않습니다.** 둘 다 같은 이유입니다 — 없어도 뜨게 두면 조용히 망가집니다. 임시 서명 키를 만들면 파드마다 키가 달라져 스케일아웃·재시작 때 전면 로그아웃이 되고([BD-31](../backend/decisions/BD-31-jwt-rs256-key-management.md)), AI 시크릿이 비면 FastAPI가 401을 주는데 클라이언트가 실패를 삼켜 **임베딩이 하나도 생성되지 않는 것을 아무도 알 수 없습니다**(`AiProcessClient.requireSecret`).
+
+> **`PINLOG_AI_BASE_URL`·`PINLOG_AI_EMBEDDING_PROFILE`은 비밀값이 아니고 요청 대상도 아닙니다.** 전자는 주소라 인프라가 평문 `env`로 넣고, 후자는 `application.yml`에 리터럴 기본값이 있어 환경변수는 덮어쓰기 수단일 뿐입니다([BD-39](../backend/decisions/BD-39-embedding-profile-in-application-config.md)). 다만 `PINLOG_AI_BASE_URL`이 현재 운영에 주입돼 있지 않아 AI 호출이 전부 자기 자신의 8000 포트로 나갑니다 — [back#122](https://github.com/Team-PinLog/back/issues/122).
 
 ```yaml
 pinlog:
@@ -145,5 +148,5 @@ spring:
 - [ ] `open-in-view=false`이고, 연관 조회는 `fetch join`이나 전용 메서드로 명시한다
 - [ ] actuator는 `health`·`prometheus`만 노출한다 (둘 다 필수)
 - [ ] readiness 그룹은 `readinessState,db`이고, `redis`와 liveness 그룹은 건드리지 않았다
-- [ ] 비밀값은 `DB_PASSWORD`만 환경변수이고, 주소·사용자명은 프로파일 파일에 있다
+- [ ] 비밀값은 전부 환경변수 주입이고(datasource는 `DB_PASSWORD`, 나머지는 `back-owner-secrets`), 주소·사용자명은 프로파일 파일에 있다
 - [ ] 환경별 차이만 프로파일에 두고 공통값을 복제하지 않았다
