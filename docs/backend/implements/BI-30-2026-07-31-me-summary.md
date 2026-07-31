@@ -63,11 +63,21 @@
 
 ## 남은 것
 
-- **테스트 픽스처가 세 클래스에 중복돼 있다.** `createRecord`·`createCollection`·`follow`가 `AiDerivedDataInvalidationTests`·`MemberWithdrawalApiTests`·`MeSummaryApiTests`에 각각 있다. 공용 픽스처로 뺄 만하지만 이미 머지된 두 기능의 테스트를 함께 건드리게 되고, 클래스마다 픽스처를 소유하는 것이 현재 관례이기도 하다 — 관례를 바꾸는 결정이므로 별건으로 남긴다(`FeedFixtures`가 반대 선례다).
+- **`AiDerivedDataInvalidationTests`가 아직 공용 픽스처를 쓰지 않는다.** 아래 리팩터에서 member 도메인 두 클래스만 옮겼고, 그 파일은 **AI 파트 소유**(S15P11A705-124)라 이 PR에서 건드리지 않았다. 같은 `createRecord`·`createCollection`·`firstContextId`가 그쪽에 남아 있으므로, AI 파트가 필요할 때 `CoreApiFixtures`를 상속하면 된다.
 - `GET /feed/collections/{id}/shelf`가 여전히 미구현이다([#85](https://github.com/Team-PinLog/back/issues/85)).
+
+## 리팩터 — 공용 픽스처 추출
+
+`createRecord`·`createCollection`·`follow` 같은 픽스처가 클래스마다 복사돼 있었다. `support/CoreApiFixtures`로 올리고 member 도메인 두 테스트가 상속하게 했다 — **두 파일에서 177줄이 사라졌다.**
+
+`support`에 둔 이유는 **도메인을 가로지르기 때문**이다. Record·Collection·Follow를 함께 쓰는 픽스처라 어느 한 도메인 패키지에 두면 그 도메인이 아닌 테스트가 남의 패키지를 참조하게 된다. 한 도메인만 쓰는 픽스처는 계속 그 도메인 안에 둔다 — `FeedFixtures`가 그 경우이고, 이 클래스는 그 구조(추상 클래스 + `IntegrationContainerSupport` 상속 + `protected` 필드)를 그대로 따랐다.
+
+`MemberWithdrawalApiTests`에는 `givenSocialAccount(memberId, providerUserId, email)` 3인자 오버로드를 남겨 공용의 4인자 버전에 위임한다. 그 클래스는 provider를 가리지 않아 Google로 고정되어 있고, 호출부 11곳을 건드리지 않으려는 선택이다.
+
+옮기다 두 번 과하게 지웠다 — 남은 테스트가 쓰는 `Member`와 `Collectors` import를 함께 지워 컴파일이 깨졌고 되돌렸다. 헬퍼를 지울 때 **그 파일의 다른 테스트가 같은 타입을 쓰는지**를 함께 봐야 한다는 것이 드러난 지점이다.
 
 ## 검증
 
-`./gradlew clean check --no-daemon` — **417개 통과, 실패 0, 오류 0.**
+`./gradlew clean check --no-daemon` — **417개 통과, 실패 0, 오류 0.** 리팩터 전후 같은 수치다.
 
 신규 8건은 PostgreSQL Testcontainers 기반이고, 카운트 검증 전부에 **소프트 삭제된 행을 함께 두고** 센다. 뮤테이션 1종은 위 "열려 있던 질문" 절에 있다.

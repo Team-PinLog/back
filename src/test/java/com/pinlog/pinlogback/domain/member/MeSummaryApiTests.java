@@ -9,7 +9,6 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,20 +16,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.web.servlet.MockMvc;
 
 import com.pinlog.pinlogback.domain.collection.entity.Collection;
 import com.pinlog.pinlogback.domain.collection.repository.CollectionRepository;
-import com.pinlog.pinlogback.domain.member.entity.Member;
-import com.pinlog.pinlogback.domain.member.entity.SocialAccount;
 import com.pinlog.pinlogback.domain.member.entity.SocialProvider;
-import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
-import com.pinlog.pinlogback.domain.member.repository.SocialAccountRepository;
-import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
-
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.json.JsonMapper;
+import com.pinlog.pinlogback.support.CoreApiFixtures;
 
 /**
  * 마이페이지 요약(API 명세 3.5).
@@ -48,26 +38,12 @@ import tools.jackson.databind.json.JsonMapper;
 @SpringBootTest
 @AutoConfigureMockMvc
 @DisplayName("마이페이지 요약")
-class MeSummaryApiTests extends IntegrationContainerSupport {
+class MeSummaryApiTests extends CoreApiFixtures {
 
 	private static final String PATH = "/v1/me/summary";
 
-	private final JsonMapper jsonMapper = JsonMapper.builder().build();
-
-	@Autowired
-	private MockMvc mockMvc;
-
-	@Autowired
-	private MemberRepository memberRepository;
-
-	@Autowired
-	private SocialAccountRepository socialAccountRepository;
-
 	@Autowired
 	private CollectionRepository collectionRepository;
-
-	@Autowired
-	private JdbcTemplate jdbcTemplate;
 
 	@Test
 	@DisplayName("계정 정보와 네 카운트를 명세 형태로 반환한다")
@@ -220,68 +196,4 @@ class MeSummaryApiTests extends IntegrationContainerSupport {
 			.andExpect(status().isUnauthorized());
 	}
 
-	// --- 픽스처 -------------------------------------------------------------
-
-	private long newMemberId() {
-		return memberRepository.save(Member.create()).getId();
-	}
-
-	private void givenSocialAccount(long memberId, SocialProvider provider, String providerUserId, String email) {
-		Member member = memberRepository.findById(memberId).orElseThrow();
-		socialAccountRepository.saveAndFlush(
-			SocialAccount.create(member, provider, providerUserId, email));
-	}
-
-	private long createRecord(long memberId, String kakaoPlaceId, String contextBody) throws Exception {
-		String body = """
-			{
-			\t"place": {
-			\t\t"kakaoPlaceId": "%s",
-			\t\t"name": "장소",
-			\t\t"address": "주소",
-			\t\t"lat": 37.5,
-			\t\t"lng": 127.0
-			\t},
-			\t"contextBody": "%s"
-			}
-			""".formatted(kakaoPlaceId, contextBody);
-		JsonNode response = parse(mockMvc.perform(post("/v1/records").with(loginAs(memberId))
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(body))
-			.andExpect(status().isCreated())
-			.andReturn().getResponse().getContentAsString());
-		return response.at("/data/recordId").asLong();
-	}
-
-	private long createCollection(long memberId, String title, List<Long> recordIds) throws Exception {
-		String ids = recordIds.stream().map(String::valueOf).collect(Collectors.joining(", "));
-		JsonNode response = parse(mockMvc.perform(post("/v1/collections").with(loginAs(memberId))
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"title\": \"" + title + "\", \"recordIds\": [" + ids + "]}"))
-			.andExpect(status().isCreated())
-			.andReturn().getResponse().getContentAsString());
-		return response.at("/data/collectionId").asLong();
-	}
-
-	private long follow(long memberId, long collectionId) throws Exception {
-		JsonNode response = parse(mockMvc.perform(post("/v1/follows").with(loginAs(memberId))
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"collectionId\": " + collectionId + "}"))
-			.andExpect(status().isCreated())
-			.andReturn().getResponse().getContentAsString());
-		return response.at("/data/followId").asLong();
-	}
-
-	private void softDelete(String table, long id) {
-		jdbcTemplate.update("UPDATE " + table + " SET deleted_at = now() WHERE id = ?", id);
-	}
-
-	private Object deletedAtOf(String table, long id) {
-		return jdbcTemplate.queryForMap("SELECT deleted_at FROM " + table + " WHERE id = ?", id)
-			.get("deleted_at");
-	}
-
-	private JsonNode parse(String json) {
-		return jsonMapper.readTree(json);
-	}
 }

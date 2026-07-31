@@ -25,11 +25,9 @@ import org.springframework.data.redis.RedisConnectionFailureException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
-import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import com.pinlog.pinlogback.domain.auth.service.RefreshTokenStore;
@@ -38,16 +36,12 @@ import com.pinlog.pinlogback.domain.collection.repository.CollectionRepository;
 import com.pinlog.pinlogback.domain.member.entity.Member;
 import com.pinlog.pinlogback.domain.member.entity.SocialAccount;
 import com.pinlog.pinlogback.domain.member.entity.SocialProvider;
-import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
-import com.pinlog.pinlogback.domain.member.repository.SocialAccountRepository;
 import com.pinlog.pinlogback.global.security.authentication.MemberPrincipal;
 import com.pinlog.pinlogback.global.security.token.AuthCookies;
 import com.pinlog.pinlogback.global.security.token.JwtTokenProvider;
-import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
+import com.pinlog.pinlogback.support.CoreApiFixtures;
 
 import jakarta.servlet.http.Cookie;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.json.JsonMapper;
 
 /**
  * 회원 탈퇴(API 명세 3.6, 데이터모델 6.9).
@@ -63,26 +57,12 @@ import tools.jackson.databind.json.JsonMapper;
 @SpringBootTest
 @AutoConfigureMockMvc
 @DisplayName("회원 탈퇴")
-class MemberWithdrawalApiTests extends IntegrationContainerSupport {
+class MemberWithdrawalApiTests extends CoreApiFixtures {
 
 	private static final String PATH = "/v1/me";
 
-	private final JsonMapper jsonMapper = JsonMapper.builder().build();
-
-	@Autowired
-	private MockMvc mockMvc;
-
-	@Autowired
-	private MemberRepository memberRepository;
-
-	@Autowired
-	private SocialAccountRepository socialAccountRepository;
-
 	@Autowired
 	private CollectionRepository collectionRepository;
-
-	@Autowired
-	private JdbcTemplate jdbcTemplate;
 
 	@Autowired
 	private StringRedisTemplate redisTemplate;
@@ -350,8 +330,9 @@ class MemberWithdrawalApiTests extends IntegrationContainerSupport {
 
 	// --- 픽스처 -------------------------------------------------------------
 
-	private long newMemberId() {
-		return memberRepository.save(Member.create()).getId();
+	/** 이 클래스는 provider를 가리지 않으므로 Google로 고정한다. 공통 픽스처의 4인자 버전에 위임한다. */
+	private long givenSocialAccount(long memberId, String providerUserId, String email) {
+		return givenSocialAccount(memberId, SocialProvider.GOOGLE, providerUserId, email);
 	}
 
 	/** CSRF 없이 인증만 주기 위한 것. {@code loginAs}는 둘을 함께 넣으므로 여기서는 쓸 수 없다. */
@@ -359,64 +340,9 @@ class MemberWithdrawalApiTests extends IntegrationContainerSupport {
 		return new UsernamePasswordAuthenticationToken(new MemberPrincipal(memberId), null, List.of());
 	}
 
-	private long givenSocialAccount(long memberId, String providerUserId, String email) {
-		Member member = memberRepository.findById(memberId).orElseThrow();
-		return socialAccountRepository
-			.saveAndFlush(SocialAccount.create(member, SocialProvider.GOOGLE, providerUserId, email))
-			.getId();
-	}
-
 	private void givenRefreshToken(long memberId, String tokenId) {
 		redisTemplate.opsForValue().set("auth:refresh:" + memberId + ":" + tokenId, "1");
 		redisTemplate.opsForSet().add("auth:refresh-index:" + memberId, tokenId);
-	}
-
-	private long createRecord(long memberId, String kakaoPlaceId, String contextBody) throws Exception {
-		String body = """
-			{
-			\t"place": {
-			\t\t"kakaoPlaceId": "%s",
-			\t\t"name": "장소",
-			\t\t"address": "주소",
-			\t\t"lat": 37.5,
-			\t\t"lng": 127.0
-			\t},
-			\t"contextBody": "%s"
-			}
-			""".formatted(kakaoPlaceId, contextBody);
-		JsonNode response = parse(mockMvc.perform(post("/v1/records").with(loginAs(memberId))
-				.contentType(MediaType.APPLICATION_JSON)
-				.content(body))
-			.andExpect(status().isCreated())
-			.andReturn().getResponse().getContentAsString());
-		return response.at("/data/recordId").asLong();
-	}
-
-	private long firstContextId(long memberId, long recordId) throws Exception {
-		JsonNode detail = parse(mockMvc.perform(get("/v1/records/{recordId}", recordId)
-				.with(loginAs(memberId)))
-			.andExpect(status().isOk())
-			.andReturn().getResponse().getContentAsString());
-		return detail.at("/data/contexts/0/contextId").asLong();
-	}
-
-	private long createCollection(long memberId, String title, List<Long> recordIds) throws Exception {
-		String ids = recordIds.stream().map(String::valueOf).collect(Collectors.joining(", "));
-		JsonNode response = parse(mockMvc.perform(post("/v1/collections").with(loginAs(memberId))
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"title\": \"" + title + "\", \"recordIds\": [" + ids + "]}"))
-			.andExpect(status().isCreated())
-			.andReturn().getResponse().getContentAsString());
-		return response.at("/data/collectionId").asLong();
-	}
-
-	private long follow(long memberId, long collectionId) throws Exception {
-		JsonNode response = parse(mockMvc.perform(post("/v1/follows").with(loginAs(memberId))
-				.contentType(MediaType.APPLICATION_JSON)
-				.content("{\"collectionId\": " + collectionId + "}"))
-			.andExpect(status().isCreated())
-			.andReturn().getResponse().getContentAsString());
-		return response.at("/data/followId").asLong();
 	}
 
 	private void givenDerivedData(long memberId, long recordId, long contextId,
@@ -440,11 +366,6 @@ class MemberWithdrawalApiTests extends IntegrationContainerSupport {
 	}
 
 	// --- 검증 (native) ------------------------------------------------------
-
-	private Object deletedAtOf(String table, long id) {
-		return jdbcTemplate.queryForMap("SELECT deleted_at FROM " + table + " WHERE id = ?", id)
-			.get("deleted_at");
-	}
 
 	private Map<String, Object> socialAccountRow(long id) {
 		return jdbcTemplate.queryForMap(
@@ -484,7 +405,4 @@ class MemberWithdrawalApiTests extends IntegrationContainerSupport {
 			.collect(Collectors.toSet());
 	}
 
-	private JsonNode parse(String json) {
-		return jsonMapper.readTree(json);
-	}
 }
