@@ -30,7 +30,6 @@ class RuntimeSecretWorkflowContractTests {
 
 	/** 스텝을 이름으로 집는다. checkout은 {@code name}이 없어 {@code uses}가 신원이다. */
 	private static final String CHECKOUT = "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683";
-	private static final String DIAGNOSE_STEP = "Diagnose OIDC endpoint metadata safely";
 	private static final String INFRA_PR_STEP = "Create canonical Infra SealedSecret Draft PR";
 	private static final List<String> OWNER_SECRETS = List.of(
 		"JWT_PRIVATE_KEY",
@@ -66,8 +65,7 @@ class RuntimeSecretWorkflowContractTests {
 		assertThat(job.get("environment")).isEqualTo("pinlog-secrets-prod");
 		// 개수가 아니라 신원의 집합을 고정한다. 스텝이 하나 늘면 여기서 그 이름이 드러나므로
 		// "검토된 스텝만 있다"는 보증은 그대로이고, 아래 상세 단언은 순서에 영향받지 않는다.
-		assertThat(stepsByIdentity().keySet()).containsExactlyInAnyOrder(
-			CHECKOUT, DIAGNOSE_STEP, INFRA_PR_STEP);
+		assertThat(stepsByIdentity().keySet()).containsExactlyInAnyOrder(CHECKOUT, INFRA_PR_STEP);
 
 		Map<Object, Object> checkout = step(CHECKOUT);
 		assertThat(checkout).containsOnlyKeys("uses", "with");
@@ -78,15 +76,21 @@ class RuntimeSecretWorkflowContractTests {
 	}
 
 	/**
-	 * 진단 스텝은 이 Environment 경계 안에서 도는 <b>임의 스크립트</b>다. 그래서 계약은 하나다 —
-	 * 런타임 Secret을 참조하지 않는다. 참조하면 그 값이 공개 저장소의 Actions 로그로 나갈 수 있다.
+	 * 이 잡의 스텝은 <b>SHA로 고정된 action만</b> 쓴다. 인라인 스크립트는 두지 않는다 — 런타임
+	 * Secret 9개에 접근하는 Environment 경계 안이라, 여기서 도는 임의 스크립트는 그 값을 공개
+	 * 저장소의 Actions 로그로 내보낼 수 있다.
+	 *
+	 * <p>이 단언이 있는 이유가 실제 사건이다. OIDC 진단용 파이썬 스크립트가 한동안 이 경계 안에
+	 * 있었고(#115~#119), 그 스크립트 자체는 claim만 찍어 안전했지만 영구 경로에 둘 실익이 없다고
+	 * 판단해 제거했다(#121 리뷰). 같은 것이 다시 들어오면 여기서 걸린다.
 	 */
 	@Test
-	void diagnosticStepCannotReadRuntimeOrBridgeSecrets() throws IOException {
-		Map<Object, Object> diagnose = step(DIAGNOSE_STEP);
-
-		assertThat(diagnose).containsOnlyKeys("name", "shell", "run");
-		assertThat(String.valueOf(diagnose.get("run"))).doesNotContain("secrets.");
+	void noStepRunsAnInlineScriptInsideTheSecretEnvironment() throws IOException {
+		for (Map.Entry<String, Map<Object, Object>> each : stepsByIdentity().entrySet()) {
+			assertThat(each.getValue())
+				.as("스텝 '%s'이 인라인 스크립트를 갖는다", each.getKey())
+				.doesNotContainKey("run");
+		}
 	}
 
 	@Test
