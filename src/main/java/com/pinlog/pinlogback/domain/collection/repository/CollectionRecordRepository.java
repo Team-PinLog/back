@@ -18,6 +18,13 @@ public interface CollectionRecordRepository extends JpaRepository<CollectionReco
 
 	List<CollectionRecord> findByCollectionId(Long collectionId);
 
+	/**
+	 * 탈퇴 연쇄 삭제용. Collection이 소유자 자기 Record만 담으므로
+	 * ({@code CollectionService.requireAllOwnedActiveRecords}) 이 한 번의 조회가 그 회원의 링크
+	 * 전체를 덮는다 — Record 쪽에서 다시 훑을 필요가 없다(데이터모델 6.9).
+	 */
+	List<CollectionRecord> findByCollectionIdIn(List<Long> collectionIds);
+
 	long countByCollectionId(Long collectionId);
 
 	/**

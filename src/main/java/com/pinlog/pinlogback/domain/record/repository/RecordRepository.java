@@ -19,6 +19,9 @@ public interface RecordRepository extends JpaRepository<Record, Long> {
 
 	Optional<Record> findByMemberIdAndPlaceId(Long memberId, Long placeId);
 
+	/** 탈퇴 연쇄 삭제용. 그 회원의 활성 Record 전체다(데이터모델 6.9). */
+	List<Record> findByMemberId(Long memberId);
+
 	List<Record> findByIdInAndMemberId(List<Long> ids, Long memberId);
 
 	/**

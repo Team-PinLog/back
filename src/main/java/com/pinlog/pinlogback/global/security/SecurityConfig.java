@@ -16,6 +16,7 @@ import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
 
 import com.pinlog.pinlogback.domain.auth.controller.SocialLoginController;
+import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
 import com.pinlog.pinlogback.global.security.authentication.JwtAuthenticationFilter;
 import com.pinlog.pinlogback.global.security.error.RestAccessDeniedHandler;
 import com.pinlog.pinlogback.global.security.error.RestAuthenticationEntryPoint;
@@ -109,7 +110,8 @@ public class SecurityConfig {
 		OAuthLoginSuccessHandler successHandler,
 		OAuthLoginFailureHandler failureHandler,
 		CookieCsrfTokenRepository csrfTokenRepository,
-		JwtTokenProvider jwtTokenProvider
+		JwtTokenProvider jwtTokenProvider,
+		MemberRepository memberRepository
 	) throws Exception {
 		return http
 			.oauth2Login(oauth2 -> oauth2
@@ -137,7 +139,8 @@ public class SecurityConfig {
 			.addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
 			// Access 쿠키를 SecurityContext로 옮긴다. 인가 판정 전에 돌아야 한다.
 			.addFilterBefore(
-				new JwtAuthenticationFilter(jwtTokenProvider), UsernamePasswordAuthenticationFilter.class)
+				new JwtAuthenticationFilter(jwtTokenProvider, memberRepository),
+				UsernamePasswordAuthenticationFilter.class)
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			// 기본 401이 로그인 폼 리다이렉트나 WWW-Authenticate로 나가지 않도록 끈다.
 			.formLogin(AbstractHttpConfigurer::disable)

@@ -102,3 +102,4 @@
 | [BD-38](BD-38-published-predicate-per-layer.md) | 발행 여부 판정은 층마다 자체 보유하고(아홉 곳), 대가를 각 자리를 지키는 테스트로 갚는다 | Accepted | S15P11A705-148 |
 | [BD-39](BD-39-embedding-profile-in-application-config.md) | Embedding Profile을 `application.yml` 리터럴로 두고 환경변수는 덮어쓰기로만 — 런타임 대조가 성립하려면 Spring도 값을 가져야 한다 | Accepted | S15P11A705-135 |
 | [BD-40](BD-40-scheduling-with-dedicated-scheduler-and-no-distributed-lock.md) | 스케줄링을 `@EnableScheduling` + 자체 `taskScheduler` Bean으로 들이고, 다중 인스턴스 조정은 분산 락 없이 `SKIP LOCKED`에 맡긴다 | Accepted | S15P11A705-159 |
+| [BD-41](BD-41-withdrawn-member-check-in-authentication-filter.md) | 탈퇴 회원의 남은 Access 토큰을 인증 필터의 PK 조회로 막는다 — 창 안에서 새는 것이 읽기가 아니라 쓰기이고, Redis 마커는 순단을 인증 실패로 번지게 한다 | Accepted | S15P11A705-65 |

@@ -10,6 +10,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.WebUtils;
 
+import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
 import com.pinlog.pinlogback.global.security.token.AuthCookies;
 import com.pinlog.pinlogback.global.security.token.JwtTokenProvider;
 
@@ -26,6 +27,12 @@ import jakarta.servlet.http.HttpServletResponse;
  * {@code RestAuthenticationEntryPoint}로 넘겨 공통 envelope 401을 만든다 — 오류 응답 형식이
  * 한 곳에만 있어야 계약이 어긋나지 않는다.
  *
+ * <p><b>서명·만료만으로는 부족해 탈퇴 여부를 함께 본다.</b> Access는 30분짜리이고 폐기 목록이
+ * 없으므로, 토큰만 검사하면 탈퇴한 회원이 <b>다른 기기에 남은 쿠키로 최대 30분간 읽기·쓰기를</b>
+ * 계속할 수 있다. Refresh 폐기는 재발급만 막고 이미 발급된 Access는 막지 못한다. 대가는 인증
+ * 요청마다 PK 조회 한 번이며, 판정은 {@link MemberRepository#isActive}에 모여 있다 —
+ * S15P11A705-147이 그 목적으로 만든 지점이다.
+ *
  * <p>이미 인증된 요청은 건드리지 않는다. OAuth 로그인 흐름이 자기 인증을 이미 올려 둔 경우가 있다.
  *
  * <p><b>빈으로 만들지 않는다.</b> Spring Boot는 {@code Filter} 타입 빈을 서블릿 컨테이너에도 자동
@@ -36,9 +43,11 @@ import jakarta.servlet.http.HttpServletResponse;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 	private final JwtTokenProvider tokenProvider;
+	private final MemberRepository memberRepository;
 
-	public JwtAuthenticationFilter(JwtTokenProvider tokenProvider) {
+	public JwtAuthenticationFilter(JwtTokenProvider tokenProvider, MemberRepository memberRepository) {
 		this.tokenProvider = tokenProvider;
+		this.memberRepository = memberRepository;
 	}
 
 	@Override
@@ -50,6 +59,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 		if (SecurityContextHolder.getContext().getAuthentication() == null) {
 			readAccessToken(request)
 				.flatMap(tokenProvider::parseAccessToken)
+				.filter(memberRepository::isActive)
 				.ifPresent(memberId -> authenticate(request, memberId));
 		}
 		filterChain.doFilter(request, response);
