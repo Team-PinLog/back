@@ -20,7 +20,9 @@ export const GOLDEN = {
   otherMember: '3',
   ownedRecordId: 1,
   ownedCollectionId: 1,
-  kakaoPlaceId: 'SEED-0008',
+  // 현재 DB는 카카오 실 장소로 시드되어 kakao_place_id가 숫자 문자열이다.
+  // 옛 골든 시드의 'SEED-XXXX' 형식은 이 DB에 없다. 이 값은 place 1(record 1, member 1 소유)이다.
+  kakaoPlaceId: '1701157489',
   missingKakaoPlaceId: 'NOPE-9999',
 };
 
