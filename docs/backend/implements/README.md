@@ -45,3 +45,4 @@
 | BI-28 | 재스캔 Scheduler와 FAILED Finalizer — 유실·정지된 AI 처리 복구 (S15P11A705-159) | ✅ 완료 | [BI-28](BI-28-2026-07-30-ai-rescan-scheduler.md) |
 | BI-29 | 회원 탈퇴 — 마스킹·연쇄 소프트 삭제·AI 무효화·세션 폐기 (S15P11A705-65) | ✅ 완료 | [BI-29](BI-29-2026-07-30-member-withdrawal.md) |
 | BI-30 | 마이페이지 요약 조회 — 계정 정보와 활성 기준 카운트 4 (S15P11A705-200) | ✅ 완료 | [BI-30](BI-30-2026-07-31-me-summary.md) |
+| BI-31 | 소셜 로그인 진단 로그 — 성공·가입·실패를 짝지어 볼 수 있게 (S15P11A705-186) | ✅ 완료 | [BI-31](BI-31-2026-07-31-login-diagnostics.md) |
