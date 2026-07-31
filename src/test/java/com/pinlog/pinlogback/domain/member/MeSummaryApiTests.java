@@ -159,18 +159,29 @@ class MeSummaryApiTests extends CoreApiFixtures {
 			.andExpect(jsonPath("$.data.followingCount").value(0));
 	}
 
+	/**
+	 * 개인 API는 서버가 쿠키로 사용자를 식별하므로 클라이언트가 자신의 내부 ID를 알 필요가 없다
+	 * (08 §1.1, BD-14).
+	 *
+	 * <p>이메일에 숫자를 넣지 않는다. 본문 전문에서 id 문자열을 찾는 단언이 있어서, 이메일에 숫자가
+	 * 있으면 <b>시퀀스가 그 숫자를 memberId로 주는 회차에만 실패</b>한다 — 공유 컨테이너라 앞선
+	 * 클래스가 시퀀스를 얼마나 밀었는지에 달려 회차마다 갈린다. 숫자를 빼면 본문에 남는 수는 카운트
+	 * 넷의 {@code 0}뿐이고 id는 1부터라 우연 일치가 없다.
+	 */
 	@Test
 	@DisplayName("memberId를 반환하지 않는다")
 	void doesNotExposeMemberId() throws Exception {
 		long memberId = newMemberId();
-		givenSocialAccount(memberId, SocialProvider.KAKAO, "kakao-summary-6", "summary6@kakao.com");
+		givenSocialAccount(memberId, SocialProvider.KAKAO, "kakao-summary-six", "summary-six@kakao.com");
 
-		// 개인 API는 서버가 쿠키로 사용자를 식별한다. 자신의 내부 ID를 알 필요가 없다(08 §1.1, BD-14).
 		String body = mockMvc.perform(get(PATH).with(loginAs(memberId)))
 			.andExpect(status().isOk())
 			.andReturn().getResponse().getContentAsString();
 
-		assertThat(jsonMapper.readTree(body).at("/data").has("memberId")).isFalse();
+		// 필드 집합을 그대로 고정한다 — memberId가 다른 이름으로 새는 경우까지 걸린다.
+		assertThat(jsonMapper.readTree(body).at("/data").propertyNames())
+			.containsExactlyInAnyOrder("provider", "email",
+				"recordCount", "collectionCount", "followerCount", "followingCount");
 		assertThat(body).doesNotContain(String.valueOf(memberId));
 	}
 
