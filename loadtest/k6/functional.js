@@ -208,6 +208,131 @@ export function runReads(ctx) {
   });
 }
 
+/** 전용 회원으로만 쓴다. 좌표는 서울 안, kakaoPlaceId는 시드와 겹치지 않는 접두어를 쓴다. */
+function testPlace(suffix) {
+  return {
+    kakaoPlaceId: `LT-${TEST_MEMBER}-${suffix}`,
+    name: `검증장소 ${suffix}`,
+    address: '서울 강남구 테헤란로 1',
+    roadAddress: '서울 강남구 테헤란로 1',
+    phone: null,
+    placeUrl: null,
+    lat: 37.5,
+    lng: 127.03,
+  };
+}
+
+export function runRecordWrites(ctx) {
+  const me = ctx.test;
+
+  // --- 생성: 201 RECORD_CREATED ---
+  const first = me.post(
+    '/v1/records',
+    { place: testPlace('a'), contextBody: '검증용 첫 맥락이다.' },
+    'write'
+  );
+  expect(first, 'POST /v1/records (신규)', 201);
+  visit('POST /v1/records');
+  const firstData = okEnvelope(first);
+  if (firstData === null || firstData.result !== 'RECORD_CREATED') {
+    console.error(`[FAIL] 신규 생성인데 result가 RECORD_CREATED가 아니다: ${first.body}`);
+    return { recordId: null, contextId: null };
+  }
+  const recordId = firstData.recordId;
+  touch('record', recordId, 'POST /v1/records로 생성');
+
+  // --- BD-12: 같은 place 재요청은 새 Record가 아니라 Context 추가이고 200이다 ---
+  const again = me.post(
+    '/v1/records',
+    { place: testPlace('a'), contextBody: '같은 장소 두 번째 맥락이다.' },
+    'write'
+  );
+  expect(again, 'POST /v1/records (같은 place 재요청)', 200);
+  const againData = okEnvelope(again);
+  if (againData === null || againData.result !== 'CONTEXT_ADDED') {
+    console.error(`[FAIL] BD-12 위반: 같은 place 재요청 result=${JSON.stringify(againData)}`);
+  } else if (againData.recordId !== recordId) {
+    console.error(
+      `[FAIL] BD-12 위반: 같은 place인데 recordId가 다르다 ${againData.recordId} != ${recordId}`
+    );
+  }
+
+  // --- 좌표 범위 밖은 400 ---
+  const badPlace = testPlace('bad');
+  badPlace.lat = 91;
+  expect(
+    me.post('/v1/records', { place: badPlace, contextBody: '범위 밖 좌표' }, 'write'),
+    'POST /v1/records (lat=91)',
+    { status: 400, code: 'INVALID_INPUT' }
+  );
+
+  // --- Context 추가: 201 ---
+  const added = me.post(
+    `/v1/records/${recordId}/contexts`,
+    { body: '세 번째 맥락이다.' },
+    'write'
+  );
+  expect(added, 'POST /v1/records/{id}/contexts', 201);
+  visit('POST /v1/records/{id}/contexts');
+  const addedData = okEnvelope(added);
+  const contextId = addedData === null ? null : addedData.contextId;
+  if (contextId === null) {
+    console.error(`[FAIL] Context 추가 응답에 contextId가 없다: ${added.body}`);
+    return { recordId: recordId, contextId: null };
+  }
+  touch('context', contextId, 'POST contexts로 추가');
+
+  // 빈 본문과 상한 초과는 400이다(InputLimits.CONTEXT_BODY_MAX = 500).
+  expect(
+    me.post(`/v1/records/${recordId}/contexts`, { body: '' }, 'write'),
+    'POST contexts (빈 본문)',
+    { status: 400, code: 'INVALID_INPUT' }
+  );
+  expect(
+    me.post(`/v1/records/${recordId}/contexts`, { body: 'ㄱ'.repeat(501) }, 'write'),
+    'POST contexts (501자)',
+    { status: 400, code: 'INVALID_INPUT' }
+  );
+
+  // --- BD-07: 수정은 교체다. 새 contextId가 나와야 한다 ---
+  const replaced = me.patch(
+    `/v1/records/${recordId}/contexts/${contextId}`,
+    { body: '교체된 맥락이다.' },
+    'write'
+  );
+  expect(replaced, 'PATCH /v1/records/{id}/contexts/{cid}', 200);
+  visit('PATCH /v1/records/{id}/contexts/{cid}');
+  const replacedData = okEnvelope(replaced);
+  if (replacedData === null) {
+    console.error(`[FAIL] 교체 응답 엔벨로프가 아니다: ${replaced.body}`);
+  } else if (replacedData.contextId === contextId) {
+    console.error(`[FAIL] BD-07 위반: 교체인데 contextId가 그대로다 ${contextId}`);
+  } else {
+    touch('context', replacedData.contextId, 'PATCH로 교체 생성');
+    touch('context', contextId, 'PATCH로 소프트 삭제됨');
+  }
+  const liveContextId = replacedData === null ? contextId : replacedData.contextId;
+
+  // 남의 Context 교체는 404다.
+  expect(
+    ctx.owner.patch(
+      `/v1/records/${recordId}/contexts/${liveContextId}`,
+      { body: '남이 고치려 함' },
+      'write'
+    ),
+    'PATCH contexts (남의 것)',
+    { status: 404, code: 'RESOURCE_NOT_FOUND' }
+  );
+
+  // --- Context 삭제: 남는 것이 있으면 204 ---
+  const del = me.del(`/v1/records/${recordId}/contexts/${liveContextId}`, 'write');
+  expect(del, 'DELETE /v1/records/{id}/contexts/{cid}', 204);
+  visit('DELETE /v1/records/{id}/contexts/{cid}');
+  touch('context', liveContextId, 'DELETE로 소프트 삭제');
+
+  return { recordId: recordId, contextId: liveContextId };
+}
+
 export default function () {
   const ctx = {
     owner: session(GOLDEN.ownerMember),
@@ -218,6 +343,10 @@ export default function () {
   };
 
   runReads(ctx);
+  const created = runRecordWrites(ctx);
+  if (created.recordId === null) {
+    console.error('[FAIL] Record 쓰기 시나리오가 recordId를 만들지 못했다');
+  }
 
   emit(ENDPOINTS);
 }
