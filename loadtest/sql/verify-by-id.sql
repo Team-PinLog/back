@@ -58,6 +58,7 @@ JOIN (SELECT DISTINCT id FROM touched WHERE kind IN ('collection', 'collection_r
   ON t.id = c.id
 LEFT JOIN core.collection_record cr
   ON cr.collection_id = c.id AND cr.deleted_at IS NULL
+WHERE c.deleted_at IS NULL  -- 삭제된 Collection은 record_count가 더 갱신되지 않으므로 대상에서 뺀다
 GROUP BY c.id, c.record_count
 HAVING c.record_count <> count(cr.record_id);
 
