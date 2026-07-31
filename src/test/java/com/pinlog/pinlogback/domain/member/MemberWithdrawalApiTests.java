@@ -108,12 +108,15 @@ class MemberWithdrawalApiTests extends IntegrationContainerSupport {
 		mockMvc.perform(delete(PATH).with(loginAs(memberId)))
 			.andExpect(status().isNoContent());
 
+		// 치환값을 그대로 고정한다. "원본과 다르다"로는 부족하다 — 접두만 붙이는 구현
+		// (MASK + email)도 그 단언을 통과하면서 개인정보를 그대로 남긴다. 복구 경로가 없는
+		// 파기이므로 형식이 바뀌면 여기서 걸려야 한다.
 		Map<String, Object> row = socialAccountRow(accountId);
-		assertThat(row.get("provider_user_id")).isNotEqualTo("google-withdraw-2");
-		assertThat(row.get("email")).isNotEqualTo("victim@example.com");
-		// 마스킹은 치환이며 NULL이 아니다(06 §2.2). 두 컬럼 모두 NOT NULL이다.
-		assertThat(row.get("provider_user_id")).isNotNull();
-		assertThat(row.get("email")).isNotNull();
+		assertThat(row.get("provider_user_id")).isEqualTo("withdrawn:" + accountId);
+		assertThat(row.get("email")).isEqualTo("withdrawn:" + accountId + "@deleted.invalid");
+		// 형식과 별개로 성립해야 하는 성질 — 원본 조각이 어디에도 남지 않는다.
+		assertThat(row.values().stream().map(String::valueOf))
+			.noneMatch(value -> value.contains("victim") || value.contains("google-withdraw-2"));
 	}
 
 	@Test
@@ -129,7 +132,7 @@ class MemberWithdrawalApiTests extends IntegrationContainerSupport {
 		// 마스킹이 조용히 유실되는 경로가 있어(#34) 같은 행에서 둘을 함께 본다.
 		Map<String, Object> row = socialAccountRow(accountId);
 		assertThat(row.get("deleted_at")).isNotNull();
-		assertThat(row.get("provider_user_id")).isNotEqualTo("google-withdraw-3");
+		assertThat(row.get("provider_user_id")).isEqualTo("withdrawn:" + accountId);
 	}
 
 	@Test

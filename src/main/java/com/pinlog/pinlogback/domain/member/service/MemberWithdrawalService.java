@@ -4,6 +4,8 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.pinlog.pinlogback.domain.ai.repository.AiDerivedDataRepository;
 import com.pinlog.pinlogback.domain.auth.service.RefreshTokenStore;
@@ -23,6 +25,8 @@ import com.pinlog.pinlogback.domain.record.repository.ContextRepository;
 import com.pinlog.pinlogback.domain.record.repository.RecordRepository;
 import com.pinlog.pinlogback.global.exception.UnauthorizedException;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * 회원 탈퇴(API 명세 3.6, 데이터모델 6.9).
  *
@@ -33,6 +37,7 @@ import com.pinlog.pinlogback.global.exception.UnauthorizedException;
  * <p>되돌릴 수 없다. 모든 삭제는 소프트 삭제이지만 {@code social_account}의 개인정보는 마스킹으로
  * 파기되므로 복구 경로가 없다(06 §2.2).
  */
+@Slf4j
 @Service
 public class MemberWithdrawalService {
 
@@ -79,9 +84,15 @@ public class MemberWithdrawalService {
 	 * <p><b>{@code record_count}를 갱신하지 않는다.</b> Collection 자체가 함께 죽는다
 	 * ({@code CollectionService.deleteCollection}이 같은 이유로 갱신하지 않는다).
 	 *
-	 * <p><b>Refresh 폐기를 마지막에 둔다.</b> Redis는 DB 트랜잭션에 참여할 수 없다. 마지막에 두면
-	 * Redis 실패가 DB 롤백을 유발해 "로그아웃됐는데 탈퇴는 안 된" 상태가 남지 않는다. 순서를
-	 * 뒤집으면 그 상태가 생긴다.
+	 * <p><b>Refresh 폐기는 커밋 이후에 한다.</b> Redis는 DB 트랜잭션에 참여할 수 없으므로 트랜잭션
+	 * 안에 두면 "폐기는 됐는데 탈퇴는 롤백된" 상태를 <b>없앨 수 없다</b> — 폐기가 반환한 뒤 커밋이
+	 * 실패하거나, 폐기가 키를 일부 지우고 던지면 그대로 남는다. 마지막에 두는 것으로는 창이 좁아질
+	 * 뿐이다.
+	 *
+	 * <p>그래서 커밋 이후로 옮기고 <b>실패를 삼킨다</b>. 이 방향의 잔여 위험은 무해하다 — 폐기가
+	 * 실패해 Refresh가 살아남아도, 그것으로 받는 Access는 {@code JwtAuthenticationFilter}의 탈퇴
+	 * 판정에 막힌다(BD-41). 반대로 삼키지 않으면 이미 커밋된 탈퇴가 500으로 응답해 쿠키도 지워지지
+	 * 않는다.
 	 *
 	 * @throws UnauthorizedException 이미 탈퇴한 회원일 때. 인증 계층이 먼저 막지만 그 보증이
 	 *     필터 설정에 있고 이 메서드의 타입에는 없어 한 번 더 확인한다
@@ -108,7 +119,23 @@ public class MemberWithdrawalService {
 		// 양방향이다 — 내가 만든 팔로우와 나를 대상으로 하는 팔로우 모두 지운다(6.9).
 		followRepository.findAllInvolving(memberId).forEach(Follow::softDelete);
 
-		refreshTokenStore.revokeAll(memberId);
+		revokeEverySessionAfterCommit(memberId);
+	}
+
+	/** 커밋 이후에 최선 노력으로 폐기한다. 이유는 {@link #withdraw(Long)} javadoc에 있다. */
+	private void revokeEverySessionAfterCommit(Long memberId) {
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				try {
+					refreshTokenStore.revokeAll(memberId);
+				} catch (RuntimeException e) {
+					// 탈퇴는 이미 확정됐다. 여기서 던지면 확정된 탈퇴가 500으로 응답하고 쿠키도
+					// 지워지지 않는다. 남은 Refresh는 BD-41의 탈퇴 판정이 무력화한다.
+					log.error("failed to revoke refresh tokens after withdrawal: memberId={}", memberId, e);
+				}
+			}
+		});
 	}
 
 	/**
