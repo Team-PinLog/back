@@ -14,13 +14,18 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.pinlog.pinlogback.domain.collection.dto.CollectionAddRecordsRequest;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionCreateRequest;
+import com.pinlog.pinlogback.domain.collection.dto.CollectionDetailResponse;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionRenameRequest;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionSummaryResponse;
+import com.pinlog.pinlogback.domain.collection.dto.PublicCollectionDetailResponse;
 import com.pinlog.pinlogback.domain.collection.service.CollectionService;
 import com.pinlog.pinlogback.global.response.CursorPage;
 import com.pinlog.pinlogback.global.security.authentication.LoginMember;
 import com.pinlog.pinlogback.global.security.authentication.MemberPrincipal;
 
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import jakarta.validation.Valid;
 
 /**
@@ -54,7 +59,13 @@ public class CollectionController {
 	 * 소유 여부에 따라 소유자용({@code CollectionDetailResponse})·공개용
 	 * ({@code PublicCollectionDetailResponse}) 서로 다른 DTO가 반환된다(BD-13). 두 타입은 상속
 	 * 관계가 없으므로 선언 타입은 Object다 — envelope는 런타임 advice가 감싼다.
+	 *
+	 * <p>선언 타입이 {@code Object}라 springdoc이 introspect할 것이 없어 응답 스키마가 비어 버린다.
+	 * {@code oneOf}로 두 DTO를 직접 알려 준다 — 런타임 계약(둘 중 하나)과 같은 형태라 문서와 실제가
+	 * 어긋날 여지가 없다. 반환 타입 자체는 BD-13에 따라 {@code Object}로 둔다.
 	 */
+	@ApiResponse(responseCode = "200", content = @Content(schema = @Schema(
+		oneOf = {CollectionDetailResponse.class, PublicCollectionDetailResponse.class})))
 	@GetMapping("/{collectionId}")
 	public Object detail(@LoginMember MemberPrincipal me,
 		@PathVariable Long collectionId,
