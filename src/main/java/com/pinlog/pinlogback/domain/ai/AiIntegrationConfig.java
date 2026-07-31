@@ -16,6 +16,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.client.RestClient;
 
 import com.pinlog.pinlogback.domain.ai.service.AiRescanProperties;
+import com.pinlog.pinlogback.domain.ai.service.EmbeddingInputProperties;
 
 /**
  * FastAPI 연동에 필요한 인프라 조립. 설정 클래스를 {@code global/config}가 아니라 소비자와 같은
@@ -29,7 +30,7 @@ import com.pinlog.pinlogback.domain.ai.service.AiRescanProperties;
 @Configuration
 @EnableAsync
 @EnableScheduling
-@EnableConfigurationProperties({AiProperties.class, AiRescanProperties.class})
+@EnableConfigurationProperties({AiProperties.class, AiRescanProperties.class, EmbeddingInputProperties.class})
 public class AiIntegrationConfig {
 
 	private static final Logger log = LoggerFactory.getLogger(AiIntegrationConfig.class);

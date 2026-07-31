@@ -120,6 +120,12 @@ pinlog:
     # 실험·롤백용 덮어쓰기이며 필수가 아니다. 값이 FastAPI 설정과 다르면 검색이 422로 거절되고
     # 빈 결과로 치환되지 않는다(런타임 대조). 근거는 BD-39.
     embedding-profile: ${PINLOG_AI_EMBEDDING_PROFILE:openai-text-embedding-3-small-1536-cosine-v1}
+    # process 요청의 text를 어떻게 구성할지. 켜면 "장소명. 본문"이 되고, 끄면 본문 그대로다.
+    # 기본값 false가 현행 동작이며 이것이 임베딩 4조건 측정의 기준선(조건 A)이다.
+    # 켠 채로 배포하지 않는다 — 차원·모델 채택 전이고, 켜면 AI 소유 명세
+    # docs/ai/spec/ai-integration.md 4.4("text는 Core 본문 그대로")와 충돌한다(그 절의 주석 참고).
+    embedding-input:
+      include-place-name: ${PINLOG_AI_EMBEDDING_INCLUDE_PLACE_NAME:false}
     process:
       # 202 접수 확인만 받으므로 짧다. 초과해도 PENDING이 남아 재스캔이 복구하므로,
       # 여기서 오래 기다리는 것은 사용자 요청 스레드를 붙잡아 두는 손해뿐이다.

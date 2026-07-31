@@ -23,6 +23,10 @@ import com.pinlog.pinlogback.domain.record.repository.RecordRepository;
  * 넘어온 문자열을 그대로 실으면 그 계약을 코드로 보장할 방법이 없다. Core 본문을 그대로 조회해
  * 채우면 위반이 구조적으로 불가능해진다.
  *
+ * <p>{@link EmbeddingInputComposer}는 그 재조회한 본문을 <b>기본값에서 손대지 않고</b> 통과시키므로
+ * 위 성질이 유지된다. 스위치를 켰을 때만 장소명이 결합되고, 그때 명세 4.4와 충돌이 생긴다 —
+ * 미해소로 표시해 두었으니 {@code docs/ai/spec/ai-integration.md} 4.4의 주석을 함께 읽어라.
+ *
  * <p>Context는 불변이므로 재조회한 본문은 이벤트 발행 시점의 본문과 항상 같다. 그 사이 사용자가
  * 수정했다면 이 {@code context_id}는 이미 소프트 삭제·CANCELLED이고 신 {@code context_id}에 대한
  * 별도 이벤트가 발행되어 있으므로, 삭제된 것을 만나면 호출을 생략하면 된다.
@@ -33,12 +37,14 @@ public class ContextProcessRequestAssembler {
 	private final ContextRepository contextRepository;
 	private final RecordRepository recordRepository;
 	private final PlaceRepository placeRepository;
+	private final EmbeddingInputComposer embeddingInputComposer;
 
 	public ContextProcessRequestAssembler(ContextRepository contextRepository, RecordRepository recordRepository,
-		PlaceRepository placeRepository) {
+		PlaceRepository placeRepository, EmbeddingInputComposer embeddingInputComposer) {
 		this.contextRepository = contextRepository;
 		this.recordRepository = recordRepository;
 		this.placeRepository = placeRepository;
+		this.embeddingInputComposer = embeddingInputComposer;
 	}
 
 	/**
@@ -73,17 +79,21 @@ public class ContextProcessRequestAssembler {
 		// Place는 Record를 거쳐야 나온다. Record까지 지워졌으면 placeMeta 없이 보내지 않고 생략한다 —
 		// Record가 없다는 것은 이 Context도 이미 함께 지워졌다는 뜻이다(연쇄 삭제).
 		return recordRepository.findById(recordId)
-			.map(record -> new ContextProcessRequest(
-				context.getId(),
-				memberId,
-				recordId,
-				context.getBody(),
-				placeMetaOf(record)
-			));
+			.map(record -> {
+				// Place를 한 번만 읽어 text와 placeMeta 양쪽에 쓴다. 두 번 읽으면 그 사이에 장소명이
+				// 바뀔 수 있어 "보낸 text의 장소명"과 "보낸 placeMeta.name"이 갈라진다.
+				Place place = placeRepository.findById(record.getPlaceId()).orElseThrow();
+				return new ContextProcessRequest(
+					context.getId(),
+					memberId,
+					recordId,
+					embeddingInputComposer.compose(place.getName(), context.getBody()),
+					placeMetaOf(place)
+				);
+			});
 	}
 
-	private ContextProcessRequest.PlaceMeta placeMetaOf(Record record) {
-		Place place = placeRepository.findById(record.getPlaceId()).orElseThrow();
+	private ContextProcessRequest.PlaceMeta placeMetaOf(Place place) {
 		return new ContextProcessRequest.PlaceMeta(
 			place.getId(),
 			place.getName(),

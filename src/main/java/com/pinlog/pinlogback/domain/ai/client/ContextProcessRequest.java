@@ -18,8 +18,12 @@ import org.jspecify.annotations.Nullable;
  * @param contextId 불변 Context 본문의 식별자
  * @param userId 검색 범위 필터값. 인증값이 아니며 FastAPI는 검증하지 않는다
  * @param recordId 소속 Record
- * @param text {@code contextId}의 Core 본문 그대로. 다른 곳에서 넘어온 문자열을 신뢰하지 않는다
- * @param placeMeta 장소 metadata. MVP FastAPI는 받아 두기만 하고 임베딩 입력에 결합하지 않는다
+ * @param text 임베딩 입력 문자열. 기본값에서는 {@code contextId}의 Core 본문 그대로이며, 다른 곳에서
+ *     넘어온 문자열을 신뢰하지 않고 {@code context_id}로 재조회해 채운다. 구성 규칙과 그 예외는
+ *     {@link com.pinlog.pinlogback.domain.ai.service.EmbeddingInputComposer}에 있다
+ * @param placeMeta 장소 metadata. MVP FastAPI는 받아 두기만 하고 임베딩 입력에 결합하지 않는다.
+ *     장소명을 임베딩에 반영하는 실험은 이 필드가 아니라 {@code text} 결합으로 한다 — 이 필드의
+ *     소비 방식은 AI 파트가 정하는 것이라 백엔드 측정이 바꿀 수 있는 것이 아니다
  */
 public record ContextProcessRequest(
 	Long contextId,
