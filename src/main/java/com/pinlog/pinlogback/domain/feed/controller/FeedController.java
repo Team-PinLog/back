@@ -20,8 +20,9 @@ import jakarta.validation.Valid;
 /**
  * Feed API(공개 API 명세 2.7·10장). 경로는 context-path({@code /api/core})가 앞에 붙는다.
  *
- * <p>{@code GET /feed/collections/{collectionId}/shelf}(작성자 공개 책장 탐색)는 이 티켓 범위
- * 밖이라 아직 없다.
+ * <p>작성자 공개 책장 탐색(명세 8.1)은 여기에 없다. 추천 점수를 하나도 거치지 않아 Feed가 아니라
+ * Follow 도메인의 {@code ShelfController}가 담으며, 경로도 진입 키를 따라
+ * {@code GET /v1/collections/{collectionId}/shelf}다(S15P11A705-206).
  */
 @RestController
 @RequestMapping("/v1/feed")
