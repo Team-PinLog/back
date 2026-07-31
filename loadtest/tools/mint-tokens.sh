@@ -53,6 +53,14 @@ write_pem() {
 
 mint() {
   local member_id="$1" now jti header payload signing_input sig
+
+  # 숫자가 아니면 거절한다. member_id는 JWT sub와 tokens.json 키에 그대로 들어가므로
+  # 따옴표나 역슬래시가 섞이면 JSON이 깨지고, 그 파일을 읽는 k6 open()과 python json.load가
+  # 죽는다. 그런데도 스크립트는 "발급 완료"를 찍어 원인이 발급 단계라는 단서가 남지 않는다.
+  case "$member_id" in
+    ''|*[!0-9]*) echo "member_id는 숫자여야 한다: $member_id" >&2; exit 2 ;;
+  esac
+
   now=$(date +%s)
   jti=$(openssl rand -hex 16)
   header='{"alg":"RS256","typ":"JWT"}'
