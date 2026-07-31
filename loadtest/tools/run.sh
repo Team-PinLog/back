@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 전체 검증을 한 번에 돌린다.
-#   토큰 발급 → 전용 회원 생성 → k6 27개 전수 → SQL 지목 검증 → SQL 전역 불변식 → 리포트 → 정리
+#   토큰 발급 → 전용 회원 생성 → k6 28개 전수 → SQL 지목 검증 → SQL 전역 불변식 → 리포트 → 정리
 #
 # 종료 코드:
 #   0  계약 검사와 지목 검증이 모두 통과. 전역 불변식 위반은 리포트에만 남는다
@@ -100,7 +100,7 @@ BASE_URL="$BASE_URL" bash "$HERE/tools/mint-tokens.sh" 1 2 3 2792 "$TEST_MEMBER_
 
 # --- 3. k6 전수 실행 ---
 log ""
-log "=== k6 27개 전수 ==="
+log "=== k6 28개 전수 ==="
 K6_LOG="$ART/k6.log"
 (
   cd "$HERE" || exit 1

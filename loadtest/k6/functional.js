@@ -1,4 +1,4 @@
-// 27개 엔드포인트 전수 시나리오. 1 VU 1 iteration으로 순서대로 돈다.
+// 28개 엔드포인트 전수 시나리오. 1 VU 1 iteration으로 순서대로 돈다.
 //
 // 시나리오가 순서 의존적이라(만든 것을 이어서 만지고 지운다) 한 파일에 둔다.
 // 도메인별 함수로 나눠 각 함수를 짧게 유지한다.
@@ -8,11 +8,12 @@ import { touch, visit, emit } from './lib/recorder.js';
 
 export const options = { vus: 1, iterations: 1, thresholds: THRESHOLDS };
 
-/** 전수 판정 기준. 27개 전부 여기 있어야 한다. */
+/** 전수 판정 기준. 28개 전부 여기 있어야 한다. */
 export const ENDPOINTS = [
   'GET /v1/auth/{provider}/login',
   'POST /v1/auth/refresh',
   'POST /v1/auth/logout',
+  'DELETE /v1/me',
   'POST /v1/records',
   'GET /v1/records/map',
   'GET /v1/records/by-place',
@@ -551,6 +552,7 @@ export default function () {
   runFollowWrites(ctx);
   runFeedAndSearch(ctx);
   runAuth(ctx);
+  runWithdrawal(ctx);
 
   emit(ENDPOINTS);
 }
@@ -791,5 +793,39 @@ export function runAuth(ctx) {
   expect(ctx.test.anon('POST', '/v1/auth/logout', 'write'), 'POST logout (CSRF 없음)', {
     status: 403,
     code: 'FORBIDDEN',
+  });
+}
+
+/**
+ * 회원 탈퇴(API 명세 3.6). 반드시 모든 시나리오의 마지막이어야 한다 — 이 뒤로 전용 회원의
+ * 토큰은 전부 401이다.
+ *
+ * 탈퇴 파급의 실증을 겸한다: 전역 불변식 스윕이 teardown 전에 돌므로,
+ * MemberWithdrawalService가 record·context·collection·연결·follow 중 하나라도 빠뜨리면
+ * "BI-12 탈퇴 회원의 살아있는 Record" 같은 검사가 이 회원을 잡아 back_violations가 올라간다.
+ */
+export function runWithdrawal(ctx) {
+  const me = ctx.test;
+
+  // CSRF 없는 탈퇴는 403이다.
+  expect(ctx.test.anon('DELETE', '/v1/me', 'write'), 'DELETE /v1/me (CSRF 없음)', {
+    status: 403,
+    code: 'FORBIDDEN',
+  });
+
+  // 본문 없는 204. 쿠키 정리는 응답이 담당하지만 우리 토큰은 발급형이라 관찰 대상이 아니다.
+  const withdraw = me.del('/v1/me', 'write');
+  expect(withdraw, 'DELETE /v1/me', 204);
+  visit('DELETE /v1/me');
+  touch(
+    'member',
+    Number(TEST_MEMBER),
+    'DELETE /v1/me로 탈퇴 (파급: record·context·collection·연결·follow 소프트 삭제)'
+  );
+
+  // BD-41: 탈퇴한 회원의 살아있는 Access 토큰은 인증에서 거절된다.
+  expect(me.get('/v1/collections', 'list'), 'GET /v1/collections (탈퇴 후)', {
+    status: 401,
+    code: 'UNAUTHORIZED',
   });
 }
