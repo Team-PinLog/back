@@ -41,25 +41,31 @@ log ""
 log "=== 전용 테스트 회원 생성 ==="
 TEST_MEMBER_ID=$("${PSQL[@]}" -t -A -v ON_ERROR_STOP=1 -f - \
   < "$HERE/tools/setup-test-member.sql" | tr -d '[:space:]')
-case "$TEST_MEMBER_ID" in
-  ''|*[!0-9]*) fail_precondition "테스트 회원 생성 실패: '$TEST_MEMBER_ID'" ;;
-esac
-log "member_id=$TEST_MEMBER_ID"
 
-GOLDEN_BEFORE=$("${PSQL[@]}" -t -A -c "
-  select
-    (select count(*) from core.member     where id <= 6)  || '/' ||
-    (select count(*) from core.record     where id <= 25) || '/' ||
-    (select count(*) from core.collection where id <= 7)")
-log "골든 행 수(member<=6/record<=25/collection<=7): $GOLDEN_BEFORE"
+# 트랩은 INSERT 성공 여부와 무관하게, id를 확보한 바로 다음 줄에서 건다 — 뒤의 숫자
+# 검사에서 fail_precondition으로 죽어도 정리가 돌아야 한다. GOLDEN_BEFORE는 이 시점에는
+# 아직 없으므로 빈 문자열로 먼저 선언해 set -u가 트랩을 죽이지 않게 한다.
+GOLDEN_BEFORE=""
 
 cleanup() {
   log ""
   log "=== 정리 ==="
+  case "$TEST_MEMBER_ID" in
+    ''|*[!0-9]*)
+      log "[경고] TEST_MEMBER_ID가 숫자가 아니라('$TEST_MEMBER_ID') teardown을 건너뛴다 — 남은 행이 있는지 수동 확인 필요"
+      return 0
+      ;;
+  esac
+
   "${PSQL[@]}" -v ON_ERROR_STOP=1 -v member_id="$TEST_MEMBER_ID" -f - \
     < "$HERE/tools/teardown-test-member.sql" >> "$REPORT" 2>&1 \
     && log "전용 회원 $TEST_MEMBER_ID 정리 완료" \
     || log "[경고] 전용 회원 정리 실패 — 수동 확인이 필요하다"
+
+  if [ -z "$GOLDEN_BEFORE" ]; then
+    log "[경고] GOLDEN_BEFORE가 비어 있어 골든 행 수 비교를 건너뛴다"
+    return 0
+  fi
 
   GOLDEN_AFTER=$("${PSQL[@]}" -t -A -c "
     select
@@ -73,6 +79,18 @@ cleanup() {
   fi
 }
 trap cleanup EXIT
+
+case "$TEST_MEMBER_ID" in
+  ''|*[!0-9]*) fail_precondition "테스트 회원 생성 실패: '$TEST_MEMBER_ID'" ;;
+esac
+log "member_id=$TEST_MEMBER_ID"
+
+GOLDEN_BEFORE=$("${PSQL[@]}" -t -A -c "
+  select
+    (select count(*) from core.member     where id <= 6)  || '/' ||
+    (select count(*) from core.record     where id <= 25) || '/' ||
+    (select count(*) from core.collection where id <= 7)")
+log "골든 행 수(member<=6/record<=25/collection<=7): $GOLDEN_BEFORE"
 
 # --- 2. 토큰 발급 ---
 log ""
@@ -98,18 +116,34 @@ log "k6 종료 코드: $K6_EXIT"
 log ""
 log "=== 만진 id 추출 ==="
 # recorder.js가 '##TOUCHED## {json}' 한 줄을 흘린다. k6는 SQL도 파일 쓰기도 못 하므로
-# 표준출력이 유일한 통로다.
-TOUCHED_LINE=$(grep -o '##TOUCHED##.*' "$K6_LOG" | tail -1)
-if [ -z "$TOUCHED_LINE" ]; then
-  log "[실패] k6 출력에 ##TOUCHED## 표식이 없다. 시나리오가 emit()에 도달하지 못했다"
+# 표준출력이 유일한 통로다. k6는 그 줄을 logfmt msg="..."로 감싸 내부 따옴표를 JSON
+# 문자열 규칙으로 escape한다 — note에 리터럴 "가 들어가는 날 순진한 치환(\" → ")은
+# 역슬래시를 흘려 깨진 JSON을 만든다. 그래서 순진한 치환 대신 JSON 디코더로 되돌린다.
+PYTHONUTF8=1 python - "$K6_LOG" "$ART/touched.json" <<'PY'
+import json
+import re
+import sys
+
+log_path, out_path = sys.argv[1], sys.argv[2]
+payload = None
+with open(log_path, encoding="utf-8", errors="replace") as f:
+    for line in f:
+        m = re.search(r'msg="((?:[^"\\]|\\.)*)"', line)
+        if m and "##TOUCHED##" in m.group(1):
+            decoded = json.loads('"' + m.group(1) + '"')
+            payload = decoded.split("##TOUCHED## ", 1)[1]
+        elif "##TOUCHED##" in line and m is None:
+            payload = line.split("##TOUCHED## ", 1)[1].strip()
+if payload is None:
+    sys.exit(1)
+json.loads(payload)  # 형식 검증 — 깨진 JSON이면 여기서 죽는다
+with open(out_path, "w", encoding="utf-8", newline="\n") as f:
+    f.write(payload)
+PY
+if [ $? -ne 0 ] || [ ! -s "$ART/touched.json" ]; then
+  log "[실패] k6 출력에서 ##TOUCHED## 표식을 추출하지 못했다. 시나리오가 emit()에 도달하지 못했거나 로그 형식이 바뀌었다"
   exit 1
 fi
-TOUCHED_JSON="${TOUCHED_LINE#\#\#TOUCHED\#\# }"
-# k6는 콘솔 로그를 logfmt로 감싸 msg="..." 안의 내부 따옴표를 escape하고 뒤에
-# ` source=console`을 붙인다. 그 감싸기를 벗겨내야 유효한 JSON이 된다.
-TOUCHED_JSON="${TOUCHED_JSON%\" source=console}"
-TOUCHED_JSON="${TOUCHED_JSON//\\\"/\"}"
-printf '%s' "$TOUCHED_JSON" > "$ART/touched.json"
 log "touched.json 기록: $(wc -c < "$ART/touched.json") 바이트"
 
 MISSED=$(python -c "
