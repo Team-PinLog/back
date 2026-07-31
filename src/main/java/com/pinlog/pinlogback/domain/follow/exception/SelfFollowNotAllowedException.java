@@ -1,4 +1,7 @@
-package com.pinlog.pinlogback.global.exception;
+package com.pinlog.pinlogback.domain.follow.exception;
+
+import com.pinlog.pinlogback.global.exception.BusinessException;
+import com.pinlog.pinlogback.global.exception.ErrorCode;
 
 /**
  * 자기 자신의 Shelf 팔로우 — 422 도메인 규칙 위반. DB CHECK(ck_follow_self)와 같은 규칙을

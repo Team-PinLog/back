@@ -14,12 +14,12 @@ import com.pinlog.pinlogback.domain.collection.repository.CollectionRepository;
 import com.pinlog.pinlogback.domain.follow.dto.FollowResponse;
 import com.pinlog.pinlogback.domain.follow.dto.FollowedCollectionResponse;
 import com.pinlog.pinlogback.domain.follow.entity.Follow;
+import com.pinlog.pinlogback.domain.follow.exception.DuplicateFollowException;
+import com.pinlog.pinlogback.domain.follow.exception.SelfFollowNotAllowedException;
 import com.pinlog.pinlogback.domain.follow.repository.FollowRepository;
 import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
-import com.pinlog.pinlogback.global.exception.DuplicateFollowException;
 import com.pinlog.pinlogback.global.exception.InvalidRequestException;
 import com.pinlog.pinlogback.global.exception.ResourceNotFoundException;
-import com.pinlog.pinlogback.global.exception.SelfFollowNotAllowedException;
 import com.pinlog.pinlogback.global.response.Cursor;
 import com.pinlog.pinlogback.global.response.CursorPage;
 
