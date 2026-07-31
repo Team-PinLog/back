@@ -1,4 +1,4 @@
-# BD-42. 공개 책장 탐색을 Follow 도메인에 두고 경로는 `/v1/collections` 아래로 옮긴다
+# BD-43. 공개 책장 탐색을 Follow 도메인에 두고 경로는 `/v1/collections` 아래로 옮긴다
 
 - **상태**: Accepted
 - **날짜**: 2026-07-31

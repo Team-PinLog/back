@@ -43,7 +43,7 @@ com.pinlog.pinlogback
 | `place` | 장소 마스터 | |
 | `record` | 방문·기록과 기록 본문(Context) | Context는 `record` 하위에 둡니다. 별도 `context` 도메인을 만들지 않습니다 |
 | `collection` | 컬렉션·큐레이션 | |
-| `follow` | 팔로우 관계와 공개 책장 탐색 | 공개 책장 탐색(`ShelfController`)은 경로가 `/v1/collections/{collectionId}/shelf`지만 이 도메인에 둡니다 — 응답에 요청자 기준 팔로우 상태가 실리고, 재사용하는 조회·판정이 `FollowService`가 쓰는 것과 같습니다. 경로 접두어가 `collection` 쪽인 것은 진입 키가 `collectionId`라서입니다([BD-42](../backend/decisions/BD-42-shelf-in-follow-domain-under-collections-path.md)) |
+| `follow` | 팔로우 관계와 공개 책장 탐색 | 공개 책장 탐색(`ShelfController`)은 경로가 `/v1/collections/{collectionId}/shelf`지만 이 도메인에 둡니다 — 응답에 요청자 기준 팔로우 상태가 실리고, 재사용하는 조회·판정이 `FollowService`가 쓰는 것과 같습니다. 경로 접두어가 `collection` 쪽인 것은 진입 키가 `collectionId`라서입니다([BD-43](../backend/decisions/BD-43-shelf-in-follow-domain-under-collections-path.md)) |
 | `feed` | 피드 조회·서빙 API | 관측 로그 `core.feed_event` 테이블은 **AI 소유(V102)** — 재정의 금지, 조회만 |
 | `auth` | 인증·인가 | **별도 인증 PR에서 생성.** 그 전에는 만들지 않음 |
 | `search` | 개인 자연어 검색 조회 API | Record를 돌려주지만 `record`에 두지 않습니다 — 진입 경로(`/v1/search/records`)와 조립 규칙(FastAPI 응답의 Core 재검증)이 Record CRUD와 다릅니다. FastAPI 호출 자체는 `ai`가 맡고 이 도메인은 그 결과를 검증·조립만 합니다 |

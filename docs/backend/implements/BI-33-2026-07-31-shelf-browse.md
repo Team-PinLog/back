@@ -1,15 +1,15 @@
-# BI-32. 작성자 공개 책장 탐색
+# BI-33. 작성자 공개 책장 탐색
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-31
 - **관련**: S15P11A705-206, [back#85](https://github.com/Team-PinLog/back/issues/85),
-  [BD-42](../decisions/BD-42-shelf-in-follow-domain-under-collections-path.md)(도메인·경로 결정),
+  [BD-43](../decisions/BD-43-shelf-in-follow-domain-under-collections-path.md)(도메인·경로 결정),
   [BI-30](BI-30-2026-07-31-me-summary.md)(미구현 둘 중 나머지 하나를 채운 곳)
 
 ## 산출
 
 - `GET /api/core/v1/collections/{collectionId}/shelf` — `ShelfResponse`(`sourceCollectionId`·`follow`·`collections` 3층).
-- `ShelfController`·`ShelfService` — `domain/follow` 아래 신설. 경로 접두어는 `/v1/collections`다([BD-42](../decisions/BD-42-shelf-in-follow-domain-under-collections-path.md)).
+- `ShelfController`·`ShelfService` — `domain/follow` 아래 신설. 경로 접두어는 `/v1/collections`다([BD-43](../decisions/BD-43-shelf-in-follow-domain-under-collections-path.md)).
 - `ShelfResponse`·`ShelfFollowState` — 응답 DTO 둘.
 - `ShelfApiTests` — 통합 테스트 13개.
 
