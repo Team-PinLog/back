@@ -143,7 +143,9 @@ export function runReads(ctx) {
   const oversize = ctx.heavy.get('/v1/collections?size=1000', 'list');
   expect(oversize, 'GET /v1/collections?size=1000', 200);
   const capped = okEnvelope(oversize);
-  if (capped !== null && capped.items.length > 100) {
+  if (capped === null) {
+    console.error('[FAIL] size=1000 응답이 성공 엔벨로프가 아니다');
+  } else if (capped.items.length > 100) {
     console.error(`[FAIL] size 상한 보정 실패: ${capped.items.length}건`);
   }
 
