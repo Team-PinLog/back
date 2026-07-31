@@ -35,6 +35,11 @@ DELETE FROM core.context WHERE member_id = :member_id;
 
 DELETE FROM core.record WHERE member_id = :member_id;
 
+-- setup은 social_account를 만들지 않지만, 이 행이 있으면 member 삭제가 FK로 막혀
+-- 테스트 회원이 조용히 누적된다. 오늘은 0건 삭제 no-op이고, 하네스가 언젠가
+-- 소셜 연결을 만들게 되어도 여기서 막히지 않는다.
+DELETE FROM core.social_account WHERE member_id = :member_id;
+
 DELETE FROM core.member WHERE id = :member_id;
 
 COMMIT;
