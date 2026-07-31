@@ -12,10 +12,11 @@
 | `message` | 호출자가 이해할 수 있는 오류 설명 |
 | `fieldErrors` | 검증(Bean Validation) 실패 시 필드별 위반을 담는 배열, 그 외에는 빈 배열 |
 | `traceId` | 로그와 요청을 잇는 추적 식별자 |
+| `impact` | 일부 `code`에만 실리는 추가 정보. 없으면 직렬화에서 생략되므로 항상 있다고 전제하지 않습니다 |
 
 `success`/`error` envelope는 `global/response/ApiResponse.fail(...)`이 생성하며, `global/exception/GlobalExceptionHandler`의 각 분기가 이를 반환합니다.
 
-> `Team-PinLog/docs`의 `static/08_API_명세.md` §5.6·§5.7은 409 충돌 응답에 `error.impact`(예: `DELETE_CONFIRMATION_REQUIRED`) 필드를 명세하지만, 이 필드는 **아직 구현하지 않았습니다**. Record 삭제 티켓에서 `ErrorResponse`를 확장해 도입할 예정입니다.
+> `Team-PinLog/docs`의 `static/08_API_명세.md` §5.6·§5.7이 규정한 `error.impact`는 `S15P11A705-70`(Record 삭제)에서 구현했습니다. `ErrorResponse.Impact(recordDeleted, collectionIds)`이며 지금은 `DELETE_CONFIRMATION_REQUIRED`에만 실립니다. 다른 `code`에서는 `null`이라 `@JsonInclude(NON_NULL)`로 응답에서 빠집니다.
 
 이 문서는 이 계약을 **한 곳에서 일관되게** 생성하는 방법을 정의합니다. 컨트롤러마다 제각각 오류 응답을 만들지 않습니다.
 
@@ -41,7 +42,7 @@
 
 - 코드는 한 곳(enum 등)에 모아 관리하고, 문자열을 흩뿌리지 않습니다.
 
-> **현재 `ErrorCode`에는 401·403·409에 대응하는 코드가 없습니다.** 매핑이 없는 4xx는 `errorCodeOf`의 폴백으로 `INVALID_INPUT`(400 문구)이 되므로, 401·403을 쓰는 PR은 **해당 코드를 먼저 추가**해야 합니다. 그렇지 않으면 상태 코드는 403인데 `code`는 `INVALID_INPUT`으로 나가 클라이언트 분기가 깨집니다.
+> 매핑이 없는 4xx는 `errorCodeOf`의 폴백으로 `INVALID_INPUT`(400 문구)이 됩니다. 그래서 **레지스트리에 없는 상태 코드를 쓰는 PR은 대응하는 `ErrorCode`를 먼저 추가**해야 합니다 — 그렇지 않으면 상태 코드와 `code`가 어긋나 클라이언트 분기가 깨집니다(예: 상태는 `403`인데 `code`는 `INVALID_INPUT`). 지금 무엇이 있는지는 문서가 아니라 `ErrorCode` enum을 봅니다.
 
 - 도메인을 접두어로 구분하는 것을 권장합니다. 예: `MEMBER_NOT_FOUND`, `RECORD_ACCESS_DENIED`.
 - 코드마다 HTTP 상태와 발생 조건을 이 문서 또는 코드 주석에 기록합니다.
