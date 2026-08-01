@@ -93,9 +93,14 @@ bash "$HERE/tools/poll-metrics.sh" "$RUN_DIR/metrics.csv" & POLLER_PID=$!
 
 (
   cd "$HERE"
+  # --summary-trend-stats로 p(99)를 export에 싣는다 — k6 기본 export는 med·p95까지라
+  # 티켓이 요구한 p99가 빠진다. Trend 서브메트릭에는 count가 없으므로(k6 설계) 부류별
+  # 요청 수는 수집기가 세지 않고 전역 http_reqs만 쓴다.
   PROFILE="$PROFILE" POOL_IDS="$POOL_IDS" \
   SHARED_MEMBER="$SHARED_MEMBER" SHARED_RECORD="$SHARED_RECORD" \
-    "$K6_BIN" run --summary-export "$RUN_DIR/summary.json" "k6/load-$SERIES.js"
+    "$K6_BIN" run \
+    --summary-trend-stats="avg,min,med,max,p(90),p(95),p(99)" \
+    --summary-export "$RUN_DIR/summary.json" "k6/load-$SERIES.js"
 ) > "$LOG" 2>&1
 K6_EXIT=$?
 kill "$POLLER_PID" 2>/dev/null; POLLER_PID=""
