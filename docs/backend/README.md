@@ -19,7 +19,8 @@
 | [`decisions/`](decisions/) | 결정 기록(ADR, BD 번호) — "왜 그렇게 정했나" + 트레이드오프 |
 | [`implements/`](implements/) | 구현 리포트(BI 번호) — "어떻게 만들었나" + 검증 결과 |
 | [`troubleshooting/`](troubleshooting/) | 문제 해결(BT 번호) — 증상·원인·해결 과정 |
-| [`WORKLOG.md`](WORKLOG.md) | 시간순 작업 로그 |
+| [`worklog/`](worklog/) | 작업 로그 — 작업마다 파일 하나, 시간순은 파일명이 준다 |
+| [`WORKLOG.md`](WORKLOG.md) | 2026-08-01 이전 작업 로그 (이력, 더 쓰지 않음) |
 
 ## 번호 체계
 

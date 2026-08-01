@@ -9,7 +9,7 @@
 
 ## 파트별 문서
 
-- [`backend/`](backend/) — 백엔드 도메인의 **설계·결정·구현 기록** (백엔드 파트 소유). spec/decisions/implements/troubleshooting + WORKLOG 구조이며, 결정은 `BD` 번호(ADR)로 기록합니다.
+- [`backend/`](backend/) — 백엔드 도메인의 **설계·결정·구현 기록** (백엔드 파트 소유). spec/decisions/implements/troubleshooting + worklog 구조이며, 작업 로그는 `worklog/`에 작업마다 파일 하나로 쌓고 결정은 `BD` 번호(ADR)로 기록합니다.
 - [`ai/`](ai/) — AI 연동·Feed 관련 **설계·결정·구현 기록** (AI 파트 소유). 하위 구조·문서는 AI 파트가 관리합니다.
 
 ### 현재 구현 기준
