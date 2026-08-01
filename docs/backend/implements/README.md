@@ -50,3 +50,4 @@
 | BI-33 | 로컬 스택 API 종단 검증 하네스 — k6 전수 호출 + DB 대조 2겹 (S15P11A705-192) | ✅ 완료 | [BI-33](BI-33-2026-07-31-api-verification-harness.md) |
 | BI-34 | CI 이미지 빌드의 중복 컴파일 제거 — 러너가 만든 jar를 이미지가 받는다 (S15P11A705-238) | ✅ 완료 | [BI-34](BI-34-2026-08-01-image-takes-prebuilt-jar.md) |
 | BI-35 | 작성자 공개 책장 탐색 — `collectionId` 진입점, 요청자 기준 팔로우 상태 동봉 (S15P11A705-206) | ✅ 완료 | [BI-35](BI-35-2026-07-31-shelf-browse.md) |
+| BI-36 | 조회 응답 3곳에 Record·Collection 키워드 노출 — 소유자·타인 Visibility 경계를 메서드 단위로 가른다 (S15P11A705-240) | ✅ 완료 | [BI-36](BI-36-2026-08-01-keyword-exposure.md) |
