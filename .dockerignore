@@ -1,10 +1,4 @@
-.git
-.github
-.gradle
-.idea
-build
-out
-*.iml
-*.log
-compose.yaml
-README.md
+# 이미지에 들어가는 것은 러너가 만든 jar 하나뿐이다(Dockerfile 주석 참고). 나머지를 컨텍스트에
+# 실으면 전송만 하고 버리므로, 전부 제외한 뒤 그 jar만 되돌린다.
+*
+!build/libs/*.jar

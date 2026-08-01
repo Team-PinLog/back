@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.Test;
 import org.yaml.snakeyaml.Yaml;
@@ -17,50 +18,81 @@ import org.yaml.snakeyaml.Yaml;
  * backend-ci의 실행 시간을 좌우하는 결정을 정적으로 고정한다.
  *
  * <p>세 가지가 무너지면 PR 대기 시간이 조용히 원래대로 돌아간다: 러너에서 의미가 없는 {@code clean},
- * 이미지 빌드의 레이어 캐시, 문서만 바꾼 PR이 테스트와 이미지 빌드를 건너뛰는 조건. 어느 것도 로컬에서는
- * 드러나지 않으므로(CI에서만 관측된다) 워크플로 파일 자체를 계약으로 읽어 검증한다.
+ * 이미지 빌드가 러너의 컴파일을 컨테이너 안에서 되풀이하지 않는다는 것, 문서만 바꾼 PR이 테스트와 이미지
+ * 빌드를 건너뛰는 조건. 어느 것도 로컬에서는 드러나지 않으므로(CI에서만 관측된다) 워크플로 파일 자체를
+ * 계약으로 읽어 검증한다.
  */
 class BackendCiSpeedContractTests {
 
 	private static final Path WORKFLOW = Path.of(".github/workflows/backend-ci.yml");
+	private static final Path DOCKERFILE = Path.of("Dockerfile");
 
 	/** 문서 전용 변경을 감지하는 스텝의 출력. 무거운 스텝은 전부 이 조건 뒤에 있어야 한다. */
 	private static final String DOCS_ONLY_GUARD = "steps.scope.outputs.docs_only != 'true'";
 
-	/** PR 검증 빌드와 dev 발행 빌드가 <b>같은</b> 캐시를 봐야 재사용이 일어난다. */
-	private static final String IMAGE_CACHE = "type=gha,scope=backend-image";
+	/** 러너가 만든 jar를 발행 잡으로 넘기는 아티팩트. 두 잡이 같은 이름을 봐야 전달이 성립한다. */
+	private static final String JAR_ARTIFACT = "backend-jar";
 
 	private static final String CHECK = "check";
 	private static final String IMAGE_PUBLISH = "image-publish";
+	private static final String VALIDATE_IMAGE = "Validate backend container image";
+	private static final String PUBLISH_IMAGE = "Build and publish immutable backend image";
 
 	/**
 	 * 새 러너의 {@code build/}는 비어 있어 {@code clean}이 지울 것이 없고, Gradle이 스스로 판단할
-	 * 최신 여부만 버린다.
+	 * 최신 여부만 버린다. jar는 검사와 <b>같은 호출</b>에서 만든다 — 따로 부르면 Gradle 시작 비용을
+	 * 한 번 더 내고, 같은 호출이면 컴파일된 클래스를 그대로 써 {@code :bootJar} 태스크 1.0초만 든다.
 	 */
 	@Test
-	void gradleRunsWithoutACleanThatHasNothingToClean() throws IOException {
+	void oneGradleInvocationRunsChecksAndProducesTheJar() throws IOException {
 		assertThat(String.valueOf(step(CHECK, "Run checks").get("run")))
-			.contains("./gradlew check")
+			.contains("./gradlew check bootJar")
 			.doesNotContain("clean");
 	}
 
 	/**
-	 * 두 빌드가 같은 {@code Dockerfile}을 쓰므로 캐시 범위를 공유한다. 쓰기는 dev 발행 쪽만 한다 —
-	 * 저장소 캐시 용량은 공유 자원이고, 기본 브랜치가 쓴 항목은 모든 PR이 읽을 수 있어 PR이 따로
-	 * 쓸 이유가 없다.
+	 * 이미지 빌드는 러너가 이미 만든 jar를 받는다. 컨테이너 안에서 Gradle을 다시 돌리면 같은 컴파일을
+	 * 두 번 하는 것이고, 그 레이어는 {@code src}가 매 PR 바뀌므로 캐시로도 지울 수 없다.
+	 *
+	 * <p><b>그래서 레이어 캐시를 선언하지 않는다.</b> 캐시할 대상이 사라졌는데 설정만 남기면 죽은 설정이
+	 * 되고, {@code mode=max} 내보내기는 dev 발행 빌드에 91.4초를 되돌려 놓는다.
 	 */
 	@Test
-	void bothImageBuildsShareOneLayerCacheAndOnlyTheDevPushWritesIt() throws IOException {
-		Map<Object, Object> validate = map(step(CHECK, "Validate backend container image").get("with"));
-		assertThat(validate.get("cache-from")).isEqualTo(IMAGE_CACHE);
-		assertThat(validate)
-			.as("PR 검증 빌드가 캐시를 쓰면 브랜치마다 항목이 쌓여 기본 브랜치 항목을 밀어낸다")
-			.doesNotContainKey("cache-to");
+	void imageBuildsTakeThePrebuiltJarAndSoDeclareNoLayerCache() throws IOException {
+		// 주석은 뺀다. 이 파일은 `./gradlew bootJar`가 선행이라는 것을 주석으로 알려야 하므로,
+		// 문자열을 통째로 보면 그 설명이 실행으로 오인된다. 판정 대상은 명령줄이다.
+		String instructions = Files.readString(DOCKERFILE).lines()
+			.filter(line -> !line.stripLeading().startsWith("#"))
+			.collect(Collectors.joining("\n"));
+		assertThat(instructions)
+			.as("Dockerfile이 컨테이너 안에서 Gradle을 돌리면 러너의 컴파일이 중복된다")
+			.doesNotContain("gradlew");
 
-		Map<Object, Object> publish =
-			map(step(IMAGE_PUBLISH, "Build and publish immutable backend image").get("with"));
-		assertThat(publish.get("cache-from")).isEqualTo(IMAGE_CACHE);
-		assertThat(publish.get("cache-to")).isEqualTo(IMAGE_CACHE + ",mode=max");
+		for (String identity : List.of(VALIDATE_IMAGE, PUBLISH_IMAGE)) {
+			String job = VALIDATE_IMAGE.equals(identity) ? CHECK : IMAGE_PUBLISH;
+			assertThat(map(step(job, identity).get("with")))
+				.as("스텝 '%s'에 캐시할 대상이 없는데 캐시 설정이 남아 있다", identity)
+				.doesNotContainKeys("cache-from", "cache-to");
+		}
+	}
+
+	/**
+	 * {@code image-publish}는 별도 잡이라 러너의 {@code build/}를 물려받지 못한다. 그 잡에서 Gradle을
+	 * 다시 돌리면 없애려던 중복이 되살아나므로, {@code check}가 만든 jar를 아티팩트로 넘긴다.
+	 *
+	 * <p>PR 검증은 {@code check} 안에서 이뤄져 아티팩트가 필요 없다 — 그래서 업로드는 dev push에서만 한다.
+	 */
+	@Test
+	void devPushHandsTheRunnerBuiltJarToThePublishJob() throws IOException {
+		Map<Object, Object> upload = stepUsing(CHECK, "actions/upload-artifact", JAR_ARTIFACT);
+		assertThat(String.valueOf(upload.get("if")))
+			.as("PR은 같은 잡에서 이미지를 빌드하므로 업로드가 필요 없다")
+			.contains("github.event_name == 'push'");
+
+		Map<Object, Object> download = stepUsing(IMAGE_PUBLISH, "actions/download-artifact", null);
+		assertThat(map(download.get("with")).get("name"))
+			.as("두 잡이 같은 아티팩트 이름을 봐야 전달이 성립한다")
+			.isEqualTo(JAR_ARTIFACT);
 	}
 
 	/**
@@ -122,10 +154,23 @@ class BackendCiSpeedContractTests {
 
 	/** action은 SHA로 고정하므로 갱신될 때마다 부러지지 않도록 접두어로 찾는다. */
 	private Map<Object, Object> stepUsing(String jobName, String actionPrefix) throws IOException {
+		return stepUsing(jobName, actionPrefix, null);
+	}
+
+	/**
+	 * 같은 action을 쓰는 스텝이 한 잡에 둘 이상일 수 있다({@code check}는 리포트와 jar를 각각 올린다).
+	 * 그때는 {@code with.name}으로 갈라야 엉뚱한 스텝을 집지 않는다.
+	 */
+	private Map<Object, Object> stepUsing(String jobName, String actionPrefix, String artifactName)
+		throws IOException {
 		List<Map<Object, Object>> found = stepsByIdentity(jobName).values().stream()
 			.filter(step -> String.valueOf(step.get("uses")).startsWith(actionPrefix))
+			.filter(step -> artifactName == null
+				|| artifactName.equals(map(step.get("with")).get("name")))
 			.toList();
-		assertThat(found).as("잡 '%s'에서 '%s' 스텝을 하나만 찾지 못했다", jobName, actionPrefix).hasSize(1);
+		assertThat(found)
+			.as("잡 '%s'에서 '%s'(아티팩트 %s) 스텝을 하나만 찾지 못했다", jobName, actionPrefix, artifactName)
+			.hasSize(1);
 		return found.get(0);
 	}
 

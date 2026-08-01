@@ -48,4 +48,5 @@
 | BI-31 | 소셜 로그인 진단 로그 — 성공·가입·실패를 짝지어 볼 수 있게 (S15P11A705-186) | ✅ 완료 | [BI-31](BI-31-2026-07-31-login-diagnostics.md) |
 | BI-32 | CI 속도 개선 — 이미지 레이어 캐시·문서 전용 건너뛰기·`clean` 제거 (S15P11A705-231) | ✅ 완료 | [BI-32](BI-32-2026-07-31-ci-pipeline-speedup.md) |
 | BI-33 | 로컬 스택 API 종단 검증 하네스 — k6 전수 호출 + DB 대조 2겹 (S15P11A705-192) | ✅ 완료 | [BI-33](BI-33-2026-07-31-api-verification-harness.md) |
-| BI-34 | 작성자 공개 책장 탐색 — `collectionId` 진입점, 요청자 기준 팔로우 상태 동봉 (S15P11A705-206) | ✅ 완료 | [BI-34](BI-34-2026-07-31-shelf-browse.md) |
+| BI-34 | CI 이미지 빌드의 중복 컴파일 제거 — 러너가 만든 jar를 이미지가 받는다 (S15P11A705-238) | ✅ 완료 | [BI-34](BI-34-2026-08-01-image-takes-prebuilt-jar.md) |
+| BI-35 | 작성자 공개 책장 탐색 — `collectionId` 진입점, 요청자 기준 팔로우 상태 동봉 (S15P11A705-206) | ✅ 완료 | [BI-35](BI-35-2026-07-31-shelf-browse.md) |

@@ -95,11 +95,16 @@ Prometheus 수집, Grafana 대시보드 및 외부 접근 제한은 인프라에
 
 ## 컨테이너 이미지
 
-이미지를 빌드할 때 커밋 SHA를 전달할 수 있습니다.
+**`Dockerfile`은 미리 빌드된 jar를 받습니다. `./gradlew bootJar`가 선행입니다.** 컨테이너 안에서 Gradle을 돌리지 않으므로, jar 없이 `docker build`만 실행하면 실패합니다.
 
 ```powershell
+./gradlew bootJar
 docker build --build-arg BUILD_SHA=sha-local -t pinlog-back:local .
 ```
+
+CI도 같은 방식입니다 — `backend-ci`가 러너에서 `./gradlew check bootJar`로 만든 jar를 이미지 빌드에 넘깁니다. 컨테이너 안에서 다시 컴파일하면 같은 코드를 두 번 빌드하게 되고, 그 구간은 레이어 캐시로도 지울 수 없어 없앴습니다([BD-44](docs/backend/decisions/BD-44-image-takes-prebuilt-jar.md)).
+
+빌드 컨텍스트는 `.dockerignore`가 `build/libs/*.jar` 하나만 남깁니다.
 
 컨테이너는 클러스터 보안 규약에 맞춰 UID 1000 비루트 사용자로 실행됩니다.
 
