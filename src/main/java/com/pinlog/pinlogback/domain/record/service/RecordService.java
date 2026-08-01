@@ -12,6 +12,7 @@ import org.springframework.util.Assert;
 import com.pinlog.pinlogback.domain.ai.event.ContextAiRequested;
 import com.pinlog.pinlogback.domain.ai.repository.AiDerivedDataRepository;
 import com.pinlog.pinlogback.domain.ai.repository.ContextAiStateRepository;
+import com.pinlog.pinlogback.domain.ai.repository.ContextKeywordRepository;
 import com.pinlog.pinlogback.domain.place.entity.Place;
 import com.pinlog.pinlogback.domain.place.repository.PlaceRepository;
 import com.pinlog.pinlogback.domain.record.dto.ContextMutationResponse;
@@ -44,16 +45,19 @@ public class RecordService {
 	private final ContextRepository contextRepository;
 	private final ContextAiStateRepository contextAiStateRepository;
 	private final AiDerivedDataRepository aiDerivedDataRepository;
+	private final ContextKeywordRepository contextKeywordRepository;
 	private final ApplicationEventPublisher events;
 
 	public RecordService(PlaceRepository placeRepository, RecordRepository recordRepository,
 		ContextRepository contextRepository, ContextAiStateRepository contextAiStateRepository,
-		AiDerivedDataRepository aiDerivedDataRepository, ApplicationEventPublisher events) {
+		AiDerivedDataRepository aiDerivedDataRepository, ContextKeywordRepository contextKeywordRepository,
+		ApplicationEventPublisher events) {
 		this.placeRepository = placeRepository;
 		this.recordRepository = recordRepository;
 		this.contextRepository = contextRepository;
 		this.contextAiStateRepository = contextAiStateRepository;
 		this.aiDerivedDataRepository = aiDerivedDataRepository;
+		this.contextKeywordRepository = contextKeywordRepository;
 		this.events = events;
 	}
 
@@ -82,19 +86,23 @@ public class RecordService {
 			record.touch();
 		}
 		RecordSaveResult result = createdNow ? RecordSaveResult.RECORD_CREATED : RecordSaveResult.CONTEXT_ADDED;
-		return RecordCreateResponse.of(result, detailOf(record, place));
+		// 생성 응답의 keywords는 항상 빈 배열이다(명세 1.3) — 방금 붙인 Context는 AI 미처리 상태이고,
+		// CONTEXT_ADDED로 기존 Record에 완료된 Keyword가 있어도 생성 응답에는 싣지 않는다. 조회와
+		// 생성이 다른 것을 돌려주면 안 되는 값이 아니라, 생성 직후 화면이 조회를 다시 부르는 계약이다.
+		return RecordCreateResponse.of(result, detailOf(record, place, List.of()));
 	}
 
 	@Transactional(readOnly = true)
 	public RecordDetailResponse getDetail(Long memberId, Long recordId) {
-		return detailOf(ownedRecord(memberId, recordId));
+		Record record = ownedRecord(memberId, recordId);
+		return detailOf(record, keywordsForOwner(record, memberId));
 	}
 
 	@Transactional(readOnly = true)
 	public RecordByPlaceResponse getByKakaoPlaceId(Long memberId, String kakaoPlaceId) {
 		RecordDetailResponse detail = placeRepository.findByKakaoPlaceId(kakaoPlaceId)
 			.flatMap(place -> recordRepository.findByMemberIdAndPlaceId(memberId, place.getId()))
-			.map(this::detailOf)
+			.map(record -> detailOf(record, keywordsForOwner(record, memberId)))
 			.orElse(null);
 		return new RecordByPlaceResponse(detail);
 	}
@@ -200,18 +208,25 @@ public class RecordService {
 		return record;
 	}
 
-	private RecordDetailResponse detailOf(Record record) {
+	private RecordDetailResponse detailOf(Record record, List<String> keywords) {
 		Place place = placeRepository.findById(record.getPlaceId())
 			.orElseThrow(ResourceNotFoundException::new);
-		return detailOf(record, place);
+		return detailOf(record, place, keywords);
 	}
 
-	private RecordDetailResponse detailOf(Record record, Place place) {
+	private RecordDetailResponse detailOf(Record record, Place place, List<String> keywords) {
 		List<ContextResponse> contexts = contextRepository
 			.findByRecordIdOrderByOriginCreatedAtAscIdAsc(record.getId())
 			.stream()
 			.map(ContextResponse::from)
 			.toList();
-		return RecordDetailResponse.of(record, place, contexts);
+		return RecordDetailResponse.of(record, place, contexts, keywords);
+	}
+
+	/** 소유자 범위(PUBLIC + PRIVATE_ONLY) Keyword. 없으면 빈 목록 — AI 미완료가 오류가 아니다. */
+	private List<String> keywordsForOwner(Record record, Long memberId) {
+		return contextKeywordRepository
+			.findKeywordsForOwner(List.of(record.getId()), memberId)
+			.getOrDefault(record.getId(), List.of());
 	}
 }

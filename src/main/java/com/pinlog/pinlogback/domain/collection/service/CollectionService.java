@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.pinlog.pinlogback.domain.ai.repository.ContextKeywordRepository;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionAddRecordsRequest;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionCreateRequest;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionDetailResponse;
@@ -55,11 +56,13 @@ public class CollectionService {
 	private final ContextRepository contextRepository;
 	private final MemberRepository memberRepository;
 	private final FollowRepository followRepository;
+	private final ContextKeywordRepository contextKeywordRepository;
 
 	public CollectionService(CollectionRepository collectionRepository,
 		CollectionRecordRepository collectionRecordRepository, RecordRepository recordRepository,
 		PlaceRepository placeRepository, ContextRepository contextRepository,
-		MemberRepository memberRepository, FollowRepository followRepository) {
+		MemberRepository memberRepository, FollowRepository followRepository,
+		ContextKeywordRepository contextKeywordRepository) {
 		this.collectionRepository = collectionRepository;
 		this.collectionRecordRepository = collectionRecordRepository;
 		this.recordRepository = recordRepository;
@@ -67,6 +70,7 @@ public class CollectionService {
 		this.contextRepository = contextRepository;
 		this.memberRepository = memberRepository;
 		this.followRepository = followRepository;
+		this.contextKeywordRepository = contextKeywordRepository;
 	}
 
 	@Transactional
@@ -124,7 +128,7 @@ public class CollectionService {
 		String recordCursor, Integer recordSize) {
 		Collection collection = ownedCollection(memberId, collectionId);
 		return CollectionDetailResponse.forOwner(
-			collection, recordPageForOwner(collectionId, recordCursor, recordSize));
+			collection, recordPageForOwner(memberId, collectionId, recordCursor, recordSize));
 	}
 
 	/**
@@ -244,10 +248,10 @@ public class CollectionService {
 		return collection;
 	}
 
-	private CursorPage<RecordDetailResponse> recordPageForOwner(Long collectionId, String recordCursor,
-		Integer recordSize) {
+	private CursorPage<RecordDetailResponse> recordPageForOwner(Long memberId, Long collectionId,
+		String recordCursor, Integer recordSize) {
 		LinkPage linkPage = linkPage(collectionId, recordCursor, recordSize);
-		List<RecordDetailResponse> items = toRecordDetailsForOwner(linkPage.links());
+		List<RecordDetailResponse> items = toRecordDetailsForOwner(memberId, linkPage.links());
 		return linkPage.toCursorPage(items);
 	}
 
@@ -292,7 +296,7 @@ public class CollectionService {
 		return Math.min(requested, CursorPage.MAX_SIZE);
 	}
 
-	private List<RecordDetailResponse> toRecordDetailsForOwner(List<CollectionRecord> links) {
+	private List<RecordDetailResponse> toRecordDetailsForOwner(Long memberId, List<CollectionRecord> links) {
 		List<Long> recordIds = links.stream().map(CollectionRecord::getRecordId).toList();
 		Map<Long, Record> records = activeRecordsById(recordIds);
 		Map<Long, Place> places = placesOf(records);
@@ -300,6 +304,9 @@ public class CollectionService {
 			? Map.of()
 			: contextRepository.findByRecordIdInOrderByOriginCreatedAtAscIdAsc(recordIds).stream()
 				.collect(Collectors.groupingBy(Context::getRecordId));
+		// 페이지 전체를 한 번에 — Record별 반복 조회는 그대로 N+1이다(BD-18).
+		Map<Long, List<String>> keywordsByRecord =
+			contextKeywordRepository.findKeywordsForOwner(recordIds, memberId);
 
 		return links.stream()
 			.filter(link -> records.containsKey(link.getRecordId()))
@@ -311,7 +318,8 @@ public class CollectionService {
 					.map(ContextResponse::from)
 					.toList();
 				return RecordDetailResponse.of(
-					record, places.get(record.getPlaceId()), contexts, link.getCreatedAt());
+					record, places.get(record.getPlaceId()), contexts,
+					keywordsByRecord.getOrDefault(record.getId(), List.of()), link.getCreatedAt());
 			})
 			.toList();
 	}
@@ -324,13 +332,17 @@ public class CollectionService {
 		List<Long> recordIds = links.stream().map(CollectionRecord::getRecordId).toList();
 		Map<Long, Record> records = activeRecordsById(recordIds);
 		Map<Long, Place> places = placesOf(records);
+		// 타인 카드이므로 공개 범위(PUBLIC만) 집계를 쓴다 — 소유자용과 메서드가 분리되어 있어
+		// 잘못 고르면 컴파일이 아니라 리뷰에서 걸리는 지점이라, 이름(Public)이 경계 표식이다.
+		Map<Long, List<String>> keywordsByRecord = contextKeywordRepository.findKeywordsPublic(recordIds);
 
 		return links.stream()
 			.filter(link -> records.containsKey(link.getRecordId()))
 			.map(link -> {
 				Record record = records.get(link.getRecordId());
 				return PublicRecordCardResponse.of(
-					record, places.get(record.getPlaceId()), link.getCreatedAt());
+					record, places.get(record.getPlaceId()),
+					keywordsByRecord.getOrDefault(record.getId(), List.of()), link.getCreatedAt());
 			})
 			.toList();
 	}

@@ -23,12 +23,14 @@ public record PublicRecordCardResponse(
 	Instant addedToCollectionAt
 ) {
 
-	public static PublicRecordCardResponse of(Record record, Place place, Instant addedToCollectionAt) {
+	/** @param keywords 타인 범위({@code PUBLIC}만) Keyword — 호출부가 공개용 집계로 채운다 */
+	public static PublicRecordCardResponse of(Record record, Place place, List<String> keywords,
+		Instant addedToCollectionAt) {
 		return new PublicRecordCardResponse(
 			record.getId(),
 			PlaceSummaryResponse.from(place),
 			null,
-			List.of(),
+			keywords,
 			record.getCreatedAt(),
 			addedToCollectionAt
 		);

@@ -17,9 +17,9 @@ import org.springframework.stereotype.Repository;
  * {@code BLOCKED}는 화이트리스트 밖이라 어느 메서드에도 등장하지 않는다 — 블랙리스트로 쓰면
  * 나중에 추가되는 visibility 값이 그냥 통과한다.
  *
- * <p>메서드 이름에 대상 범위({@code ForOwner})를 박는 것도 같은 규약이다(명세 3.1). 공개용
- * ({@code visibility = 'PUBLIC'}) 경로는 이 티켓에 소비자가 없어 만들지 않는다 — 검색은 본인
- * 데이터 전용이다(AI 설계 9.1).
+ * <p>메서드 이름에 대상 범위({@code ForOwner} / {@code Public})를 박는 것도 같은 규약이다
+ * (명세 3.1, BD-13). 소유자 응답은 {@code PUBLIC + PRIVATE_ONLY}, 타인 응답은 {@code PUBLIC}만이다
+ * (04 §2 Visibility 표) — 범위가 메서드 단위로 갈리므로 호출부가 조건을 고를 여지가 없다.
  */
 @Repository
 public class ContextKeywordRepository {
@@ -56,6 +56,55 @@ public class ContextKeywordRepository {
 		ORDER BY ct.record_id, kp.display_name
 		""";
 
+	/**
+	 * 타인 응답용 Record 단위 집계. {@code ForOwner}와 두 가지가 다르다 — visibility가
+	 * {@code PUBLIC} <b>화이트리스트 하나</b>이고, {@code member_id} 방어 조건이 없다(타인 조회라
+	 * 요청자와 소유자가 다른 것이 정상이며, 공개 여부 판정은 호출부의 발행 Collection 경로가 이미
+	 * 끝냈다).
+	 */
+	private static final String KEYWORDS_PUBLIC_SQL = """
+		SELECT DISTINCT ct.record_id AS record_id, kp.display_name AS display_name
+		FROM core.context ct
+		JOIN ai.context_ai_state st ON st.context_id = ct.id
+		JOIN ai.context_keyword  ck ON ck.context_id = ct.id
+		JOIN ai.keyword_preset   kp ON kp.id = ck.keyword_id
+		WHERE ct.record_id IN (:recordIds)
+			AND ct.deleted_at IS NULL
+			AND st.keyword_status = 'COMPLETED'
+			AND kp.visibility = 'PUBLIC'
+			AND kp.is_active = true
+		ORDER BY ct.record_id, kp.display_name
+		""";
+
+	/**
+	 * Collection 단위 집계(타인 응답용, API 명세 8.1·9.3). Collection Keyword는 물리 컬럼이 아니라
+	 * 담긴 Record들의 Context Keyword를 모은 파생값이다(BD-18) — {@code collection_record}를
+	 * 거슬러 올라가 모은다.
+	 *
+	 * <p>{@code r.deleted_at} 조건은 방어다. Record 삭제가 Context·링크를 연쇄 소프트 삭제하므로
+	 * 보통은 {@code ct.deleted_at}·{@code cr.deleted_at}에 이미 걸리지만, 연쇄가 한 곳이라도
+	 * 어긋난 데이터에서 삭제된 Record의 Keyword가 살아나면 안 된다.
+	 *
+	 * <p>Feed의 {@code FeedKeywordRepository}와 겹쳐 보이지만 합치지 않는다 — 그쪽은 점수 계산용
+	 * {@code code}·가중치 분포(AI 파트 소유 계약)이고, 여기는 화면 표시용 {@code display_name}
+	 * 목록이다. 반환 계약이 달라 한쪽을 바꾸면 다른 쪽이 조용히 깨진다.
+	 */
+	private static final String COLLECTION_KEYWORDS_PUBLIC_SQL = """
+		SELECT DISTINCT cr.collection_id AS collection_id, kp.display_name AS display_name
+		FROM core.collection_record cr
+		JOIN core.record  r  ON r.id = cr.record_id AND r.deleted_at IS NULL
+		JOIN core.context ct ON ct.record_id = cr.record_id AND ct.deleted_at IS NULL
+		JOIN ai.context_ai_state st ON st.context_id = ct.id
+		JOIN ai.context_keyword  ck ON ck.context_id = ct.id
+		JOIN ai.keyword_preset   kp ON kp.id = ck.keyword_id
+		WHERE cr.collection_id IN (:collectionIds)
+			AND cr.deleted_at IS NULL
+			AND st.keyword_status = 'COMPLETED'
+			AND kp.visibility = 'PUBLIC'
+			AND kp.is_active = true
+		ORDER BY cr.collection_id, kp.display_name
+		""";
+
 	private final NamedParameterJdbcTemplate jdbc;
 
 	public ContextKeywordRepository(NamedParameterJdbcTemplate jdbc) {
@@ -83,5 +132,43 @@ public class ContextKeywordRepository {
 				.add(rows.getString("display_name"));
 		});
 		return byRecord;
+	}
+
+	/**
+	 * 타인 응답용 Record 단위 Keyword. 한 페이지의 Record 전부를 <b>한 번의 쿼리로</b> 모은다.
+	 *
+	 * @return Record id → {@code PUBLIC} Keyword {@code display_name} 목록. Keyword가 없는 Record는
+	 *     키가 없다 — 호출부가 빈 목록으로 채운다
+	 */
+	public Map<Long, List<String>> findKeywordsPublic(List<Long> recordIds) {
+		if (recordIds.isEmpty()) {
+			return Map.of();
+		}
+		Map<Long, List<String>> byRecord = new LinkedHashMap<>();
+		jdbc.query(KEYWORDS_PUBLIC_SQL, Map.of("recordIds", recordIds), rows -> {
+			byRecord.computeIfAbsent(rows.getLong("record_id"), key -> new ArrayList<>())
+				.add(rows.getString("display_name"));
+		});
+		return byRecord;
+	}
+
+	/**
+	 * 타인 응답용 Collection 단위 Keyword. 한 페이지의 Collection 전부를 <b>한 번의 쿼리로</b>
+	 * 모은다 — 항목마다 반복 조회하면 그대로 N+1이다(BD-18).
+	 *
+	 * @return Collection id → {@code PUBLIC} Keyword {@code display_name} 목록. Keyword가 없는
+	 *     Collection은 키가 없다 — 호출부가 빈 목록으로 채운다. AI 미완료와 "Keyword 0건"은
+	 *     응답에서 구분하지 않는다
+	 */
+	public Map<Long, List<String>> findCollectionKeywordsPublic(List<Long> collectionIds) {
+		if (collectionIds.isEmpty()) {
+			return Map.of();
+		}
+		Map<Long, List<String>> byCollection = new LinkedHashMap<>();
+		jdbc.query(COLLECTION_KEYWORDS_PUBLIC_SQL, Map.of("collectionIds", collectionIds), rows -> {
+			byCollection.computeIfAbsent(rows.getLong("collection_id"), key -> new ArrayList<>())
+				.add(rows.getString("display_name"));
+		});
+		return byCollection;
 	}
 }

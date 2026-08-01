@@ -1,6 +1,7 @@
 package com.pinlog.pinlogback.domain.follow.service;
 
 import java.util.List;
+import java.util.Map;
 
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -9,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.pinlog.pinlogback.domain.ai.repository.ContextKeywordRepository;
 import com.pinlog.pinlogback.domain.collection.entity.Collection;
 import com.pinlog.pinlogback.domain.collection.repository.CollectionRepository;
 import com.pinlog.pinlogback.domain.follow.dto.FollowResponse;
@@ -39,12 +41,14 @@ public class FollowService {
 	private final FollowRepository followRepository;
 	private final CollectionRepository collectionRepository;
 	private final MemberRepository memberRepository;
+	private final ContextKeywordRepository contextKeywordRepository;
 
 	public FollowService(FollowRepository followRepository, CollectionRepository collectionRepository,
-		MemberRepository memberRepository) {
+		MemberRepository memberRepository, ContextKeywordRepository contextKeywordRepository) {
 		this.followRepository = followRepository;
 		this.collectionRepository = collectionRepository;
 		this.memberRepository = memberRepository;
+		this.contextKeywordRepository = contextKeywordRepository;
 	}
 
 	/**
@@ -141,14 +145,22 @@ public class FollowService {
 		}
 		boolean hasNext = rows.size() > pageSize;
 		List<Collection> page = hasNext ? rows.subList(0, pageSize) : rows;
-		List<FollowedCollectionResponse> items = page.stream()
-			.map(FollowedCollectionResponse::from)
-			.toList();
+		List<FollowedCollectionResponse> items = withPublicKeywords(page);
 		if (!hasNext) {
 			return CursorPage.last(items);
 		}
 		Collection last = page.get(page.size() - 1);
 		return CursorPage.of(items, Cursor.encode(last.getCreatedAt(), last.getId()));
+	}
+
+	/** 페이지 전체의 {@code PUBLIC} Keyword를 한 번에 집계해 항목에 붙인다(BD-18, S15P11A705-240). */
+	private List<FollowedCollectionResponse> withPublicKeywords(List<Collection> page) {
+		Map<Long, List<String>> keywords = contextKeywordRepository.findCollectionKeywordsPublic(
+			page.stream().map(Collection::getId).toList());
+		return page.stream()
+			.map(collection -> FollowedCollectionResponse.from(
+				collection, keywords.getOrDefault(collection.getId(), List.of())))
+			.toList();
 	}
 
 	/**
