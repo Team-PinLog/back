@@ -7,7 +7,12 @@ export const PROFILES = ['smoke', 'average', 'stress', 'spike'];
 
 const STAGES = {
   // 시나리오 자체 회귀 확인. 경합 시나리오는 이 프로파일에서 꺼진다.
-  smoke: [{ duration: '1m', target: 1 }],
+  // 첫 단계 0s는 VU를 즉시 1로 올리는 장치다 — startVUs 0에서 "1분에 걸쳐 0→1"로 두면
+  // 보간이 내내 0이라 요청이 한 건도 안 나가고, 빈 실행이 exit 0으로 통과해 버린다(실측).
+  smoke: [
+    { duration: '0s', target: 1 },
+    { duration: '1m', target: 1 },
+  ],
   // 평상 부하 기준선.
   average: [
     { duration: '30s', target: 20 },
