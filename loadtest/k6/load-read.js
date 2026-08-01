@@ -37,7 +37,9 @@ const CLASSES = ['map', 'list', 'detail', 'feed'];
 export default function () {
   const cls = CLASSES[__VU % CLASSES.length];
   // 지도 부류의 절반은 heavy 회원(마커 697개·61KB)으로 — 관측 1번(대역폭·직렬화) 판정용.
-  const useHeavy = cls === 'map' && __VU % 2 === 0;
+  // 지도를 받는 VU는 전부 4의 배수(짝수)라 __VU % 2로는 교대가 안 된다 —
+  // 4로 나눈 몫의 홀짝으로 갈라야 지도 VU들 사이에서 절반씩 나뉜다(VU 4·12·20…=heavy).
+  const useHeavy = cls === 'map' && (__VU / 4) % 2 === 1;
   const me = session(useHeavy ? HEAVY_MEMBER : GOLDEN.ownerMember);
 
   if (cls === 'map') {
