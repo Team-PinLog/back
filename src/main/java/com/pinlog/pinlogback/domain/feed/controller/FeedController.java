@@ -20,9 +20,10 @@ import jakarta.validation.Valid;
 /**
  * Feed API(공개 API 명세 2.7·10장). 경로는 context-path({@code /api/core})가 앞에 붙는다.
  *
- * <p>작성자 공개 책장 탐색(명세 8.1)은 여기에 없다. 추천 점수를 하나도 거치지 않아 Feed가 아니라
- * Follow 도메인의 {@code ShelfController}가 담으며, 경로도 진입 키를 따라
- * {@code GET /v1/collections/{collectionId}/shelf}다(S15P11A705-206).
+ * <p>작성자 공개 책장 탐색({@code GET /v1/feed/collections/{collectionId}/shelf}, 명세 8.1)은
+ * 경로 접두어가 같지만 <b>이 클래스에 없다</b>. 추천 점수를 하나도 거치지 않아 Follow 도메인의
+ * {@code ShelfController}가 담는다 — 한 클래스에 두면 AI 파트가 소유하는 추천 파이프라인과
+ * 소유 경계가 흐려진다(BD-43, S15P11A705-206).
  */
 @RestController
 @RequestMapping("/v1/feed")

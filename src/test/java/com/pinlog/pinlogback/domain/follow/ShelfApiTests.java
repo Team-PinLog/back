@@ -88,7 +88,7 @@ class ShelfApiTests extends CoreApiFixtures {
 	void unknownEntryIsNotFound() throws Exception {
 		long stranger = newMemberId();
 
-		mockMvc.perform(get("/v1/collections/{collectionId}/shelf", 999_999_999L)
+		mockMvc.perform(get("/v1/feed/collections/{collectionId}/shelf", 999_999_999L)
 				.with(loginAs(stranger)))
 			.andExpect(status().isNotFound());
 	}
@@ -101,7 +101,7 @@ class ShelfApiTests extends CoreApiFixtures {
 		long entry = publishedCollection(author, "shelf-deleted-entry", "지워짐");
 		softDelete("core.collection", entry);
 
-		mockMvc.perform(get("/v1/collections/{collectionId}/shelf", entry)
+		mockMvc.perform(get("/v1/feed/collections/{collectionId}/shelf", entry)
 				.with(loginAs(stranger)))
 			.andExpect(status().isNotFound());
 	}
@@ -114,7 +114,7 @@ class ShelfApiTests extends CoreApiFixtures {
 		long entry = publishedCollection(author, "shelf-withdrawn", "탈퇴");
 		softDelete("core.member", author);
 
-		mockMvc.perform(get("/v1/collections/{collectionId}/shelf", entry)
+		mockMvc.perform(get("/v1/feed/collections/{collectionId}/shelf", entry)
 				.with(loginAs(stranger)))
 			.andExpect(status().isNotFound());
 	}
@@ -202,7 +202,7 @@ class ShelfApiTests extends CoreApiFixtures {
 		long entry = publishedCollection(author, "shelf-size", "크기");
 
 		for (String size : List.of("0", "-1", "1000")) {
-			mockMvc.perform(get("/v1/collections/{collectionId}/shelf", entry)
+			mockMvc.perform(get("/v1/feed/collections/{collectionId}/shelf", entry)
 					.param("size", size)
 					.with(loginAs(stranger)))
 				.andExpect(status().isOk());
@@ -218,7 +218,7 @@ class ShelfApiTests extends CoreApiFixtures {
 		publishedCollection(author, "shelf-page-2", "둘째");
 		publishedCollection(author, "shelf-page-3", "셋째");
 
-		JsonNode first = parse(mockMvc.perform(get("/v1/collections/{collectionId}/shelf", entry)
+		JsonNode first = parse(mockMvc.perform(get("/v1/feed/collections/{collectionId}/shelf", entry)
 				.param("size", "2")
 				.with(loginAs(stranger)))
 			.andExpect(status().isOk())
@@ -227,7 +227,7 @@ class ShelfApiTests extends CoreApiFixtures {
 		assertThat(first.at("/collections/hasNext").asBoolean()).isTrue();
 
 		String cursor = first.at("/collections/nextCursor").asString();
-		JsonNode second = parse(mockMvc.perform(get("/v1/collections/{collectionId}/shelf", entry)
+		JsonNode second = parse(mockMvc.perform(get("/v1/feed/collections/{collectionId}/shelf", entry)
 				.param("size", "2")
 				.param("cursor", cursor)
 				.with(loginAs(stranger)))
@@ -241,7 +241,7 @@ class ShelfApiTests extends CoreApiFixtures {
 
 	/** 첫 페이지 응답의 {@code data} 노드. */
 	private JsonNode shelfOf(long viewer, long collectionId) throws Exception {
-		return parse(mockMvc.perform(get("/v1/collections/{collectionId}/shelf", collectionId)
+		return parse(mockMvc.perform(get("/v1/feed/collections/{collectionId}/shelf", collectionId)
 				.with(loginAs(viewer)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))

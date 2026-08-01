@@ -8,7 +8,7 @@
 
 ## 산출
 
-- `GET /api/core/v1/collections/{collectionId}/shelf` — `ShelfResponse`(`sourceCollectionId`·`follow`·`collections` 3층).
+- `GET /api/core/v1/feed/collections/{collectionId}/shelf` — `ShelfResponse`(`sourceCollectionId`·`follow`·`collections` 3층).
 - `ShelfController`·`ShelfService` — `domain/follow` 아래 신설. 경로 접두어는 `/v1/collections`다([BD-43](../decisions/BD-43-shelf-in-follow-domain-under-collections-path.md)).
 - `ShelfResponse`·`ShelfFollowState` — 응답 DTO 둘.
 - `ShelfApiTests` — 통합 테스트 13개.
@@ -22,7 +22,7 @@
 ```
 GET  /feed/collections            ✅ (S15P11A705-120)
 → GET  /collections/{id}          ✅
-→ GET  /collections/{id}/shelf    ← 이번
+→ GET  /feed/collections/{id}/shelf  ← 이번
 → POST /follows { collectionId }  ✅
 ```
 

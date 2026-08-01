@@ -14,15 +14,17 @@ import com.pinlog.pinlogback.global.security.authentication.MemberPrincipal;
 /**
  * 작성자 공개 책장 탐색(API 명세 8.1). 경로는 context-path({@code /api/core})가 앞에 붙는다.
  *
- * <p><b>{@code CollectionController}와 경로를 나눠 쓰면서 클래스를 따로 두는 이유</b>는 소유
- * 도메인이 다르기 때문이다. 이 Endpoint는 요청자의 팔로우 상태를 함께 내보내므로 Follow 도메인의
- * 관심사이고, {@code CollectionController}는 Collection 소유자 유스케이스를 담는다. 경로가
- * {@code /v1/collections} 아래인 것은 <b>진입 키가 {@code collectionId}</b>라서다.
+ * <p><b>경로 접두어가 {@code /v1/feed}인데 Feed 도메인이 아니다.</b> 추천 점수·Profile·
+ * {@code feed_event} 어느 것도 거치지 않으므로 구현은 Follow 도메인에 있고, 경로만 공용 계약
+ * (명세 2.7·8.1)을 그대로 따른다. 계약을 먼저 고쳐 {@code /v1/collections} 아래로 옮기는 안을
+ * 검토했으나, 라이브러리 집계 조회와 식별자 은닉 재검토가 함께 열려 있어 경로를 두 번 바꾸지
+ * 않도록 한 번에 정하기로 했다(BD-43).
  *
- * <p>{@code FeedController}에 두지 않은 것도 같은 이유다 — 추천 계산을 하나도 거치지 않는다.
+ * <p>{@code FeedController}에 매핑을 얹지 않은 이유도 같다 — 경로가 같은 접두어를 쓰더라도
+ * 추천 파이프라인과 한 클래스에 두면 소유 경계가 흐려진다.
  */
 @RestController
-@RequestMapping("/v1/collections")
+@RequestMapping("/v1/feed")
 public class ShelfController {
 
 	private final ShelfService shelfService;
@@ -31,7 +33,7 @@ public class ShelfController {
 		this.shelfService = shelfService;
 	}
 
-	@GetMapping("/{collectionId}/shelf")
+	@GetMapping("/collections/{collectionId}/shelf")
 	public ShelfResponse browse(@LoginMember MemberPrincipal me, @PathVariable Long collectionId,
 		@RequestParam(required = false) String cursor, @RequestParam(required = false) Integer size) {
 		return shelfService.browse(me.memberId(), collectionId, cursor, size);

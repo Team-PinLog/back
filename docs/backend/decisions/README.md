@@ -104,4 +104,4 @@
 | [BD-40](BD-40-scheduling-with-dedicated-scheduler-and-no-distributed-lock.md) | 스케줄링을 `@EnableScheduling` + 자체 `taskScheduler` Bean으로 들이고, 다중 인스턴스 조정은 분산 락 없이 `SKIP LOCKED`에 맡긴다 | Accepted | S15P11A705-159 |
 | [BD-41](BD-41-withdrawn-member-check-in-authentication-filter.md) | 탈퇴 회원의 남은 Access 토큰을 인증 필터의 PK 조회로 막는다 — 창 안에서 새는 것이 읽기가 아니라 쓰기이고, Redis 마커는 순단을 인증 실패로 번지게 한다 | Accepted | S15P11A705-65 |
 | [BD-42](BD-42-ci-skip-inside-job-not-paths-ignore.md) | 문서 전용 PR의 건너뛰기를 워크플로 `paths-ignore`가 아니라 잡 안의 스텝 조건으로 둔다 — 필수 상태 검사가 보고되지 않으면 머지가 영구 대기가 된다 | Accepted | S15P11A705-231 |
-| [BD-43](BD-43-shelf-in-follow-domain-under-collections-path.md) | 공개 책장 탐색을 Follow 도메인에 두고 경로는 `/v1/collections` 아래로 옮긴다 — 도메인 귀속은 경로 접두어가 아니라 하는 일로 정한다 | Accepted | S15P11A705-206 |
+| [BD-43](BD-43-shelf-in-follow-domain-under-collections-path.md) | 공개 책장 탐색을 Follow 도메인에 두고, 경로는 공용 계약(`/v1/feed`)을 그대로 따른다 — 도메인은 하는 일로 정하고, 경로 통일은 라이브러리 재편과 한 번에 정한다 | Accepted | S15P11A705-206 |
