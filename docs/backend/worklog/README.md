@@ -42,7 +42,7 @@ YYYY-MM-DD-<추적키>-<슬러그>.md
 
 ```bash
 find docs/backend/worklog -maxdepth 1 -name '20*.md' | sort                             # 시간순 전체 (README.md 제외)
-find docs/backend/worklog -maxdepth 1 -name '20*.md' -exec grep -l S15P11A705-238 {} +  # 티켓 하나
+find docs/backend/worklog -maxdepth 1 -name '20*S15P11A705-238*.md' | sort              # 티켓 하나
 find docs/backend/worklog -maxdepth 1 -name '20*.md' -exec grep -h '^# ' {} +           # 요약만
 ```
 
