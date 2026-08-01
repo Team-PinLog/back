@@ -54,3 +54,6 @@ out/
 .claude/hooks/
 # 브레인스토밍 스펙·플랜은 레포에 넣지 않는다(S15P11A705-28). 로컬에만 둔다.
 .claude/superpowers/
+
+# 검증 하네스 산출물. 서명된 access token과 개인키 사본이 들어가므로 절대 커밋하지 않는다.
+loadtest/artifacts/
