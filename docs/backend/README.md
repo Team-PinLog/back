@@ -9,7 +9,7 @@
 | 성격 | 구역 | 갱신 방식 |
 |---|---|---|
 | 살아있는 문서 | [`spec/`](spec/) | 현행과 다르면 제자리 수정, 낡은 내용은 삭제 |
-| 기록 문서 | [`decisions/`](decisions/) · [`implements/`](implements/) · [`troubleshooting/`](troubleshooting/) · [`worklog/`](worklog/) | **삭제하지 않고 상태만 갱신** (회고·복기 목적) |
+| 기록 문서 | [`decisions/`](decisions/) · [`implements/`](implements/) · [`troubleshooting/`](troubleshooting/) | **삭제하지 않고 상태만 갱신** (회고·복기 목적) |
 
 ## 구역
 
