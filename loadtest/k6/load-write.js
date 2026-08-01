@@ -89,12 +89,14 @@ export function throughput() {
     me.post('/v1/collections', { title: '부하컬렉션', recordIds: [record.recordId] }, 'write')
   );
 
-  // 마지막 Record 삭제는 409가 계약이므로 곧장 force로 지운다(정리 겸 쓰기 부하).
-  me.del(`/v1/records/${record.recordId}/force`, 'write');
+  // 삭제 순서가 중요하다. Collection을 먼저 지우고(204) 그 다음 Record를 force로 지운다(204).
+  // 반대로 하면 record force가 Collection을 연쇄로 소프트 삭제해서, 뒤이은 Collection 삭제가
+  // 매번 404가 된다 — 실제 오류가 아닌데 오류율을 1/7만큼 부풀려 보고서 수치를 오염시킨다.
+  // 이 순서면 두 삭제 엔드포인트를 다 부하로 치면서 상태 코드가 깨끗하다.
   if (col !== null) {
-    // force 연쇄로 이미 소프트 삭제됐을 수 있다 — 404도 정상 분포다.
     me.del(`/v1/collections/${col.collectionId}`, 'write');
   }
+  me.del(`/v1/records/${record.recordId}/force`, 'write');
 }
 
 /** 경합: 공유 Record에 Context 추가→삭제 반복. BD-11 잠금이 여기서 직렬화된다. */
