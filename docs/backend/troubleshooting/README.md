@@ -10,12 +10,12 @@
 - 무효화 → 문서 유지 + `상태: 무효(사유)` 표기
 - 삭제 → 하지 않음. 잘못 작성된 문서도 정정으로 처리
 
-## 목록
+## 목록을 따로 두지 않는다
 
-| BT | 증상 | 상태 | 문서/해결 |
-|---|---|---|---|
-| [BT-01](BT-01-shared-testcontainers-lifecycle.md) | 공유 Testcontainers Postgres가 클래스마다 재시작되어 뒤 클래스가 죽은 포트를 물음 | 해결됨 | 싱글톤 컨테이너 패턴 전환 (S15P11A705-41, `6c61272`) |
-| [BT-02](BT-02-flyway-out-of-order-version-ranges.md) | AI 구간(`V100~`)이 적용된 DB에 백엔드 migration(`V2~V99`)을 추가하면 Flyway validate 실패 | ⚠️ 미해결 | 파트 간 합의 필요. 빈 DB만 보는 CI는 못 잡음 (S15P11A705-51 검증 중 발견) |
-| [BT-03](BT-03-health-endpoint-blocks-on-redis-outage.md) | Redis 장애 시 집계 `/actuator/health`가 60초간 블로킹, liveness·readiness는 의존성 장애를 반영하지 않음 | ⚠️ 미해결 | Infra와 probe 경로·구성 합의 필요 (S15P11A705-51 검증 중 발견) |
-| [BT-04](BT-04-logged-in-cookie-path-unreadable.md) | `logged_in` 쿠키가 `Path=/api/core`로 발급돼 프론트 JS가 읽을 수 없음 — `HttpOnly`만 끄면 읽힌다고 본 것이 원인 | 해결됨 | `Path=/`로 수정 + `Path` 회귀 단언 추가 (S15P11A705-63, 실제 Google 수동 검증 중 발견) |
-| [BT-05](BT-05-dotenv-empty-value-overrides-default.md) | `.env`의 빈 값이 `${VAR:기본값}`을 덮어 `Client id ... must not be empty`로 기동 실패 — 빈 문자열은 "없음"이 아니다 | 해결됨 | `.env.example`의 자격증명 6줄을 주석으로 (S15P11A705-64, Kakao·Naver 등록 중 발견) |
+목록 표를 두면 모든 브랜치가 같은 파일을 고치게 되어 PR끼리 충돌하고, 손으로 옮겨 적은 사본이라 실제로 어긋납니다. 이 표는 `BT-02`가 해결된 뒤에도 미해결로 적어두고 있었습니다([back#133](https://github.com/Team-PinLog/back/issues/133), [BD-45](../decisions/BD-45-worklog-per-entry-files.md)). 각 문서의 H1이 번호와 요약을, 헤더가 상태를 원본으로 갖고 있으므로 폴더에서 직접 읽습니다.
+
+```bash
+grep -h '^# B' docs/backend/troubleshooting/BT-*.md | sort      # 전체 목록
+grep -H '^- \*\*상태\*\*' docs/backend/troubleshooting/BT-*.md   # 상태별로 훑기
+grep -l '^- \*\*상태\*\*.*미해결' docs/backend/troubleshooting/BT-*.md   # 미해결만
+```

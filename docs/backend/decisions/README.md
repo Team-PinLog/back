@@ -58,51 +58,11 @@
 
 **없는 이유를 지어내지 않습니다.** 이 기록의 가치는 정확성에 있고, 그럴듯하게 꾸며낸 이유 하나가 나머지 전부를 믿을 수 없게 만듭니다.
 
-## 목록
+## 목록을 따로 두지 않는다
 
-| BD | 결정 | 상태 | 관련 |
-|---|---|---|---|
-| [BD-01](BD-01-h2-removal-testcontainers.md) | 테스트 런타임에서 H2 제거, PostgreSQL Testcontainers로 단일화 | Accepted | back#12 |
-| [BD-02](BD-02-base-entity-common-columns.md) | BaseEntity는 created_at·deleted_at만 공유, updated_at 없음 | Accepted | S15P11A705-41 |
-| [BD-03](BD-03-api-response-envelope.md) | 성공·오류 응답을 공통 envelope(ApiResponse)로 통일 | Accepted | S15P11A705-53 |
-| [BD-04](BD-04-cursor-pagination.md) | 목록은 커서 기반 CursorPage + Base64(정렬키,id) 불투명 커서, size 기본 20·상한 100 | Accepted | S15P11A705-42 |
-| [BD-05](BD-05-graceful-shutdown-timing.md) | graceful shutdown 타임아웃 20s, Kubernetes 쪽 값(`terminationGracePeriodSeconds` 40s·`preStop` 5s)은 Infra에 위임 | Accepted | S15P11A705-51 · [infra#33](https://github.com/Team-PinLog/infra/issues/33) |
-| [BD-06](BD-06-framework-error-mapping.md) | GlobalExceptionHandler가 ResponseEntityExceptionHandler를 상속해 프레임워크 예외를 자체 상태로 매핑 | Accepted | S15P11A705-40 |
-| [BD-07](BD-07-context-immutability.md) | Context 불변 — 수정은 삭제+생성. 버전 컬럼 제거, 수정 경합을 삭제 경합에 흡수 | Accepted | S15P11A705-76 |
-| [BD-08](BD-08-soft-delete-no-restore.md) | 소프트 삭제 + 복구 없음 + 활성행 부분 유니크 | Accepted | S15P11A705-76 |
-| [BD-09](BD-09-no-record-update-path.md) | Record 수정 경로를 두지 않는다 (공용 문서 정정 후속) | Accepted | S15P11A705-76 |
-| [BD-10](BD-10-integrity-in-database.md) | 무결성을 앱이 아닌 DB에 — `CHECK`·부분 유니크·서로게이트 키 | Accepted | S15P11A705-76 |
-| [BD-11](BD-11-minimum-holding-invariants.md) | 최소 보유 불변식 — 자동 연쇄 대신 409 확인 후 force, 잠금은 부모에 | Accepted | S15P11A705-76 |
-| [BD-12](BD-12-duplicate-record-idempotent.md) | Collection 중복 Record 추가는 실패가 아닌 멱등 | Accepted | S15P11A705-76 |
-| [BD-13](BD-13-public-boundary-query-dto-split.md) | 공개 경계를 쿼리·DTO 분리로 강제, 403 대신 404 | Accepted | S15P11A705-76 |
-| [BD-14](BD-14-identifier-concealment.md) | 식별자 은닉 — `member.id` 비공개, Collection id를 진입점으로 | Accepted | S15P11A705-76 |
-| [BD-15](BD-15-shelf-not-a-table.md) | Shelf·Library를 물리 테이블로 두지 않는다 | Accepted | S15P11A705-76 |
-| [BD-16](BD-16-ai-derived-immediate-purge.md) | AI 파생 데이터는 즉시 무효화 표시 — 백엔드가 `ai` 스키마에 직접 쓰는 좁은 예외 | Accepted | S15P11A705-76 |
-| [BD-17](BD-17-async-without-message-queue.md) | 비동기 AI를 큐 없이 DB State + Scheduler로 | Accepted | S15P11A705-76 |
-| [BD-18](BD-18-keyword-preset-and-visibility.md) | Keyword는 프리셋에서만 · 3등급 공개 · 상위 집계 비저장 | Accepted | S15P11A705-76 |
-| [BD-19](BD-19-place-snapshot.md) | Place는 공용 스냅샷 — 갱신·자동 병합 금지, 검색은 프론트가 직접 | Accepted | S15P11A705-76 |
-| [BD-20](BD-20-selective-denormalization.md) | 선택적 비정규화 — `record_count`는 두고 팔로워 수는 두지 않는다 | Accepted | S15P11A705-76 |
-| [BD-21](BD-21-auth-token-model.md) | 인증 토큰 — JWT Access 30분 / Refresh 7일, Refresh는 Redis | Accepted | S15P11A705-76 |
-| [BD-22](BD-22-signup-commit-point.md) | 가입 확정 시점 — 약관 동의 전에는 `member`를 만들지 않는다 | Accepted | S15P11A705-76 |
-| [BD-23](BD-23-collection-auto-publish.md) | Collection 자동 발행 + `is_published` 컬럼 유지 | Accepted | S15P11A705-76 |
-| [BD-24](BD-24-foundation-reset.md) | 파운데이션 리셋 — 초기 설정을 최신 `dev`에서 작은 PR로 다시 구성 | Accepted | Issue #9 |
-| [BD-25](BD-25-context-origin-created-at.md) | Context 최초 작성 시각 보존 — `origin_created_at`, 목록은 오래된순 (BD-07 트리거 발동) | Accepted | docs#16 |
-| [BD-26](BD-26-flyway-out-of-order.md) | 버전 구간 소유를 유지하고 Flyway `out-of-order`를 허용 (BT-02 해소) | Accepted | S15P11A705-86 |
-| [BD-27](BD-27-coverage-gate-bundle-80.md) | 커버리지 게이트를 BUNDLE 기준 LINE·BRANCH 80%로, 진입점은 집계 제외 | Accepted | S15P11A705-103 |
-| [BD-28](BD-28-readiness-includes-db.md) | readiness 그룹에 `db`를 넣고 `redis`는 넣지 않는다 | Accepted | S15P11A705-106 |
-| [BD-29](BD-29-nullmarked-security-package.md) | `global/security`를 패키지 단위 `@NullMarked`로 선언(파라미터별 `@NonNull` 대신) | Accepted | S15P11A705-63 |
-| [BD-30](BD-30-authorization-request-in-cookie.md) | 인가 요청(state·PKCE verifier)을 `HttpSession` 대신 쿠키에 — 서명 없이 역직렬화 허용목록으로 | Accepted | S15P11A705-63 |
-| [BD-31](BD-31-jwt-rs256-key-management.md) | 세션 JWT를 RS256으로 서명, 키는 환경변수 주입 + 운영 fail-fast (`kid` 선반영, JWKS 없음) | Accepted | S15P11A705-63 |
-| [BD-32](BD-32-refresh-reuse-no-family-revocation.md) | Refresh 재사용을 감지해도 세션 계열을 폐기하지 않는다 (당분간) — 감지·WARN만, 폐기는 후속 | Superseded by BD-35 | S15P11A705-63 |
-| [BD-33](BD-33-published-at-database-invariant.md) | 발행된 Collection의 `published_at`을 DB `CHECK`로 강제 | Accepted | S15P11A705-125 |
-| [BD-34](BD-34-feed-deterministic-pagination-without-session-cache.md) | Feed 페이지네이션을 Redis Session Cache 대신 `requestId` seed 기반 결정적 재계산으로 | Accepted | S15P11A705-120 |
-| [BD-35](BD-35-refresh-reuse-family-revocation.md) | Refresh 재사용을 유출로 간주해 그 회원의 세션을 전부 폐기 — 회원별 `jti` 인덱스, 오탐 시 전체 로그아웃 감수 | Accepted | S15P11A705-131 |
-| [BD-36](BD-36-pending-insert-in-transaction-process-call-after-commit.md) | PENDING INSERT는 Core 트랜잭션 안에, `process` 호출은 커밋 이후 비동기로 | Accepted | S15P11A705-102 |
-| [BD-37](BD-37-ai-derived-invalidation-inside-deletion-transaction.md) | AI 파생 데이터 무효화를 삭제 트랜잭션 안에서 백엔드가 직접 쓴다 | Accepted | S15P11A705-124 |
-| [BD-38](BD-38-published-predicate-per-layer.md) | 발행 여부 판정은 층마다 자체 보유하고(아홉 곳), 대가를 각 자리를 지키는 테스트로 갚는다 | Accepted | S15P11A705-148 |
-| [BD-39](BD-39-embedding-profile-in-application-config.md) | Embedding Profile을 `application.yml` 리터럴로 두고 환경변수는 덮어쓰기로만 — 런타임 대조가 성립하려면 Spring도 값을 가져야 한다 | Accepted | S15P11A705-135 |
-| [BD-40](BD-40-scheduling-with-dedicated-scheduler-and-no-distributed-lock.md) | 스케줄링을 `@EnableScheduling` + 자체 `taskScheduler` Bean으로 들이고, 다중 인스턴스 조정은 분산 락 없이 `SKIP LOCKED`에 맡긴다 | Accepted | S15P11A705-159 |
-| [BD-41](BD-41-withdrawn-member-check-in-authentication-filter.md) | 탈퇴 회원의 남은 Access 토큰을 인증 필터의 PK 조회로 막는다 — 창 안에서 새는 것이 읽기가 아니라 쓰기이고, Redis 마커는 순단을 인증 실패로 번지게 한다 | Accepted | S15P11A705-65 |
-| [BD-42](BD-42-ci-skip-inside-job-not-paths-ignore.md) | 문서 전용 PR의 건너뛰기를 워크플로 `paths-ignore`가 아니라 잡 안의 스텝 조건으로 둔다 — 필수 상태 검사가 보고되지 않으면 머지가 영구 대기가 된다 | Accepted | S15P11A705-231 |
-| [BD-43](BD-43-shelf-in-follow-domain-under-collections-path.md) | 공개 책장 탐색을 Follow 도메인에 두고, 경로는 공용 계약(`/v1/feed`)을 그대로 따른다 — 도메인은 하는 일로 정하고, 경로 통일은 라이브러리 재편과 한 번에 정한다 | Accepted | S15P11A705-206 |
-| [BD-44](BD-44-image-takes-prebuilt-jar.md) | 이미지가 미리 빌드된 jar를 받게 하고 `Dockerfile`이 소스만으로 혼자 빌드되는 성질을 버린다 — 캐시로 못 지우는 중복 컴파일을 없애고 그에 딸린 캐시 비용도 함께 걷는다 | Accepted | S15P11A705-238 |
+목록 표를 두면 모든 브랜치가 같은 파일을 고치게 되어 PR끼리 충돌하고, 손으로 옮겨 적은 사본이라 실제로 어긋납니다([back#133](https://github.com/Team-PinLog/back/issues/133), [BD-45](BD-45-worklog-per-entry-files.md)). 각 문서의 H1이 번호와 요약을, 헤더가 상태를 원본으로 갖고 있으므로 폴더에서 직접 읽습니다.
+
+```bash
+grep -h '^# B' docs/backend/decisions/BD-*.md | sort      # 전체 목록
+grep -H '^- \*\*상태\*\*' docs/backend/decisions/BD-*.md   # 상태별로 훑기
+```
