@@ -79,8 +79,11 @@ if [ "$SERIES" != "read" ]; then
   SHARED_RECORD=$(printf '%s\n' "$OUT" | grep '^record:' | cut -d: -f2)
   POOL_IDS=$(printf '%s\n' "$OUT" | grep -v ':' | paste -sd, -)
   log "회원 풀 $N명 + 공유 $SHARED_MEMBER (record $SHARED_RECORD)"
+  # 골든 회원 1도 발급한다 — 혼합 계열은 feed/map/detail(트래픽 85%)을 session(1)로 친다.
+  # mint-tokens는 tokens.json을 통째로 덮어쓰므로, 풀·공유만 발급하면 1 토큰이 사라져
+  # 반복마다 "tokens.json에 member 1가 없다" 예외가 난다. write 계열에 1이 섞여도 무해하다.
   # shellcheck disable=SC2086
-  bash "$HERE/tools/mint-tokens.sh" $(printf '%s' "$POOL_IDS" | tr ',' ' ') "$SHARED_MEMBER" > /dev/null
+  bash "$HERE/tools/mint-tokens.sh" $(printf '%s' "$POOL_IDS" | tr ',' ' ') "$SHARED_MEMBER" 1 > /dev/null
 else
   bash "$HERE/tools/mint-tokens.sh" 1 2792 > /dev/null
 fi
