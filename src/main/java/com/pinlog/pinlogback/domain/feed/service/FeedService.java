@@ -5,8 +5,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Service;
@@ -129,7 +131,7 @@ public class FeedService {
 
 		List<FeedCandidate> candidates = collectCandidates(memberId, session.seed());
 		if (candidates.isEmpty()) {
-			return new RankedFeed(List.of(), Map.of());
+			return new RankedFeed(List.of(), Map.of(), Map.of());
 		}
 		List<Long> ids = candidates.stream().map(FeedCandidate::collectionId).toList();
 		Map<Long, Map<String, Double>> keywords = keywordRepository.findPublicKeywordWeights(ids);
@@ -138,7 +140,22 @@ public class FeedService {
 
 		List<ScoredCandidate> scored = scorer.score(
 			candidates, profile, keywords, impressions, coldStart, Instant.now());
-		return new RankedFeed(ranker.arrange(scored, coldStart), keywords);
+		return new RankedFeed(ranker.arrange(scored, coldStart), keywords, displayNamesOf(keywords));
+	}
+
+	/**
+	 * 후보 전체의 code를 모아 표시값을 <b>한 번에</b> 조회한다(feed-tests N8). 서로 다른 code는
+	 * 프리셋 수(27)를 넘지 않으므로 후보가 200건이어도 IN 절 크기가 그만큼 커지지 않는다.
+	 *
+	 * <p>응답에 실릴 항목만 골라 조회하지 않는 것은 의도적이다 — 재검증 탈락분을 다음 후보로
+	 * 채우는 루프가 응답 조립 중에 새 id를 끌어오므로, 그 시점에 조회하면 페이지를 채울 때마다
+	 * 왕복이 늘어난다.
+	 */
+	private Map<String, String> displayNamesOf(Map<Long, Map<String, Double>> keywords) {
+		Set<String> codes = keywords.values().stream()
+			.flatMap(weights -> weights.keySet().stream())
+			.collect(Collectors.toSet());
+		return keywordRepository.findPublicDisplayNames(codes);
 	}
 
 	/**
@@ -197,16 +214,34 @@ public class FeedService {
 	}
 
 	/**
-	 * 정렬이 끝난 id 순서와, 그 후보들의 {@code PUBLIC} Keyword 분포.
+	 * 정렬이 끝난 id 순서와, 그 후보들의 {@code PUBLIC} Keyword 분포, 그리고 그 분포에 등장하는
+	 * {@code code}의 화면 표시값.
 	 *
-	 * <p>응답의 {@code keywords}를 이 Map에서 꺼내는 것이 중요하다 — 점수 계산에 쓴 것과 같은
-	 * 값이므로, 응답에만 다른 가시성 필터가 적용될 경로가 없다.
+	 * <p>응답의 {@code keywords}를 {@code keywords} Map에서 꺼내는 것이 중요하다 — 점수 계산에 쓴
+	 * 것과 같은 값이므로, 응답에만 다른 가시성 필터가 적용될 경로가 없다. 표시값 조회는 그
+	 * 결과에서 <b>파생</b>될 뿐 대상을 새로 고르지 않는다.
+	 *
+	 * @param displayNames Keyword {@code code} → {@code display_name}. 점수 계산은 {@code code}로
+	 *     하고 옮기는 것은 여기 한 곳뿐이다(08 §6.1, S15P11A705-252)
 	 */
-	private record RankedFeed(List<Long> order, Map<Long, Map<String, Double>> keywords) {
+	private record RankedFeed(List<Long> order, Map<Long, Map<String, Double>> keywords,
+		Map<String, String> displayNames) {
 
-		/** Keyword가 없으면 빈 배열이다. 오류가 아니다(feed-recommendation 3.7). */
+		/**
+		 * 응답에 실을 Keyword. Keyword가 없으면 빈 배열이며 오류가 아니다
+		 * (feed-recommendation 3.7).
+		 *
+		 * <p>표시값을 못 찾은 {@code code}는 <b>버린다</b>. {@code code}로 대신 채우면 그 폴백이 곧
+		 * 08 §6.1 위반이므로, Preset이 도중에 폐기·차단됐을 때의 실패는 "영문이 뜬다"가 아니라
+		 * "덜 뜬다"여야 한다. 정렬은 표시값 기준이다 — 화면에 보이는 순서가 정렬 근거여야 한다.
+		 */
 		List<String> keywordsOf(FeedCollectionCard card) {
-			return keywords.getOrDefault(card.collectionId(), Map.of()).keySet().stream().sorted().toList();
+			return keywords.getOrDefault(card.collectionId(), Map.of()).keySet().stream()
+				.map(displayNames::get)
+				.filter(Objects::nonNull)
+				.distinct()
+				.sorted()
+				.toList();
 		}
 	}
 }

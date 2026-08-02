@@ -15,6 +15,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.pinlog.pinlogback.domain.member.entity.Member;
 import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
+import com.pinlog.pinlogback.global.response.CursorPage;
 import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
 import tools.jackson.databind.JsonNode;
@@ -94,12 +95,23 @@ abstract class FeedFixtures extends IntegrationContainerSupport {
 	}
 
 	/**
-	 * Keyword Preset을 하나 만든다. {@code embedding}은 {@code NOT NULL}이지만 Feed는 벡터를 쓰지
-	 * 않으므로 0 벡터로 채운다 — 이 테스트가 임베딩에 의존하지 않는다는 사실 자체가 경계의 증거다.
+	 * Keyword Preset을 하나 만든다. 표시값을 따로 신경 쓰지 않는 테스트용이라 {@code display_name}을
+	 * {@code code}와 같게 둔다 — <b>둘을 구분해야 하는 테스트는 4인자 오버로드를 쓴다</b>.
 	 *
 	 * @param visibility {@code PUBLIC} · {@code PRIVATE_ONLY} · {@code BLOCKED}
 	 */
 	protected int insertPreset(String code, String visibility, boolean active) {
+		return insertPreset(code, code, visibility, active);
+	}
+
+	/**
+	 * {@code code}와 {@code display_name}이 다른 Preset. 응답이 어느 쪽을 실었는지 가리려면 두 값이
+	 * 달라야 한다 — 같게 두면 {@code code}를 내보내는 구현도 통과한다(S15P11A705-252).
+	 *
+	 * <p>{@code embedding}은 {@code NOT NULL}이지만 Feed는 벡터를 쓰지 않으므로 0 벡터로 채운다 —
+	 * 이 테스트가 임베딩에 의존하지 않는다는 사실 자체가 경계의 증거다.
+	 */
+	protected int insertPreset(String code, String displayName, String visibility, boolean active) {
 		Integer id = jdbcTemplate.queryForObject(
 			"SELECT coalesce(max(id), 0) + 1 FROM ai.keyword_preset", Integer.class);
 		jdbcTemplate.update("""
@@ -108,8 +120,18 @@ abstract class FeedFixtures extends IntegrationContainerSupport {
 			\t embedding_profile, visibility, is_active, version)
 			VALUES (?, ?, ?, 'MOOD', '테스트 프리셋', ARRAY['예시'],
 			\tarray_fill(0::real, ARRAY[1536])::vector, 'test-profile', ?, ?, 1)
-			""", id, code, code, visibility, active);
+			""", id, code, displayName, visibility, active);
 		return id;
+	}
+
+	/** 영문 대문자 {@code code}. 한글 표시값과 문자 집합이 겹치지 않아 부분 문자열 오탐이 없다. */
+	protected String uniqueCode(String prefix) {
+		return prefix + "_" + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+	}
+
+	/** 한글 표시값. {@link #uniqueCode}가 만든 어떤 code와도 부분 문자열로 겹치지 않는다. */
+	protected String uniqueDisplayName(String prefix) {
+		return prefix + java.util.UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 	}
 
 	/** Record의 모든 활성 Context에 Keyword를 붙인다. FastAPI가 채우는 자리를 대신한다. */
@@ -131,6 +153,33 @@ abstract class FeedFixtures extends IntegrationContainerSupport {
 		return parse(mockMvc.perform(get(FEED_URL + query).with(loginAs(memberId)))
 			.andExpect(status().isOk())
 			.andReturn().getResponse().getContentAsString());
+	}
+
+	/**
+	 * 한 페이지에 최대한 담아 응답 <b>원문</b>을 돌려준다. 파싱한 트리가 아니라 원문이어야 "이
+	 * 문자열이 응답 어디에도 없다"를 단언할 수 있다 — 필드를 하나 빠뜨려도 걸린다.
+	 */
+	protected String feedPayload(long memberId) throws Exception {
+		return mockMvc.perform(get(FEED_URL)
+				.param("size", String.valueOf(CursorPage.MAX_SIZE)).with(loginAs(memberId)))
+			.andExpect(status().isOk())
+			.andReturn().getResponse().getContentAsString();
+	}
+
+	/** 공유 컨테이너라 다른 테스트가 만든 항목도 섞인다. 내가 만든 id로만 골라낸다. */
+	protected JsonNode itemOf(JsonNode response, long collectionId) {
+		for (JsonNode item : response.at("/data/items")) {
+			if (item.at("/collectionId").asLong() == collectionId) {
+				return item;
+			}
+		}
+		return null;
+	}
+
+	protected List<String> keywordsOf(JsonNode item) {
+		List<String> keywords = new java.util.ArrayList<>();
+		item.at("/keywords").forEach(keyword -> keywords.add(keyword.asString()));
+		return keywords;
 	}
 
 	protected List<Long> collectionIdsOf(JsonNode response) {
