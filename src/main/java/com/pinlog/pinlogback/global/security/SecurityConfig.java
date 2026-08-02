@@ -15,12 +15,12 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
 
-import com.pinlog.pinlogback.domain.auth.controller.SocialLoginController;
 import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
 import com.pinlog.pinlogback.global.security.authentication.JwtAuthenticationFilter;
 import com.pinlog.pinlogback.global.security.error.RestAccessDeniedHandler;
 import com.pinlog.pinlogback.global.security.error.RestAuthenticationEntryPoint;
 import com.pinlog.pinlogback.global.security.oauth.CookieOAuth2AuthorizationRequestRepository;
+import com.pinlog.pinlogback.global.security.oauth.OAuthEndpointPaths;
 import com.pinlog.pinlogback.global.security.oauth.OAuthLoginFailureHandler;
 import com.pinlog.pinlogback.global.security.oauth.OAuthLoginSuccessHandler;
 import com.pinlog.pinlogback.global.security.token.JwtProperties;
@@ -59,14 +59,15 @@ public class SecurityConfig {
 	 * 인가 요청에 PKCE를 붙인다. RFC 9700이 Authorization Code 흐름에 요구한다.
 	 *
 	 * <p>기본 resolver는 client secret이 있는 confidential client에는 PKCE를 넣지 않으므로
-	 * 명시적으로 켠다. baseUri는 {@link SocialLoginController}가 넘겨주는 내부 경로다.
+	 * 명시적으로 켠다. baseUri는 {@link OAuthEndpointPaths}가 갖는 내부 경로이고,
+	 * {@code SocialLoginController}가 명세 경로에서 그리로 넘긴다.
 	 */
 	@Bean
 	public OAuth2AuthorizationRequestResolver authorizationRequestResolver(
 		ClientRegistrationRepository clientRegistrationRepository
 	) {
 		DefaultOAuth2AuthorizationRequestResolver resolver = new DefaultOAuth2AuthorizationRequestResolver(
-			clientRegistrationRepository, SocialLoginController.AUTHORIZATION_BASE_URI);
+			clientRegistrationRepository, OAuthEndpointPaths.AUTHORIZATION_BASE_URI);
 		resolver.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce());
 		return resolver;
 	}
@@ -120,7 +121,7 @@ public class SecurityConfig {
 					// 기본 구현은 HttpSession을 쓴다. STATELESS 선언과 어긋나므로 쿠키로 바꾼다.
 					.authorizationRequestRepository(authorizationRequestRepository))
 				// 콜백 경로. registrationId를 state에서 꺼내므로 마지막 세그먼트가 아니어도 된다.
-				.redirectionEndpoint(endpoint -> endpoint.baseUri("/v1/auth/*/callback"))
+				.redirectionEndpoint(endpoint -> endpoint.baseUri(OAuthEndpointPaths.CALLBACK_BASE_URI))
 				.successHandler(successHandler)
 				.failureHandler(failureHandler))
 			.authorizeHttpRequests(requests -> requests
