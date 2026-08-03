@@ -1,9 +1,11 @@
 package com.pinlog.pinlogback.domain.feed.repository;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -27,6 +29,12 @@ import com.pinlog.pinlogback.domain.feed.service.FeedProfile;
  *
  * <p>이 비대칭이 의도된 설계다(feed-scoring 3.2). {@code PRIVATE_ONLY}가 Collection 쪽에
  * 들어가면 타인에게 감춰야 할 정보가 추천 결과를 통해 드러난다.
+ *
+ * <p><b>집계는 {@code code}로 키를 잡고, 응답에 실을 {@code display_name}은 따로 조회한다.</b>
+ * {@code code}는 불변 식별자이고 {@code display_name}은 언제든 바뀔 수 있는 표시용 라벨이다 —
+ * 표시값을 점수 계산의 키로 쓰면 라벨을 고친 순간 그 이전에 계산된 Profile과 매칭이 어긋난다.
+ * 양쪽 키가 같기만 하면 Jaccard 자체는 성립하므로 오류도 나지 않고 테스트도 깨지지 않는다.
+ * 추천 품질만 조용히 나빠진다(S15P11A705-252, back#146).
  */
 @Repository
 public class FeedKeywordRepository {
@@ -56,6 +64,20 @@ public class FeedKeywordRepository {
 			AND kp.visibility IN ('PUBLIC', 'PRIVATE_ONLY')
 			AND kp.is_active = true
 		GROUP BY kp.code
+		""";
+
+	/**
+	 * 응답에 실을 표시값. 가시성 화이트리스트를 특징 집계와 <b>똑같이</b> 둔다 — 어느 한쪽이
+	 * 무너져도 감춰야 할 라벨이 응답에 실리지 않는 이중 방어다.
+	 *
+	 * <p>{@code code}에 UNIQUE 제약이 있으므로(V100) 결과는 code당 한 행이다.
+	 */
+	private static final String DISPLAY_NAMES_SQL = """
+		SELECT kp.code AS code, kp.display_name AS display_name
+		FROM ai.keyword_preset kp
+		WHERE kp.code IN (:codes)
+			AND kp.visibility = 'PUBLIC'
+			AND kp.is_active = true
 		""";
 
 	private static final String ACTIVE_RECORD_COUNT_SQL =
@@ -106,6 +128,29 @@ public class FeedKeywordRepository {
 		Integer recordCount = jdbc.queryForObject(
 			ACTIVE_RECORD_COUNT_SQL, Map.of("me", memberId), Integer.class);
 		return new FeedProfile(normalize(weights), recordCount == null ? 0 : recordCount);
+	}
+
+	/**
+	 * 응답 조립 직전에 {@code code}를 화면 표시값으로 옮긴다(API 명세 08 §6.1 — {@code code}는
+	 * 내부 식별용이라 노출하지 않는다).
+	 *
+	 * <p><b>페이지 전체의 code를 모아 한 번에 조회한다.</b> 항목마다 부르면 그대로 N+1이고,
+	 * 프리셋이 27개뿐이라 개발 데이터에서는 증상이 드러나지 않는다 — 쿼리 수로 고정해 둔다
+	 * (feed-tests N8).
+	 *
+	 * @return Keyword {@code code} → {@code display_name}. <b>노출 대상이 아니거나 폐기된 Preset은
+	 *     키가 없다</b> — 호출부는 그런 code를 응답에서 빼야 한다. {@code code}로 대신 채우면 그
+	 *     폴백이 곧 명세 위반이다
+	 */
+	public Map<String, String> findPublicDisplayNames(Collection<String> codes) {
+		if (codes.isEmpty()) {
+			return Map.of();
+		}
+		Map<String, String> byCode = new LinkedHashMap<>();
+		jdbc.query(DISPLAY_NAMES_SQL, Map.of("codes", Set.copyOf(codes)), rows -> {
+			byCode.put(rows.getString("code"), rows.getString("display_name"));
+		});
+		return Map.copyOf(byCode);
 	}
 
 	/**

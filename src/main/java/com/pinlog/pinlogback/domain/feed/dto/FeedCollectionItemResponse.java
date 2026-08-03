@@ -15,8 +15,11 @@ import com.pinlog.pinlogback.domain.feed.repository.FeedCollectionCard;
  * @param collectionId 대상 Collection
  * @param title Collection 제목
  * @param recordCount 담긴 Record 수
- * @param keywords 공개 가능한 {@code PUBLIC} Keyword code. AI 처리가 끝나지 않았으면 빈 배열이며
- *                 <b>오류가 아니다</b>(feed-recommendation 3.7)
+ * @param keywords 공개 가능한 {@code PUBLIC} Keyword의 {@code keyword_preset.display_name}이다.
+ *                 <b>{@code code}는 내부 식별용이라 노출하지 않는다</b>(08 §6.1 — 모든 Keyword 응답
+ *                 공통). 점수 계산은 {@code code}로 하고 여기서만 표시값으로 옮긴다
+ *                 (S15P11A705-252). AI 처리가 끝나지 않았으면 빈 배열이며 <b>오류가 아니다</b>
+ *                 (feed-recommendation 3.7)
  * @param createdAt Collection 생성 시각
  */
 public record FeedCollectionItemResponse(
