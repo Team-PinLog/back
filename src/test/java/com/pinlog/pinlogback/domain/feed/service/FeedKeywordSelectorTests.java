@@ -13,6 +13,15 @@ import com.pinlog.pinlogback.domain.feed.repository.FeedKeywordLabel;
 /**
  * 표시 Keyword 선정·정렬 규칙(feed-tests KW1~KW7, feed-recommendation 3.7.1, P46).
  *
+ * <pre>
+ * 1  빈도 DESC        프론트와 구두 합의 (2026-08-03)
+ * 2  축 내 순위 ASC    동점 규칙 — 우리 판단. <b>같은 빈도 안에서만</b> 매긴다
+ * 3  preset id ASC    동점 규칙 — 우리 판단. UNIQUE라 여기서 전순서가 완성된다
+ * </pre>
+ *
+ * <p>{@link #frequencyOutranksAxisSpread()}와 {@link #axisSpreadsWithinOneFrequencyGroup()}를
+ * <b>함께 봐야</b> 2의 자리가 드러난다 — 축은 빈도를 뒤집지 않고, 빈도가 못 가르는 자리만 메운다.
+ *
  * <p>DB도 Redis도 없는 순수 자바다 — 규칙 자체가 산술이므로 통합에 얹으면 실패했을 때 규칙이
  * 틀린 것인지 픽스처가 틀린 것인지 가려내기 어렵다. 통합 쪽은
  * {@code FeedKeywordDisplayOrderTests}가 "이 규칙이 실제 응답까지 도달하는가"만 본다.
@@ -25,11 +34,14 @@ class FeedKeywordSelectorTests {
 	private static final int LIMIT = 4;
 
 	/**
-	 * KW3 — 빈도가 전부 같을 때 축이 가른다. 실측에서 Collection의 63%가 이 상태이고, 4개로 자를
-	 * 필요가 있는 6건 중 4건이 여기 속한다. <b>빈도만 쓰면 그 4건이 사실상 무작위 절단이 된다.</b>
+	 * KW3 — 빈도가 전부 같을 때 축이 가른다.
+	 *
+	 * <p><b>이 경로가 예외가 아니라 기본이다.</b> 실측에서 4개로 자를 필요가 있는 Collection 6건
+	 * <b>전부</b>가 4위와 5위의 빈도가 같았다(6/6). 빈도 내림차순은 경계에서 한 건도 가르지
+	 * 못하므로, 여기서 축이 안 갈리면 4번째 칸이 사실상 무작위로 정해진다.
 	 */
 	@Test
-	void distinctAxesFillTheTopSlotsWhenEveryWeightIsEqual() {
+	void axisSpreadsWithinOneFrequencyGroup() {
 		Map<String, Double> weights = new LinkedHashMap<>();
 		Map<String, FeedKeywordLabel> labels = new LinkedHashMap<>();
 		put(weights, labels, "COMPANION_A", 101, "친구와", "COMPANION", 1);
@@ -43,9 +55,9 @@ class FeedKeywordSelectorTests {
 			.containsExactly("친구와", "산책", "조용한", "비 오는 날");
 	}
 
-	/** KW2 — 같은 축 안에서는 빈도가 이긴다. 축 1순위를 누가 가져가는지가 여기서 갈린다. */
+	/** KW2 — 빈도가 갈리면 빈도만으로 순서가 정해진다. id가 더 커도 빈도가 높으면 앞이다. */
 	@Test
-	void frequencyDecidesWhichKeywordOwnsItsAxis() {
+	void frequencyAloneDecidesWhenWeightsDiffer() {
 		Map<String, Double> weights = new LinkedHashMap<>();
 		Map<String, FeedKeywordLabel> labels = new LinkedHashMap<>();
 		put(weights, labels, "ACTIVITY_LOW", 201, "산책", "ACTIVITY", 1);
@@ -53,16 +65,19 @@ class FeedKeywordSelectorTests {
 		put(weights, labels, "ATMOSPHERE_A", 301, "조용한", "ATMOSPHERE", 2);
 
 		assertThat(FeedKeywordSelector.select(weights, labels, LIMIT))
-			.as("id가 더 커도 빈도가 높으면 축 1순위를 가져간다")
 			.containsExactly("한잔", "조용한", "산책");
 	}
 
 	/**
-	 * 축 분산이 1순위이므로 <b>더 높은 빈도가 뒤로 밀린다.</b> 규칙의 의도이며 결함이 아니다
-	 * (feed-recommendation 3.7.1 「감수하는 것」). 명세에 적어 둔 대가를 실행으로도 고정한다.
+	 * <b>축이 빈도를 뒤집지 않는다.</b> 빈도 5·4가 같은 축에 몰려 있고 다른 축에 1이 있어도 결과는
+	 * {@code [5, 4, 1]}이다.
+	 *
+	 * <p>축 내 순위를 <b>같은 빈도 안에서만</b> 매기기 때문에 서로 다른 빈도끼리는 비교에 끼어들
+	 * 자리가 없다. 이 단언이 없으면 축을 전역 1순위로 올리는 구현이 다른 테스트를 전부 통과하면서
+	 * 들어온다 — 빈도가 전부 같은 데이터에서는 두 구현의 결과가 똑같기 때문이다.
 	 */
 	@Test
-	void axisSpreadOutranksRawFrequencyAcrossAxes() {
+	void frequencyOutranksAxisSpread() {
 		Map<String, Double> weights = new LinkedHashMap<>();
 		Map<String, FeedKeywordLabel> labels = new LinkedHashMap<>();
 		put(weights, labels, "ACTIVITY_TOP", 201, "한잔", "ACTIVITY", 5);
@@ -70,8 +85,8 @@ class FeedKeywordSelectorTests {
 		put(weights, labels, "ATMOSPHERE_A", 301, "조용한", "ATMOSPHERE", 1);
 
 		assertThat(FeedKeywordSelector.select(weights, labels, LIMIT))
-			.as("[5, 1, 4]가 되는 것이 규칙의 의도다")
-			.containsExactly("한잔", "조용한", "산책");
+			.as("축이 달라도 빈도가 낮으면 뒤로 간다 — 빈도가 1순위다")
+			.containsExactly("한잔", "산책", "조용한");
 	}
 
 	/**

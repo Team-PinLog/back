@@ -16,17 +16,17 @@ import tools.jackson.databind.JsonNode;
  * 응답 {@code keywords}의 선정·정렬 계약(feed-tests KW1~KW11, feed-recommendation 3.7.1,
  * <a href="../../../../../../../../docs/ai/proposals/P46-feed-keyword-display-order.md">P46</a>).
  *
- * <p><b>정렬 키는 사전식으로 셋이다.</b>
+ * <p><b>정렬 키는 사전식으로 셋이며, 출처가 서로 다르다.</b>
  *
  * <pre>
- * 1  축 내 순위 ASC    같은 category 안에서 (빈도 DESC, preset id ASC) 로 매긴 1-based 순위
- * 2  빈도 DESC         Collection 안에서 그 Keyword가 붙은 Context 수
- * 3  preset id ASC     UNIQUE 정수라 여기서 전순서가 완성된다
+ * 1  빈도 DESC        Collection 안에서 그 Keyword가 붙은 Context 수   프론트와 구두 합의 (2026-08-03)
+ * 2  축 내 순위 ASC    같은 빈도·같은 category 안에서 preset id 순위    동점 규칙 — 우리 판단
+ * 3  preset id ASC    UNIQUE 정수라 여기서 전순서가 완성된다           동점 규칙 — 우리 판단
  * </pre>
  *
- * <p>이 순서로 자른 앞 4개가 응답이다. 축을 1순위에 둔 것은 <b>실측이 강제한 선택</b>이다 —
- * 시연 DB 16 Collection 중 10건(63%)이 모든 Keyword의 빈도가 1이고, 4개로 자를 필요가 있는 6건
- * 가운데 4건이 거기 속한다. 빈도만으로는 그 4건에서 한 개도 고르지 못한다(P46 「실측」).
+ * <p>이 순서로 자른 앞 4개가 응답이다. <b>실측상 화면을 정하는 것은 2·3이다</b> — 시연 DB에서 4개로
+ * 자를 필요가 있는 Collection 6건 <b>전부</b>가 4위와 5위의 빈도가 같았다(6/6). 빈도 내림차순은
+ * 경계에서 한 건도 가르지 못한다(P46 「실측」).
  *
  * <p>기대 순서를 <b>삽입 순서</b>로 적을 수 있는 것은 {@code insertPreset}이 {@code max(id) + 1}로
  * id를 매기기 때문이다. 먼저 넣은 Preset이 항상 작은 id를 갖는다.
@@ -42,7 +42,8 @@ class FeedKeywordDisplayOrderTests extends FeedFixtures {
 	 * KW1·KW3 — 축이 넷이고 빈도가 전부 같을 때. 상위 4칸이 <b>서로 다른 축</b>으로 채워지고
 	 * 같은 축의 두 번째(2·4번째로 넣은 것)는 자리를 얻지 못한다.
 	 *
-	 * <p>빈도가 갈리지 않는 이 상태가 실측에서 63%다. 여기서 축이 안 갈리면 규칙이 하는 일이 없다.
+	 * <p>빈도가 경계를 못 가르는 이 상태가 <b>자를 일이 생기는 Collection 전부</b>였다(실측 6/6).
+	 * 여기서 축이 안 갈리면 4번째 칸이 사실상 무작위로 정해진다.
 	 */
 	@Test
 	void topFourAreFilledWithDistinctAxesWhenEveryKeywordHasTheSameFrequency() throws Exception {
@@ -98,14 +99,14 @@ class FeedKeywordDisplayOrderTests extends FeedFixtures {
 	}
 
 	/**
-	 * KW2 — 같은 축 안에서는 빈도가 이긴다. Record 두 건에 걸친 Keyword가 축 1순위를 가져가고,
-	 * 한 건에만 붙은 같은 축 Keyword는 축 2순위로 밀린다.
+	 * KW2 — 빈도가 갈리면 빈도가 순서를 정한다. Record 두 건에 걸친 Keyword가 맨 앞이고, 한 건에만
+	 * 붙은 둘은 축이 달라도 그 뒤에서 {@code preset.id} 순으로 온다.
 	 *
-	 * <p>둘째 자리에 다른 축(빈도 1)이 오는 것이 <b>규칙의 의도</b>다 — 축 분산이 1순위이므로 더
-	 * 높은 빈도가 뒤로 밀릴 수 있다(feed-recommendation 3.7.1 「감수하는 것」).
+	 * <p><b>축이 빈도를 뒤집지 않는다</b>는 것이 이 단언의 요지다 — 축 내 순위는 같은 빈도 안에서만
+	 * 매겨지므로 빈도 2와 빈도 1 사이에 끼어들 자리가 없다.
 	 */
 	@Test
-	void frequencyDecidesWithinTheSameAxis() throws Exception {
+	void frequencyOrdersAheadOfTheAxisRule() throws Exception {
 		long owner = newMemberId();
 		long viewer = newMemberId();
 		String repeated = uniqueDisplayName("반복");
@@ -122,8 +123,8 @@ class FeedKeywordDisplayOrderTests extends FeedFixtures {
 		long collectionId = createCollection(owner, "빈도 책", List.of(first, second));
 
 		assertThat(keywordsFor(viewer, owner, collectionId))
-			.as("축 1순위(빈도 2 → 빈도 1) 다음에 축 2순위가 온다")
-			.containsExactly(repeated, otherAxis, once);
+			.as("빈도 2가 맨 앞. 빈도 1 둘은 축이 달라도 preset id 순이다")
+			.containsExactly(repeated, once, otherAxis);
 	}
 
 	/** KW8 — 4개 미만이면 있는 만큼. 실측 25%가 이 경로이며 정상 경로다. */

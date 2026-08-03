@@ -12,46 +12,57 @@ import com.pinlog.pinlogback.domain.feed.repository.FeedKeywordLabel;
 /**
  * Feed 카드에 실을 Keyword를 고르고 정렬한다(feed-recommendation 3.7.1, P46).
  *
+ * <p><b>정렬 키는 사전식으로 셋이며, 출처가 서로 다르다.</b>
+ *
+ * <pre>
+ * 1  빈도 DESC        Collection 안에서 그 Keyword가 붙은 Context 수   프론트와 구두 합의 (2026-08-03)
+ * 2  축 내 순위 ASC    같은 빈도·같은 category 안에서 preset id 순위    동점 규칙 — 우리 판단
+ * 3  preset id ASC    UNIQUE 정수라 여기서 전순서가 완성된다           동점 규칙 — 우리 판단
+ * </pre>
+ *
+ * <p>1은 화면 요구에서 온 값이라 데이터가 바뀌어도 재계산하지 않는다. 2·3은 우리 판단이라 근거가
+ * 무너지면 바꿀 수 있다.
+ *
+ * <p><b>실측상 화면을 정하는 것은 2·3이다.</b> 시연 DB에서 4개로 자를 필요가 있는 Collection 6건
+ * <b>전부</b>가 4위와 5위의 빈도가 같았다(6/6). 빈도 내림차순은 경계에서 한 건도 가르지 못한다 —
+ * Collection이 Record 1~5건 규모이고 Context 하나가 Keyword를 평균 2개 받아 같은 Keyword가 겹칠
+ * 일 자체가 드물기 때문이다. 그래서 동점 규칙을 <b>빈도가 못 가르는 자리를 메우도록</b> 잡았다.
+ *
+ * <p>2가 하는 일은 <b>같은 빈도 안에서만</b>이다. 빈도 5·4·1이면 결과는 언제나 {@code [5, 4, 1]}이고
+ * 축이 순서를 뒤집지 않는다. 빈도가 같은 무리 안에서만 축을 한 바퀴 돌려 카드가 「누구와 · 무엇을 ·
+ * 어떤 분위기 · 어떤 상황」으로 읽히게 한다 — 같은 축 넷은 나열이지 요약이 아니다. 축이 하나뿐이어도
+ * 칸은 다 찬다(「축당 1개」로 못 박으면 4축을 다 가진 31%를 뺀 나머지가 가진 것보다 적게 나간다).
+ *
+ * <p>최종 동점을 {@code preset.id}로 푸는 것은 <b>표시값이 언제든 바뀌기 때문이다.</b> 라벨 한 글자를
+ * 고치면 카드의 Keyword 구성이 바뀐다 — {@code S15P11A705-252}가 점수 계산의 키를 {@code code}로
+ * 못 박은 것과 같은 이유다. {@code id}는 축 블록(1xx {@code COMPANION} / 2xx {@code ACTIVITY} /
+ * 3xx {@code ATMOSPHERE} / 4xx {@code SITUATION})이 들어 있어 축 순서를 겸한다.
+ *
  * <p><b>Collection 내재 기준이다.</b> 추천 점수의 {@code keywordAffinity}는 보는 사람 기준이므로
  * (요청자 Profile과의 weighted Jaccard, feed-scoring 3.2) 여기 쓰지 않는다. 쓰면 같은 Collection이
  * 사람마다 다른 Keyword를 보여주고, {@code collection_id}로 잡힌 특징 Cache를 표시에 재사용할 수
  * 없으며, <b>남의 카드에 내 Profile이 비친다</b>.
- *
- * <p>정렬 키는 사전식으로 셋이며 셋 다 결정적이다.
- *
- * <pre>
- * 1  축 내 순위 ASC    같은 category 안에서 (빈도 DESC, preset id ASC) 로 매긴 1-based 순위
- * 2  빈도 DESC         Collection 안에서 그 Keyword가 붙은 Context 수(정규화 값)
- * 3  preset id ASC     UNIQUE 정수라 여기서 전순서가 완성된다
- * </pre>
- *
- * <p><b>축이 1순위인 것은 실측이 강제한 선택이다.</b> 시연 DB 16 Collection 중 10건(63%)이 모든
- * Keyword의 빈도가 1이고, 4개로 자를 필요가 있는 6건 가운데 4건이 거기 속한다 — 빈도만으로는 그
- * 4건에서 한 개도 고르지 못한다. 축 1순위가 라운드로빈 효과를 내어 상위 4칸이 서로 다른 축으로
- * 먼저 채워지고, 축이 4개 미만이면 남는 칸이 축 2순위 이하로 채워진다. <b>축이 하나뿐이어도 4칸이
- * 찬다</b> — 「축당 1개」로 못 박으면 4축을 다 가진 31%를 뺀 나머지가 가진 것보다 적게 나간다.
- *
- * <p>대가는 하나다. 축 분산이 1순위이므로 <b>더 높은 빈도가 뒤로 밀릴 수 있다</b> — 한 축이 빈도
- * 5·4를 가지고 다른 축이 1을 가지면 순서는 {@code [5, 1, 4]}다. 규칙의 의도이며 결함이 아니다.
  */
 final class FeedKeywordSelector {
 
 	/**
-	 * 축 내 순위를 매기는 순서. 같은 축 안에서 빈도가 높은 것이 1순위를 가져가고, 빈도가 같으면
-	 * {@code preset.id}가 작은 쪽이 가져간다.
+	 * 축 내 순위를 매기기 위한 사전 정렬. 빈도가 높은 것부터, 같으면 {@code preset.id}가 작은 것부터
+	 * 보므로 순위가 곧 id 순서가 된다.
 	 */
-	private static final Comparator<Candidate> WITHIN_AXIS =
+	private static final Comparator<Candidate> BY_WEIGHT_THEN_ID =
 		Comparator.comparingDouble(Candidate::weight).reversed()
 			.thenComparingInt(candidate -> candidate.label().presetId());
 
 	/**
-	 * 최종 표시 순서. {@code preset.id}가 UNIQUE이므로 이 비교자는 <b>전순서</b>이며, 같은 입력에
-	 * 언제나 같은 결과를 낸다 — 입력 Map의 순회 순서가 달라져도 마찬가지다(feed-tests KW5·KW10).
+	 * 최종 표시 순서. <b>빈도가 1순위이며 축이 이것을 뒤집지 않는다</b> — 축 내 순위는 같은 빈도
+	 * 안에서만 매겨지므로 서로 다른 빈도끼리는 비교에 끼어들 자리가 없다.
+	 *
+	 * <p>{@code preset.id}가 UNIQUE이므로 이 비교자는 <b>전순서</b>이며, 같은 입력에 언제나 같은
+	 * 결과를 낸다 — 입력 Map의 순회 순서가 달라져도 마찬가지다(feed-tests KW5·KW10).
 	 */
 	private static final Comparator<Ranked> DISPLAY_ORDER =
-		Comparator.comparingInt(Ranked::axisRank)
-			.thenComparing(Comparator.comparingDouble((Ranked entry) -> entry.candidate().weight())
-				.reversed())
+		Comparator.comparingDouble((Ranked entry) -> entry.candidate().weight()).reversed()
+			.thenComparingInt(Ranked::axisRank)
 			.thenComparingInt(entry -> entry.candidate().label().presetId());
 
 	private FeedKeywordSelector() {
@@ -80,12 +91,15 @@ final class FeedKeywordSelector {
 				candidates.add(new Candidate(label, weight));
 			}
 		});
-		candidates.sort(WITHIN_AXIS);
+		candidates.sort(BY_WEIGHT_THEN_ID);
 
-		Map<String, Integer> seenPerAxis = new HashMap<>();
+		// 순위를 (빈도, 축)마다 따로 센다. 빈도를 키에 넣는 것이 "축은 동점 안에서만 일한다"를
+		// 만드는 지점이다 — 빼면 축이 서로 다른 빈도까지 가로질러 순서를 뒤집는다.
+		Map<WeightedAxis, Integer> seen = new HashMap<>();
 		List<Ranked> ranked = new ArrayList<>(candidates.size());
 		for (Candidate candidate : candidates) {
-			int axisRank = seenPerAxis.merge(candidate.label().category(), 1, Integer::sum);
+			int axisRank = seen.merge(
+				new WeightedAxis(candidate.weight(), candidate.label().category()), 1, Integer::sum);
 			ranked.add(new Ranked(candidate, axisRank));
 		}
 		ranked.sort(DISPLAY_ORDER);
@@ -105,5 +119,12 @@ final class FeedKeywordSelector {
 	}
 
 	private record Ranked(Candidate candidate, int axisRank) {
+	}
+
+	/**
+	 * 축 내 순위의 집계 단위. 정규화 가중치는 Collection마다 <b>같은 값으로 나눈 결과</b>라 빈도가
+	 * 같으면 비트까지 같으므로 {@code double}을 키에 넣어도 같은 무리로 묶인다.
+	 */
+	private record WeightedAxis(double weight, String category) {
 	}
 }
