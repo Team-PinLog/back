@@ -19,6 +19,7 @@ import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
 import com.pinlog.pinlogback.global.security.authentication.JwtAuthenticationFilter;
 import com.pinlog.pinlogback.global.security.error.RestAccessDeniedHandler;
 import com.pinlog.pinlogback.global.security.error.RestAuthenticationEntryPoint;
+import com.pinlog.pinlogback.global.security.error.SecurityErrorWriter;
 import com.pinlog.pinlogback.global.security.oauth.CookieOAuth2AuthorizationRequestRepository;
 import com.pinlog.pinlogback.global.security.oauth.OAuthEndpointPaths;
 import com.pinlog.pinlogback.global.security.oauth.OAuthLoginFailureHandler;
@@ -112,7 +113,8 @@ public class SecurityConfig {
 		OAuthLoginFailureHandler failureHandler,
 		CookieCsrfTokenRepository csrfTokenRepository,
 		JwtTokenProvider jwtTokenProvider,
-		MemberRepository memberRepository
+		MemberRepository memberRepository,
+		SecurityErrorWriter securityErrorWriter
 	) throws Exception {
 		return http
 			.oauth2Login(oauth2 -> oauth2
@@ -140,7 +142,7 @@ public class SecurityConfig {
 			.addFilterAfter(new CsrfCookieFilter(), CsrfFilter.class)
 			// Access 쿠키를 SecurityContext로 옮긴다. 인가 판정 전에 돌아야 한다.
 			.addFilterBefore(
-				new JwtAuthenticationFilter(jwtTokenProvider, memberRepository),
+				new JwtAuthenticationFilter(jwtTokenProvider, memberRepository, securityErrorWriter),
 				UsernamePasswordAuthenticationFilter.class)
 			.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 			// 기본 401이 로그인 폼 리다이렉트나 WWW-Authenticate로 나가지 않도록 끈다.

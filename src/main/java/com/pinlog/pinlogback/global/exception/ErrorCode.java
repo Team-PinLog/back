@@ -22,6 +22,10 @@ public enum ErrorCode {
 	// 설정 오류를 상대 장애로 읽는다. 응답에는 code만 싣고 Profile 값 자체는 로그에만 남긴다.
 	SEARCH_PROFILE_MISMATCH(HttpStatus.SERVICE_UNAVAILABLE, "검색 설정이 일치하지 않아 검색할 수 없습니다."),
 	SEARCH_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "검색을 일시적으로 사용할 수 없습니다."),
+	// 인증 필터가 탈퇴 여부를 확인하려 DB를 읽다 실패했을 때다(BD-47). 401을 쓰지 않는 이유가 여기
+	// 있다 — 자격증명은 멀쩡하고 우리가 확인을 못 한 것이라, 401로 내보내면 클라이언트가 재로그인을
+	// 유도해 DB 순단이 전면 로그아웃으로 번진다. readiness가 같은 원인에 이미 503을 쓴다(BD-28).
+	AUTH_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "일시적으로 인증을 확인할 수 없습니다."),
 	INTERNAL_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다."),
 	METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "허용되지 않은 요청 메서드입니다."),
 	UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, "지원하지 않는 요청 형식입니다.");

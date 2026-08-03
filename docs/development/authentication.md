@@ -21,6 +21,7 @@
 | `401` | 인증 실패 — 쿠키 없음·만료, 회전 전 Refresh 재사용 |
 | `403` | **CSRF 토큰 누락·불일치 전용** |
 | `404` | 리소스 없음 **또는 자원 접근 권한 실패**(존재 여부를 노출하지 않음, [BD-13](../backend/decisions/BD-13-public-boundary-query-dto-split.md)) |
+| `503` | **인증 여부를 확인하지 못함** — 탈퇴 판정이 DB 오류로 실패. 자격증명 문제가 아니므로 401로 말하지 않습니다([BD-47](../backend/decisions/BD-47-auth-filter-infra-failure-is-503.md)) |
 
 ## 배경 — 인증은 실수로 빠진 것이 아니었다
 
@@ -110,6 +111,7 @@ testImplementation 'org.springframework.security:spring-security-test'
 | 남의 자원 접근 | **404** — 403이 아닙니다. 존재 여부를 노출하지 않습니다([BD-13](../backend/decisions/BD-13-public-boundary-query-dto-split.md)) |
 | 상태 변경 요청에 `X-XSRF-TOKEN` 누락·불일치 | **403** |
 | 회전 전 Refresh 재사용 | **401** |
+| 탈퇴 판정이 DB 오류로 실패 | **503** — 401로 삼키면 클라이언트가 재로그인을 유도해 순단이 전면 로그아웃으로 번집니다([BD-47](../backend/decisions/BD-47-auth-filter-infra-failure-is-503.md)) |
 | 공개 경로(health/prometheus, 로그인 진입점) | 인증 없이 접근 가능 |
 
 `403`과 `404`를 정책 없이 섞지 않습니다. 위 표가 정책이며, 각 행에 테스트가 하나씩 대응해야 합니다.
