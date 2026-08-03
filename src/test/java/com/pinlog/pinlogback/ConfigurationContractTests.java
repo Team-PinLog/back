@@ -16,18 +16,11 @@ import org.springframework.core.io.ClassPathResource;
 /**
  * 설정 파일이 담고 있어야 하는 계약을 파일 자체로 검증한다.
  *
- * <p>Spring Context를 올리지 않는 이유: 운영 프로파일의 주소는 클러스터 내부 DNS라서 컨텍스트를
- * 띄우면 접속을 시도하다 실패한다. 여기서 확인하려는 것은 "연결이 되는가"가 아니라
- * <b>"저장소에 적힌 값이 인프라 계약과 같은가"</b>이므로 YAML을 직접 읽는 편이 정확하고 빠르다.
- *
- * <p>계약 원본은 <a href="https://github.com/Team-PinLog/infra/blob/main/docs/backend-conventions.md">
- * infra/backend-conventions</a> 5장이며, 백엔드 쪽 규약은 {@code docs/development/configuration.md}다.
+ * <p>datasource·redis 접속 정보는 여기서 검증하지 않는다 — {@code application-prod.yml}에 두지 않고
+ * infra가 {@code SPRING_DATASOURCE_*}·{@code SPRING_DATA_REDIS_*} 표준 이름으로 주입하는 환경변수에
+ * 전적으로 맡기기로 했다(BD-46). 이 파일에 리터럴을 다시 쓰면 그 결정을 되돌리는 것이다.
  */
 class ConfigurationContractTests {
-
-	private static final String PROD_DATASOURCE_URL =
-		"jdbc:postgresql://postgres.pinlog-prod.svc.cluster.local:5432/pinlog";
-	private static final String PROD_REDIS_HOST = "redis.pinlog-prod.svc.cluster.local";
 
 	/**
 	 * {@code open-in-view}를 끄는 이유: 기본값 true는 서비스 계층 밖(뷰·컨트롤러)에서도 영속성 컨텍스트를
@@ -40,27 +33,18 @@ class ConfigurationContractTests {
 			.isEqualTo(false);
 	}
 
-	@Test
-	void prodProfileCarriesClusterAddressesFromTheInfraContract() throws IOException {
-		Map<String, Object> prod = load("application-prod.yml");
-
-		assertThat(prod.get("spring.datasource.url")).isEqualTo(PROD_DATASOURCE_URL);
-		assertThat(prod.get("spring.datasource.username")).isEqualTo("pinlog");
-		assertThat(prod.get("spring.data.redis.host")).isEqualTo(PROD_REDIS_HOST);
-		assertThat(String.valueOf(prod.get("spring.data.redis.port"))).isEqualTo("6379");
-	}
-
 	/**
-	 * 저장소는 public이므로 비밀값이 파일에 들어가면 그대로 공개된다. 인프라가 주입하는 값은
-	 * {@code DB_PASSWORD} 하나이므로, 비밀번호는 반드시 그 placeholder여야 한다.
+	 * datasource·redis는 infra가 표준 이름 환경변수로 전부 주입하므로(BD-46), 이 파일에
+	 * {@code spring.datasource.*}·{@code spring.data.redis.*}를 다시 적지 않는다 — 적어봤자
+	 * OS 환경변수 우선순위에 밀려 무시되고, 리터럴이 실제 접속 정보와 어긋나도 아무도 모른다.
 	 */
 	@Test
-	void onlyThePasswordIsInjectedAndItIsNotHardcoded() throws IOException {
-		Object password = load("application-prod.yml").get("spring.datasource.password");
+	void prodProfileDoesNotRedeclareDatasourceOrRedisSettings() throws IOException {
+		Map<String, Object> prod = load("application-prod.yml");
 
-		assertThat(password)
-			.as("인프라 계약이 주입하는 유일한 비밀값 — 실제 비밀번호를 파일에 적으면 공개된다")
-			.isEqualTo("${DB_PASSWORD}");
+		assertThat(prod.keySet())
+			.as("infra 환경변수가 이미 주입하는 키를 이 파일에서 다시 선언하지 않는다(BD-46)")
+			.noneMatch(key -> key.startsWith("spring.datasource.") || key.startsWith("spring.data.redis."));
 	}
 
 	/**
