@@ -81,7 +81,7 @@ class FeedKeywordSelectorTests {
 	 * 4축을 다 가진 Collection은 31%뿐이라 이 경로가 예외가 아니다.
 	 */
 	@Test
-	void aSingleAxisStillFillsTheLimit() {
+	void singleAxisStillFillsTheLimit() {
 		Map<String, Double> weights = new LinkedHashMap<>();
 		Map<String, FeedKeywordLabel> labels = new LinkedHashMap<>();
 		put(weights, labels, "A", 201, "하나", "ACTIVITY", 1);
@@ -121,7 +121,7 @@ class FeedKeywordSelectorTests {
 	 * 산발적으로 드러난다. {@code code}로 대신 채우는 폴백은 그 자체가 08 §6.1 위반이다.
 	 */
 	@Test
-	void anUnresolvableCodeYieldsItsSlotToTheNextCandidate() {
+	void unresolvableCodeYieldsItsSlotToTheNextCandidate() {
 		Map<String, Double> weights = new LinkedHashMap<>();
 		Map<String, FeedKeywordLabel> labels = new LinkedHashMap<>();
 		put(weights, labels, "A", 201, "하나", "ACTIVITY", 1);
@@ -138,7 +138,7 @@ class FeedKeywordSelectorTests {
 
 	/** KW7 — 서로 다른 {@code code}의 표시값이 겹치면 앞의 것만 남고 자리는 다음 후보가 채운다. */
 	@Test
-	void aDuplicateDisplayNameYieldsItsSlotToTheNextCandidate() {
+	void duplicateDisplayNameYieldsItsSlotToTheNextCandidate() {
 		Map<String, Double> weights = new LinkedHashMap<>();
 		Map<String, FeedKeywordLabel> labels = new LinkedHashMap<>();
 		put(weights, labels, "A", 201, "하나", "ACTIVITY", 1);

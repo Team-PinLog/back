@@ -75,7 +75,7 @@ class FeedKeywordDisplayOrderTests extends FeedFixtures {
 	 * 이 경로가 예외가 아니다.
 	 */
 	@Test
-	void aSingleAxisStillFillsAllFourSlots() throws Exception {
+	void singleAxisStillFillsAllFourSlots() throws Exception {
 		long owner = newMemberId();
 		long viewer = newMemberId();
 		String first = uniqueDisplayName("하나");
@@ -144,7 +144,7 @@ class FeedKeywordDisplayOrderTests extends FeedFixtures {
 
 	/** KW9 — AI가 아직 안 붙은 Collection은 빈 배열이다. 오류가 아니다(공용 §16 시나리오 21). */
 	@Test
-	void aCollectionWithoutKeywordsAnswersWithAnEmptyArray() throws Exception {
+	void collectionWithoutKeywordsAnswersWithAnEmptyArray() throws Exception {
 		long owner = newMemberId();
 		long viewer = newMemberId();
 		long collectionId = publishedCollection(owner, uniqueSeed("empty"));
