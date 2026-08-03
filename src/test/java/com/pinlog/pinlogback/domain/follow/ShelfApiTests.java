@@ -210,6 +210,25 @@ class ShelfApiTests extends CoreApiFixtures {
 	}
 
 	@Test
+	@DisplayName("기본은 오래된순이고 sort로 최신순을 받는다")
+	void shelfDefaultsToOldestFirstAndSupportsNewestFirst() throws Exception {
+		long author = newMemberId();
+		long stranger = newMemberId();
+		long first = publishedCollection(author, "shelf-sort-1", "첫째");
+		long second = publishedCollection(author, "shelf-sort-2", "둘째");
+
+		JsonNode byDefault = shelfOf(stranger, first);
+		assertThat(collectionIds(byDefault)).containsExactly(first, second);
+
+		JsonNode newestFirst = parse(mockMvc.perform(get("/v1/feed/collections/{collectionId}/shelf", first)
+				.param("sort", "CREATED_AT_DESC")
+				.with(loginAs(stranger)))
+			.andExpect(status().isOk())
+			.andReturn().getResponse().getContentAsString()).at("/data");
+		assertThat(collectionIds(newestFirst)).containsExactly(second, first);
+	}
+
+	@Test
 	@DisplayName("커서로 다음 페이지를 이어 받고 항목이 중복되지 않는다")
 	void cursorWalksShelfWithoutDuplicates() throws Exception {
 		long author = newMemberId();

@@ -164,6 +164,36 @@ class RecordApiTests extends IntegrationContainerSupport {
 			.andExpect(jsonPath("$.data.keywords").isEmpty());
 	}
 
+	/** contextSort=CREATED_AT_DESC로 최신순을 지원한다(명세 5.2, S15P11A705-265). 기준은 최초 작성 시각이다(BD-25). */
+	@Test
+	void recordDetailSupportsNewestFirstContexts() throws Exception {
+		long memberId = newMemberId();
+		long recordId = createRecord(memberId, "api-ctxsort-1", "첫 번째");
+		addContext(memberId, recordId, "두 번째");
+
+		mockMvc.perform(get("/v1/records/{recordId}", recordId).with(loginAs(memberId))
+				.param("contextSort", "CREATED_AT_DESC"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.contexts[0].body").value("두 번째"))
+			.andExpect(jsonPath("$.data.contexts[1].body").value("첫 번째"));
+
+		mockMvc.perform(get("/v1/records/{recordId}", recordId).with(loginAs(memberId))
+				.param("contextSort", "CREATED_AT_ASC"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.contexts[0].body").value("첫 번째"));
+	}
+
+	@Test
+	void undefinedContextSortValueIs400InvalidInput() throws Exception {
+		long memberId = newMemberId();
+		long recordId = createRecord(memberId, "api-ctxsort-2", "저장 이유");
+
+		mockMvc.perform(get("/v1/records/{recordId}", recordId).with(loginAs(memberId))
+				.param("contextSort", "NEWEST"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+	}
+
 	@Test
 	void otherUsersRecordDetailIsHiddenAs404() throws Exception {
 		long owner = newMemberId();

@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -163,8 +165,9 @@ class CollectionApiTests extends IntegrationContainerSupport {
 			.andExpect(jsonPath("$.error.code").value("RESOURCE_NOT_FOUND"));
 	}
 
+	/** 목록 기본 정렬은 오래된순이다(명세 7.2, S15P11A705-265) — sort 없이도 ASC와 같아야 한다. */
 	@Test
-	void myCollectionsArePaginatedByCursorNewestFirst() throws Exception {
+	void myCollectionsDefaultToOldestFirst() throws Exception {
 		long memberId = newMemberId();
 		long first = createCollection(memberId, "첫 번째", List.of(newRecord(memberId, "col-page-1")));
 		long second = createCollection(memberId, "두 번째", List.of(newRecord(memberId, "col-page-2")));
@@ -177,7 +180,7 @@ class CollectionApiTests extends IntegrationContainerSupport {
 			.andExpect(jsonPath("$.data.hasNext").value(true))
 			.andReturn().getResponse().getContentAsString());
 
-		assertThat(page1.at("/data/items/0/collectionId").asLong()).isEqualTo(third);
+		assertThat(page1.at("/data/items/0/collectionId").asLong()).isEqualTo(first);
 		assertThat(page1.at("/data/items/1/collectionId").asLong()).isEqualTo(second);
 
 		String cursor = page1.at("/data/nextCursor").asText();
@@ -187,11 +190,57 @@ class CollectionApiTests extends IntegrationContainerSupport {
 			.andExpect(jsonPath("$.data.hasNext").value(false))
 			.andReturn().getResponse().getContentAsString());
 
-		assertThat(page2.at("/data/items/0/collectionId").asLong()).isEqualTo(first);
+		assertThat(page2.at("/data/items/0/collectionId").asLong()).isEqualTo(third);
+	}
+
+	/**
+	 * 양방향 모두 커서로 끝까지 걸었을 때 중복·누락이 없어야 한다(S15P11A705-265). 방향이 바뀌면
+	 * 커서 비교 부등호도 뒤집혀야 하므로, 첫 페이지만 보는 단언으로는 커서 쿼리의 방향 짝이 틀린
+	 * 것을 잡지 못한다.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {"CREATED_AT_ASC", "CREATED_AT_DESC"})
+	void myCollectionsPaginateBothDirectionsWithoutDuplicateOrLoss(String sort) throws Exception {
+		long memberId = newMemberId();
+		// place의 kakaoPlaceId는 전역 유니크라, 파라미터화 실행마다 키가 달라야 한다.
+		long first = createCollection(memberId, "첫 번째", List.of(newRecord(memberId, "col-dir-" + sort + "-1")));
+		long second = createCollection(memberId, "두 번째", List.of(newRecord(memberId, "col-dir-" + sort + "-2")));
+		long third = createCollection(memberId, "세 번째", List.of(newRecord(memberId, "col-dir-" + sort + "-3")));
+		List<Long> expected = sort.endsWith("_ASC")
+			? List.of(first, second, third)
+			: List.of(third, second, first);
+
+		List<Long> walked = new ArrayList<>();
+		String cursor = null;
+		while (true) {
+			var request = get("/v1/collections").with(loginAs(memberId))
+				.param("size", "1").param("sort", sort);
+			if (cursor != null) {
+				request = request.param("cursor", cursor);
+			}
+			JsonNode page = parse(mockMvc.perform(request)
+				.andExpect(status().isOk())
+				.andReturn().getResponse().getContentAsString()).at("/data");
+			page.at("/items").forEach(item -> walked.add(item.at("/collectionId").asLong()));
+			if (!page.at("/hasNext").asBoolean()) {
+				break;
+			}
+			cursor = page.at("/nextCursor").asText();
+		}
+
+		assertThat(walked).containsExactlyElementsOf(expected);
 	}
 
 	@Test
-	void detailReturnsRecordsNewestAddedFirstWithCursorAndContexts() throws Exception {
+	void undefinedSortValueIs400InvalidInput() throws Exception {
+		mockMvc.perform(get("/v1/collections").with(loginAs(newMemberId())).param("sort", "NEWEST"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+	}
+
+	/** Collection 내부 Record의 기본 정렬은 담은 순서 오래된순이다(명세 7.3, S15P11A705-265). */
+	@Test
+	void detailReturnsRecordsOldestAddedFirstWithCursorAndContexts() throws Exception {
 		long memberId = newMemberId();
 		long recordA = newRecord(memberId, "col-detail-1a");
 		long collectionId = createCollection(memberId, "상세", List.of(recordA));
@@ -206,7 +255,7 @@ class CollectionApiTests extends IntegrationContainerSupport {
 			.andExpect(jsonPath("$.data.records.hasNext").value(true))
 			.andReturn().getResponse().getContentAsString());
 
-		assertThat(page1.at("/data/records/items/0/recordId").asLong()).isEqualTo(recordB);
+		assertThat(page1.at("/data/records/items/0/recordId").asLong()).isEqualTo(recordA);
 		assertThat(page1.at("/data/records/items/0/addedToCollectionAt").asText()).isNotEmpty();
 		assertThat(page1.at("/data/records/items/0/contexts/0/body").asText()).isNotEmpty();
 
@@ -217,7 +266,72 @@ class CollectionApiTests extends IntegrationContainerSupport {
 			.andExpect(jsonPath("$.data.records.hasNext").value(false))
 			.andReturn().getResponse().getContentAsString());
 
-		assertThat(page2.at("/data/records/items/0/recordId").asLong()).isEqualTo(recordA);
+		assertThat(page2.at("/data/records/items/0/recordId").asLong()).isEqualTo(recordB);
+	}
+
+	/** recordSort 양방향 모두 커서로 끝까지 걸었을 때 중복·누락이 없어야 한다(S15P11A705-265). */
+	@ParameterizedTest
+	@ValueSource(strings = {"ADDED_AT_ASC", "ADDED_AT_DESC"})
+	void detailRecordsPaginateBothDirectionsWithoutDuplicateOrLoss(String recordSort) throws Exception {
+		long memberId = newMemberId();
+		// place의 kakaoPlaceId는 전역 유니크라, 파라미터화 실행마다 키가 달라야 한다.
+		long recordA = newRecord(memberId, "col-rdir-" + recordSort + "-a");
+		long collectionId = createCollection(memberId, "방향", List.of(recordA));
+		long recordB = newRecord(memberId, "col-rdir-" + recordSort + "-b");
+		addRecords(memberId, collectionId, List.of(recordB));
+		long recordC = newRecord(memberId, "col-rdir-" + recordSort + "-c");
+		addRecords(memberId, collectionId, List.of(recordC));
+		List<Long> expected = recordSort.endsWith("_ASC")
+			? List.of(recordA, recordB, recordC)
+			: List.of(recordC, recordB, recordA);
+
+		List<Long> walked = new ArrayList<>();
+		String cursor = null;
+		while (true) {
+			var request = get("/v1/collections/{id}", collectionId).with(loginAs(memberId))
+				.param("recordSize", "1").param("recordSort", recordSort);
+			if (cursor != null) {
+				request = request.param("recordCursor", cursor);
+			}
+			JsonNode records = parse(mockMvc.perform(request)
+				.andExpect(status().isOk())
+				.andReturn().getResponse().getContentAsString()).at("/data/records");
+			records.at("/items").forEach(item -> walked.add(item.at("/recordId").asLong()));
+			if (!records.at("/hasNext").asBoolean()) {
+				break;
+			}
+			cursor = records.at("/nextCursor").asText();
+		}
+
+		assertThat(walked).containsExactlyElementsOf(expected);
+	}
+
+	/** 상세 안의 contexts는 recordSort와 무관하게 항상 오름차순이다(명세 5.2·7.3). */
+	@Test
+	void contextsInsideDetailStayOldestFirstRegardlessOfRecordSort() throws Exception {
+		long memberId = newMemberId();
+		long recordId = newRecord(memberId, "col-ctx-1");
+		contextRepository.save(Context.create(recordId, memberId, "둘째 맥락"));
+		long collectionId = createCollection(memberId, "맥락 순서", List.of(recordId));
+
+		JsonNode detail = parse(mockMvc.perform(get("/v1/collections/{id}", collectionId)
+				.with(loginAs(memberId)).param("recordSort", "ADDED_AT_DESC"))
+			.andExpect(status().isOk())
+			.andReturn().getResponse().getContentAsString());
+
+		assertThat(detail.at("/data/records/items/0/contexts/0/body").asText()).isEqualTo("저장 이유");
+		assertThat(detail.at("/data/records/items/0/contexts/1/body").asText()).isEqualTo("둘째 맥락");
+	}
+
+	@Test
+	void undefinedRecordSortValueIs400InvalidInput() throws Exception {
+		long memberId = newMemberId();
+		long collectionId = createCollection(memberId, "정렬값", List.of(newRecord(memberId, "col-badsort-1")));
+
+		mockMvc.perform(get("/v1/collections/{id}", collectionId).with(loginAs(memberId))
+				.param("recordSort", "NEWEST"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
 	}
 
 	@Test
@@ -272,6 +386,33 @@ class CollectionApiTests extends IntegrationContainerSupport {
 				.contentType(MediaType.APPLICATION_JSON)
 				.content("{\"recordIds\": [" + strangersRecord + "]}"))
 			.andExpect(status().isNotFound());
+	}
+
+	/**
+	 * {@code CollectionService.requireAllOwnedActiveRecords}가 addRecords 경로에서도 강제되는지
+	 * 고정한다. 이 검사가 뚫리면 남의 Record가 내 Collection에 링크되고,
+	 * {@code CollectionRecordRepository.findByCollectionIdIn}의 javadoc이 근거로 삼는
+	 * "Collection은 소유자 자기 Record만 담는다"는 전제가 깨져 탈퇴 연쇄 삭제(6.9)가
+	 * 그 Record를 남의 Collection에 남긴다.
+	 */
+	@Test
+	void addRecordsWithSomeoneElsesRecordIsHiddenAs404() throws Exception {
+		long owner = newMemberId();
+		long other = newMemberId();
+		long collectionId = createCollection(owner, "본인 컬렉션", List.of(newRecord(owner, "col-add-3a")));
+		long mine = newRecord(owner, "col-add-3b");
+		long notMine = newRecord(other, "col-add-3c");
+
+		mockMvc.perform(post("/v1/collections/{id}/records", collectionId).with(loginAs(owner))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"recordIds\": [" + mine + ", " + notMine + "]}"))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.error.code").value("RESOURCE_NOT_FOUND"));
+
+		long linkRows = jdbcTemplate.queryForObject(
+			"SELECT count(*) FROM core.collection_record"
+				+ " WHERE collection_id = ? AND deleted_at IS NULL", Long.class, collectionId);
+		assertThat(linkRows).isEqualTo(1);
 	}
 
 	private long newMemberId() {
