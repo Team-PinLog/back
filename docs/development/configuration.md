@@ -57,23 +57,28 @@ management:
 
 ## 비밀값과 자격증명 주입
 
-**비밀값만** 환경변수로 주입받습니다. 주소·DB 이름·사용자명은 비밀이 아니므로 프로파일 파일에 그대로 적습니다 — 값이 무엇인지 코드를 읽어서 알 수 있어야 하고, 환경변수로 옮기면 그 값이 어디서 오는지 추적할 수 없게 됩니다.
+**비밀값만** Kubernetes Secret으로 봉인하고, 주소·DB 이름·사용자명은 비밀이 아니므로 GitOps values에 평문으로 둡니다 — 값이 무엇인지 매니페스트를 읽어서 알 수 있어야 하고, Secret으로 옮기면 그 값이 어디서 오는지 추적할 수 없게 됩니다.
 
-`Team-PinLog/infra`가 정한 주입 계약은 **`DB_PASSWORD` 하나**입니다([infra/backend-conventions §5](https://github.com/Team-PinLog/infra/blob/main/docs/backend-conventions.md)).
+`Team-PinLog/infra`가 실제로 주입하는 이름은 Spring Boot 표준 relaxed-binding 이름 그대로입니다(`infra/apps/prod/back/values.yaml`):
 
 ```yaml
-spring:
-  datasource:
-    url: jdbc:postgresql://postgres.pinlog-prod.svc.cluster.local:5432/pinlog
-    username: pinlog
-    password: ${DB_PASSWORD}      # 환경변수로 주입되는 유일한 값
-  data:
-    redis:
-      host: redis.pinlog-prod.svc.cluster.local
-      port: 6379
+env:
+  - name: SPRING_DATASOURCE_URL
+    value: jdbc:postgresql://postgres:5432/pinlog
+  - name: SPRING_DATASOURCE_USERNAME
+    value: pinlog
+  - name: SPRING_DATASOURCE_PASSWORD
+    valueFrom:
+      secretKeyRef: {name: postgres-credentials, key: password}
+  - name: SPRING_DATA_REDIS_HOST
+    value: redis
+  - name: SPRING_DATA_REDIS_PORT
+    value: "6379"
 ```
 
-`${DB_URL}`·`${DB_USERNAME}`·`${REDIS_HOST}` 같은 이름을 새로 만들지 않습니다. 인프라가 주입하지 않는 변수를 참조하면 기동 시점에 해석 실패로 죽습니다. 새 비밀번호·API 키가 필요하면 저장소에 넣지 말고 인프라 담당자에게 요청합니다.
+`application.yml`에는 `spring.datasource.*`·`spring.data.redis.*`를 아예 적지 않습니다. 위 다섯 개가 실제 k8s 환경변수로 주입되고, Spring Boot의 표준 이름 자동 바인딩이 그대로 `spring.datasource.url` 등으로 매핑하기 때문입니다 — `${...}` placeholder도, 리터럴 기본값도 필요 없습니다. `SPRING_DATASOURCE_PASSWORD`만 `postgres-credentials` Secret에서 오고 나머지 네 개는 평문 GitOps 값입니다. 새 비밀번호·API 키가 필요하면 저장소에 넣지 말고 인프라 담당자에게 요청합니다.
+
+> **정정 (2026-08-03)**: 이 절은 한동안 "환경변수로 주입되는 건 `DB_PASSWORD` 하나뿐, url·username·host는 yaml 리터럴"이라고 적혀 있었으나, 그 이름·계약 모두 실제 배포(`infra/apps/prod/back/values.yaml`)와 달랐다. 실제 계약은 [`docs`(팀 공용) 레포의 `docs/static/12_배포_변수_및_Secret_표준.md`](https://github.com/Team-PinLog/docs/blob/main/static/12_배포_변수_및_Secret_표준.md)와 일치하며, 위 내용이 그것으로 교체한 결과다. `infra/docs/backend-conventions.md` §5도 같은 이유로 낡아서 인프라 담당자에게 별도로 전달했다.
 
 ### 애플리케이션이 추가로 요구하는 비밀값
 
