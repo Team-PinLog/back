@@ -119,6 +119,7 @@ testImplementation 'org.springframework.security:spring-security-test'
 - 발급 응답의 `Set-Cookie`에 `HttpOnly`·`Secure`·`SameSite=Lax`가 있고, Refresh는 `Path=/api/core/v1/auth`인지
 - **응답 본문에 토큰 문자열이 없는지** — 쿠키를 택한 이유가 여기 있으므로 회귀로 고정합니다
 - 로그아웃 후 같은 Refresh 쿠키로 재발급이 `401`인지(회전·무효화가 실제로 동작하는지)
+- **재발급이 `401`일 때 쿠키 3종이 `Max-Age=0`으로 내려가는지** — 남기면 클라이언트가 죽은 토큰을 계속 보낸다([BT-06](../backend/troubleshooting/BT-06-refresh-revocation-leak-under-concurrent-rotation.md))
 
 DB가 필요한 인증 테스트는 PostgreSQL Testcontainers를 사용합니다(H2 금지).
 
@@ -184,6 +185,10 @@ DB가 필요한 인증 테스트는 PostgreSQL Testcontainers를 사용합니다
 회원당 하나가 아니라 `jti`당 하나인 이유는 다중 기기입니다. 회원당 한 개면 한쪽 재발급이 다른 쪽 세션을 끊습니다.
 
 **로그아웃은 멱등합니다.** 이미 무효인 토큰으로 호출해도 204이고 쿠키는 항상 지웁니다. 여기서 401을 내면 클라이언트가 쿠키를 못 지운 채 남습니다.
+
+**재발급이 401이면 쿠키를 지웁니다.** 401만 돌려주고 쿠키를 남기면 클라이언트는 죽은 Refresh를 계속 보내고, 그때마다 재사용으로 판정돼 폐기가 다시 돕니다 — 그 사이 새로 로그인한 세션까지 끊깁니다. `logged_in`도 남아 UI가 로그인 상태를 계속 가리키므로 빠져나갈 상태 전이가 없어집니다. 공용 계약이 *"클라이언트는 재로그인으로 유도한다"*([08 §3.3](https://github.com/Team-PinLog/docs/blob/main/static/08_API_명세.md))고 정한 것을 서버가 쿠키로 뒷받침하는 것입니다.
+
+지우는 곳은 컨트롤러입니다. `GlobalExceptionHandler`에서 지우면 **만료된 Access로 보호 자원을 찍은 401까지** 걸려, 재발급하면 될 상황에 세션을 끊습니다. 세션이 끝났다고 단정할 수 있는 곳은 재발급이 실패한 지점뿐입니다.
 
 ### CSRF 토큰을 클라이언트가 얻는 방법
 
