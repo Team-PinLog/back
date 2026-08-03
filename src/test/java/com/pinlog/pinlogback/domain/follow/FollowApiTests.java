@@ -18,6 +18,8 @@ import java.util.concurrent.Future;
 
 import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -168,33 +170,54 @@ class FollowApiTests extends IntegrationContainerSupport {
 
 	/**
 	 * 미발행 Collection을 <b>가운데</b>에 끼운다. 첫 페이지 쿼리와 커서 쿼리는 별개 메서드라,
-	 * 미발행이 최신이면 첫 페이지만 지켜지고 {@code findPublishedPageByMemberIdAfter}의 조건은
-	 * 여전히 아무도 안 본다. 커서 이후 구간에 놓아야 두 번째 페이지가 그것을 걸러내는지 드러난다(BD-38).
+	 * 커서 이후 구간에 놓아야 두 번째 페이지가 그것을 걸러내는지 드러난다(BD-38). 양방향을 모두
+	 * 돌므로 어느 방향에서든 가운데 미발행이 커서 이후 구간에 온다(S15P11A705-265).
 	 */
-	@Test
-	void followedShelfCollectionsArePaginatedByCursor() throws Exception {
+	@ParameterizedTest
+	@ValueSource(strings = {"CREATED_AT_ASC", "CREATED_AT_DESC"})
+	void followedShelfCollectionsArePaginatedByCursorBothDirections(String sort) throws Exception {
 		Member owner = memberRepository.save(Member.create());
 		Member me = memberRepository.save(Member.create());
 		long first = publishedCollection(owner.getId());
 		unpublishedCollection(owner.getId());
 		long second = publishedCollection(owner.getId());
 		long followId = follow(me.getId(), first);
+		long expectedFirst = sort.endsWith("_ASC") ? first : second;
+		long expectedSecond = sort.endsWith("_ASC") ? second : first;
 
 		JsonNode page1 = parse(mockMvc.perform(
 				get("/v1/follows/{followId}/collections", followId).with(loginAs(me.getId()))
-					.param("size", "1"))
+					.param("size", "1").param("sort", sort))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data.hasNext").value(true))
 			.andReturn().getResponse().getContentAsString());
-		assertThat(page1.at("/data/items/0/collectionId").asLong()).isEqualTo(second);
+		assertThat(page1.at("/data/items/0/collectionId").asLong()).isEqualTo(expectedFirst);
 
 		JsonNode page2 = parse(mockMvc.perform(
 				get("/v1/follows/{followId}/collections", followId).with(loginAs(me.getId()))
-					.param("size", "1").param("cursor", page1.at("/data/nextCursor").asText()))
+					.param("size", "1").param("sort", sort)
+					.param("cursor", page1.at("/data/nextCursor").asText()))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data.hasNext").value(false))
 			.andReturn().getResponse().getContentAsString());
-		assertThat(page2.at("/data/items/0/collectionId").asLong()).isEqualTo(first);
+		assertThat(page2.at("/data/items/0/collectionId").asLong()).isEqualTo(expectedSecond);
+	}
+
+	/** 기본 정렬은 오래된순이다(명세 9.3 — 7.2와 같은 규칙, S15P11A705-265). */
+	@Test
+	void followedShelfCollectionsDefaultToOldestFirst() throws Exception {
+		Member owner = memberRepository.save(Member.create());
+		Member me = memberRepository.save(Member.create());
+		long first = publishedCollection(owner.getId());
+		long second = publishedCollection(owner.getId());
+		long followId = follow(me.getId(), first);
+
+		JsonNode page = parse(mockMvc.perform(
+				get("/v1/follows/{followId}/collections", followId).with(loginAs(me.getId())))
+			.andExpect(status().isOk())
+			.andReturn().getResponse().getContentAsString());
+		assertThat(page.at("/data/items/0/collectionId").asLong()).isEqualTo(first);
+		assertThat(page.at("/data/items/1/collectionId").asLong()).isEqualTo(second);
 	}
 
 	/**

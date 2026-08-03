@@ -15,10 +15,12 @@ import com.pinlog.pinlogback.domain.ai.repository.ContextKeywordRepository;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionAddRecordsRequest;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionCreateRequest;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionDetailResponse;
+import com.pinlog.pinlogback.domain.collection.dto.CollectionSort;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionSummaryResponse;
 import com.pinlog.pinlogback.domain.collection.dto.FollowStatusResponse;
 import com.pinlog.pinlogback.domain.collection.dto.PublicCollectionDetailResponse;
 import com.pinlog.pinlogback.domain.collection.dto.PublicRecordCardResponse;
+import com.pinlog.pinlogback.domain.collection.dto.RecordSort;
 import com.pinlog.pinlogback.domain.collection.entity.Collection;
 import com.pinlog.pinlogback.domain.collection.entity.CollectionRecord;
 import com.pinlog.pinlogback.domain.collection.repository.CollectionRecordRepository;
@@ -86,16 +88,22 @@ public class CollectionService {
 	}
 
 	@Transactional(readOnly = true)
-	public CursorPage<CollectionSummaryResponse> listMine(Long memberId, String cursor, Integer size) {
+	public CursorPage<CollectionSummaryResponse> listMine(Long memberId, String cursor, Integer size,
+		CollectionSort sort) {
 		int pageSize = CursorPage.normalizeSize(size);
 		Pageable probe = PageRequest.of(0, pageSize + 1);
 		List<Collection> rows;
 		if (cursor == null || cursor.isBlank()) {
-			rows = collectionRepository.findFirstPageByMemberId(memberId, probe);
+			rows = sort.ascending()
+				? collectionRepository.findFirstPageByMemberIdAsc(memberId, probe)
+				: collectionRepository.findFirstPageByMemberIdDesc(memberId, probe);
 		} else {
 			Cursor decoded = Cursor.decode(cursor);
-			rows = collectionRepository.findPageByMemberIdAfter(
-				memberId, decoded.sortKeyAsInstant(), decoded.id(), probe);
+			rows = sort.ascending()
+				? collectionRepository.findPageByMemberIdAfterAsc(
+					memberId, decoded.sortKeyAsInstant(), decoded.id(), probe)
+				: collectionRepository.findPageByMemberIdAfterDesc(
+					memberId, decoded.sortKeyAsInstant(), decoded.id(), probe);
 		}
 		boolean hasNext = rows.size() > pageSize;
 		List<Collection> page = hasNext ? rows.subList(0, pageSize) : rows;
@@ -114,21 +122,22 @@ public class CollectionService {
 	 * <b>서로 다른 DTO</b>를 반환한다(BD-13 — 상속·조건부 직렬화 금지).
 	 */
 	@Transactional(readOnly = true)
-	public Object getDetail(Long viewerMemberId, Long collectionId, String recordCursor, Integer recordSize) {
+	public Object getDetail(Long viewerMemberId, Long collectionId, String recordCursor, Integer recordSize,
+		RecordSort recordSort) {
 		Collection collection = collectionRepository.findById(collectionId)
 			.orElseThrow(ResourceNotFoundException::new);
 		if (collection.isOwnedBy(viewerMemberId)) {
-			return getDetailForOwner(viewerMemberId, collectionId, recordCursor, recordSize);
+			return getDetailForOwner(viewerMemberId, collectionId, recordCursor, recordSize, recordSort);
 		}
-		return getDetailPublic(viewerMemberId, collection, recordCursor, recordSize);
+		return getDetailPublic(viewerMemberId, collection, recordCursor, recordSize, recordSort);
 	}
 
 	@Transactional(readOnly = true)
 	public CollectionDetailResponse getDetailForOwner(Long memberId, Long collectionId,
-		String recordCursor, Integer recordSize) {
+		String recordCursor, Integer recordSize, RecordSort recordSort) {
 		Collection collection = ownedCollection(memberId, collectionId);
 		return CollectionDetailResponse.forOwner(
-			collection, recordPageForOwner(memberId, collectionId, recordCursor, recordSize));
+			collection, recordPageForOwner(memberId, collectionId, recordCursor, recordSize, recordSort));
 	}
 
 	/**
@@ -137,7 +146,7 @@ public class CollectionService {
 	 * 원문은 구조적으로 나갈 수 없다.
 	 */
 	private PublicCollectionDetailResponse getDetailPublic(Long viewerMemberId, Collection collection,
-		String recordCursor, Integer recordSize) {
+		String recordCursor, Integer recordSize, RecordSort recordSort) {
 		if (!collection.isPublished()) {
 			throw new ResourceNotFoundException();
 		}
@@ -149,7 +158,7 @@ public class CollectionService {
 			.map(found -> new FollowStatusResponse(true, found.getId(), found.getDisplayName()))
 			.orElseGet(() -> new FollowStatusResponse(false, null, null));
 		return PublicCollectionDetailResponse.of(
-			collection, follow, recordPagePublic(collection.getId(), recordCursor, recordSize));
+			collection, follow, recordPagePublic(collection.getId(), recordCursor, recordSize, recordSort));
 	}
 
 	@Transactional
@@ -249,29 +258,34 @@ public class CollectionService {
 	}
 
 	private CursorPage<RecordDetailResponse> recordPageForOwner(Long memberId, Long collectionId,
-		String recordCursor, Integer recordSize) {
-		LinkPage linkPage = linkPage(collectionId, recordCursor, recordSize);
+		String recordCursor, Integer recordSize, RecordSort recordSort) {
+		LinkPage linkPage = linkPage(collectionId, recordCursor, recordSize, recordSort);
 		List<RecordDetailResponse> items = toRecordDetailsForOwner(memberId, linkPage.links());
 		return linkPage.toCursorPage(items);
 	}
 
 	private CursorPage<PublicRecordCardResponse> recordPagePublic(Long collectionId, String recordCursor,
-		Integer recordSize) {
-		LinkPage linkPage = linkPage(collectionId, recordCursor, recordSize);
+		Integer recordSize, RecordSort recordSort) {
+		LinkPage linkPage = linkPage(collectionId, recordCursor, recordSize, recordSort);
 		List<PublicRecordCardResponse> items = toRecordCardsPublic(linkPage.links());
 		return linkPage.toCursorPage(items);
 	}
 
-	private LinkPage linkPage(Long collectionId, String recordCursor, Integer recordSize) {
+	private LinkPage linkPage(Long collectionId, String recordCursor, Integer recordSize, RecordSort recordSort) {
 		int pageSize = normalizeRecordSize(recordSize);
 		Pageable probe = PageRequest.of(0, pageSize + 1);
 		List<CollectionRecord> rows;
 		if (recordCursor == null || recordCursor.isBlank()) {
-			rows = collectionRecordRepository.findFirstPageByCollectionId(collectionId, probe);
+			rows = recordSort.ascending()
+				? collectionRecordRepository.findFirstPageByCollectionIdAsc(collectionId, probe)
+				: collectionRecordRepository.findFirstPageByCollectionIdDesc(collectionId, probe);
 		} else {
 			Cursor decoded = Cursor.decode(recordCursor);
-			rows = collectionRecordRepository.findPageByCollectionIdAfter(
-				collectionId, decoded.sortKeyAsInstant(), decoded.id(), probe);
+			rows = recordSort.ascending()
+				? collectionRecordRepository.findPageByCollectionIdAfterAsc(
+					collectionId, decoded.sortKeyAsInstant(), decoded.id(), probe)
+				: collectionRecordRepository.findPageByCollectionIdAfterDesc(
+					collectionId, decoded.sortKeyAsInstant(), decoded.id(), probe);
 		}
 		boolean hasNext = rows.size() > pageSize;
 		List<CollectionRecord> page = hasNext ? rows.subList(0, pageSize) : rows;

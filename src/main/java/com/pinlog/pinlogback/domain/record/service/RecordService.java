@@ -17,6 +17,7 @@ import com.pinlog.pinlogback.domain.place.entity.Place;
 import com.pinlog.pinlogback.domain.place.repository.PlaceRepository;
 import com.pinlog.pinlogback.domain.record.dto.ContextMutationResponse;
 import com.pinlog.pinlogback.domain.record.dto.ContextResponse;
+import com.pinlog.pinlogback.domain.record.dto.ContextSort;
 import com.pinlog.pinlogback.domain.record.dto.MapMarkerResponse;
 import com.pinlog.pinlogback.domain.record.dto.MapResponse;
 import com.pinlog.pinlogback.domain.record.dto.PlacePayload;
@@ -93,9 +94,9 @@ public class RecordService {
 	}
 
 	@Transactional(readOnly = true)
-	public RecordDetailResponse getDetail(Long memberId, Long recordId) {
+	public RecordDetailResponse getDetail(Long memberId, Long recordId, ContextSort contextSort) {
 		Record record = ownedRecord(memberId, recordId);
-		return detailOf(record, keywordsForOwner(record, memberId));
+		return detailOf(record, keywordsForOwner(record, memberId), contextSort);
 	}
 
 	@Transactional(readOnly = true)
@@ -208,15 +209,29 @@ public class RecordService {
 		return record;
 	}
 
+	/**
+	 * {@code contextSort}는 Record 상세(5.2)에만 열린다(BD-46). 생성 응답과 by-place(5.3),
+	 * Collection 상세 조립은 이 오버로드(오름차순 고정)를 그대로 쓴다.
+	 */
 	private RecordDetailResponse detailOf(Record record, List<String> keywords) {
+		return detailOf(record, keywords, ContextSort.CREATED_AT_ASC);
+	}
+
+	private RecordDetailResponse detailOf(Record record, List<String> keywords, ContextSort contextSort) {
 		Place place = placeRepository.findById(record.getPlaceId())
 			.orElseThrow(ResourceNotFoundException::new);
-		return detailOf(record, place, keywords);
+		return detailOf(record, place, keywords, contextSort);
 	}
 
 	private RecordDetailResponse detailOf(Record record, Place place, List<String> keywords) {
-		List<ContextResponse> contexts = contextRepository
-			.findByRecordIdOrderByOriginCreatedAtAscIdAsc(record.getId())
+		return detailOf(record, place, keywords, ContextSort.CREATED_AT_ASC);
+	}
+
+	private RecordDetailResponse detailOf(Record record, Place place, List<String> keywords,
+		ContextSort contextSort) {
+		List<ContextResponse> contexts = (contextSort.ascending()
+			? contextRepository.findByRecordIdOrderByOriginCreatedAtAscIdAsc(record.getId())
+			: contextRepository.findByRecordIdOrderByOriginCreatedAtDescIdDesc(record.getId()))
 			.stream()
 			.map(ContextResponse::from)
 			.toList();

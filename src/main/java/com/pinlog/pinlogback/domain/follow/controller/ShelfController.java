@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.pinlog.pinlogback.domain.collection.dto.CollectionSort;
 import com.pinlog.pinlogback.domain.follow.dto.ShelfResponse;
 import com.pinlog.pinlogback.domain.follow.service.ShelfService;
 import com.pinlog.pinlogback.global.security.authentication.LoginMember;
@@ -33,9 +34,11 @@ public class ShelfController {
 		this.shelfService = shelfService;
 	}
 
+	/** 기본 정렬은 오래된순이고 {@code sort}는 7.2와 같은 규칙이다(명세 8.1, BD-46). */
 	@GetMapping("/collections/{collectionId}/shelf")
 	public ShelfResponse browse(@LoginMember MemberPrincipal me, @PathVariable Long collectionId,
-		@RequestParam(required = false) String cursor, @RequestParam(required = false) Integer size) {
-		return shelfService.browse(me.memberId(), collectionId, cursor, size);
+		@RequestParam(required = false) String cursor, @RequestParam(required = false) Integer size,
+		@RequestParam(defaultValue = "CREATED_AT_ASC") CollectionSort sort) {
+		return shelfService.browse(me.memberId(), collectionId, cursor, size, sort);
 	}
 }

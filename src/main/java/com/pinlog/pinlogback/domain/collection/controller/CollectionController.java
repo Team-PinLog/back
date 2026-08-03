@@ -16,8 +16,10 @@ import com.pinlog.pinlogback.domain.collection.dto.CollectionAddRecordsRequest;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionCreateRequest;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionDetailResponse;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionRenameRequest;
+import com.pinlog.pinlogback.domain.collection.dto.CollectionSort;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionSummaryResponse;
 import com.pinlog.pinlogback.domain.collection.dto.PublicCollectionDetailResponse;
+import com.pinlog.pinlogback.domain.collection.dto.RecordSort;
 import com.pinlog.pinlogback.domain.collection.service.CollectionService;
 import com.pinlog.pinlogback.global.response.CursorPage;
 import com.pinlog.pinlogback.global.security.authentication.LoginMember;
@@ -48,11 +50,13 @@ public class CollectionController {
 		return collectionService.create(me.memberId(), request);
 	}
 
+	/** 기본 정렬은 오래된순이고 {@code sort}는 프론트가 상수로 고정해 보낸다(명세 7.2, BD-46). */
 	@GetMapping
 	public CursorPage<CollectionSummaryResponse> listMine(@LoginMember MemberPrincipal me,
 		@RequestParam(required = false) String cursor,
-		@RequestParam(required = false) Integer size) {
-		return collectionService.listMine(me.memberId(), cursor, size);
+		@RequestParam(required = false) Integer size,
+		@RequestParam(defaultValue = "CREATED_AT_ASC") CollectionSort sort) {
+		return collectionService.listMine(me.memberId(), cursor, size, sort);
 	}
 
 	/**
@@ -70,8 +74,9 @@ public class CollectionController {
 	public Object detail(@LoginMember MemberPrincipal me,
 		@PathVariable Long collectionId,
 		@RequestParam(required = false) String recordCursor,
-		@RequestParam(required = false) Integer recordSize) {
-		return collectionService.getDetail(me.memberId(), collectionId, recordCursor, recordSize);
+		@RequestParam(required = false) Integer recordSize,
+		@RequestParam(defaultValue = "ADDED_AT_ASC") RecordSort recordSort) {
+		return collectionService.getDetail(me.memberId(), collectionId, recordCursor, recordSize, recordSort);
 	}
 
 	@PatchMapping("/{collectionId}")
