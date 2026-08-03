@@ -21,3 +21,4 @@
 | I8 | Flyway 도입 + ai 스키마·feed_event 마이그레이션 V1/V100~102 (back#3) | ✅ 완료 | [2026-07-23-flyway-ai-schema-migration.md](2026-07-23-flyway-ai-schema-migration.md) |
 | I15 | 백엔드 작업기록 신설 + 문서 재구조화(spec/proposals/implements/troubleshooting) (back#6) | ✅ 완료 | 이 트리 전체 |
 | I16 | Feed `keywords`를 `code`에서 `display_name`으로 교체, 점수 계산 키는 `code` 유지, N+1 쿼리 카운터 신설 (back#146, S15P11A705-252) | ✅ 완료 | [2026-08-03-feed-keyword-display-name.md](2026-08-03-feed-keyword-display-name.md) |
+| I17 | 검색 응답에 Record 단위 `keywordStatus` 노출. 상태 노출을 금지하던 응답 조립 명세 §5를 실측 근거로 개정하고(back#161) 공용 계약 반영(docs#41) 뒤 구현. 기존 Keyword 쿼리 무변경으로 하위 호환 확보 (back#136, S15P11A705-209) | ✅ 완료 | [2026-08-03-search-keyword-status.md](2026-08-03-search-keyword-status.md) |

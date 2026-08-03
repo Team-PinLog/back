@@ -556,7 +556,7 @@ class RecordSearchApiTests extends IntegrationContainerSupport {
 	 * "AI가 분석 중"을 영구히 띄웠다. 이 단언이 필드를 넣은 이유 자체다.
 	 */
 	@Test
-	void aFinishedJudgementIsCompletedEvenWhenItMatchedNoKeyword() throws Exception {
+	void judgementThatFinishedIsCompletedEvenWithNoKeyword() throws Exception {
 		long me = newMemberId();
 		long recordId = newRecord(me, "search-st-done", "37.5000000", "127.0000000");
 		long contextId = newContext(recordId, me, "여기 느끼해서 다신 안감");
@@ -592,7 +592,7 @@ class RecordSearchApiTests extends IntegrationContainerSupport {
 
 	/** {@code FAILED}는 그대로 나간다 — 기다려도 오지 않으므로 재시도·문의를 유도할 수 있어야 한다. */
 	@Test
-	void aFailedJudgementIsReportedSoTheUserCanRetry() throws Exception {
+	void failedJudgementIsReportedSoTheUserCanRetry() throws Exception {
 		long me = newMemberId();
 		long recordId = newRecord(me, "search-st-failed", "37.5000000", "127.0000000");
 		long contextId = newContext(recordId, me, "판정이 실패한 맥락");
@@ -612,7 +612,7 @@ class RecordSearchApiTests extends IntegrationContainerSupport {
 	 * <p>이 단언이 없으면 {@code CASE}의 두 분기를 맞바꿔도 나머지 테스트가 전부 통과한다.
 	 */
 	@Test
-	void aRecordStillProcessingOneContextIsProcessingEvenIfAnotherFailed() throws Exception {
+	void recordStillProcessingOneContextIsProcessingEvenIfAnotherFailed() throws Exception {
 		long me = newMemberId();
 		long recordId = newRecord(me, "search-st-mixed", "37.5000000", "127.0000000");
 		long failed = newContext(recordId, me, "실패한 맥락");
@@ -634,7 +634,7 @@ class RecordSearchApiTests extends IntegrationContainerSupport {
 	 * 걸려 빠지므로 <b>상태값 처리 자체를 확인할 수 없다</b> — 두 방어선 중 하나만 남겨 그 하나를 본다.
 	 */
 	@Test
-	void aCancelledContextDoesNotDragTheRecordStatus() throws Exception {
+	void cancelledContextDoesNotDragTheRecordStatus() throws Exception {
 		long me = newMemberId();
 		long recordId = newRecord(me, "search-st-cancelled", "37.5000000", "127.0000000");
 		long live = newContext(recordId, me, "살아 있는 맥락");
@@ -659,7 +659,7 @@ class RecordSearchApiTests extends IntegrationContainerSupport {
 	 * <b>어긋난 데이터가 화면을 망가뜨리지 않는지</b>를 보는 단언이다.
 	 */
 	@Test
-	void aRecordWithNoAiStateRowIsCompletedRatherThanForeverProcessing() throws Exception {
+	void recordWithNoAiStateRowIsCompletedRatherThanForeverProcessing() throws Exception {
 		long me = newMemberId();
 		long recordId = newRecord(me, "search-st-norow", "37.5000000", "127.0000000");
 		long contextId = newContext(recordId, me, "상태 행이 없는 맥락");
