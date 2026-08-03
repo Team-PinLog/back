@@ -60,7 +60,13 @@ public class AuthTokenService {
 	 */
 	public TokenPair rotate(@Nullable String refreshToken) {
 		RefreshTokenClaims claims = parse(refreshToken).orElseThrow(UnauthorizedException::new);
-		if (!refreshTokenStore.consume(claims.memberId(), claims.tokenId())) {
+		// 새 토큰을 먼저 서명한다. 소비와 저장을 한 연산으로 넘기려면 새 jti가 그 호출보다 앞서야
+		// 하기 때문이다. 실패하는 회전에서도 서명 한 번을 버리게 되지만, 그 대가로 폐기가 끼어들
+		// 창이 사라진다 — 창이 열려 있으면 실패한 쪽이 폐기한 뒤에 성공한 쪽이 저장해 버린다.
+		IssuedRefreshToken issued = tokenProvider.issueRefreshToken(claims.memberId());
+		boolean rotated = refreshTokenStore.rotate(
+			claims.memberId(), claims.tokenId(), issued.tokenId(), properties.refreshTokenTtl());
+		if (!rotated) {
 			// 서명·만료는 통과했는데 이미 소비된 토큰이다. 정상 흐름에서는 나오지 않는다 —
 			// 유출됐거나 클라이언트가 같은 토큰을 두 번 보냈다는 뜻이다.
 			int revoked = refreshTokenStore.revokeAll(claims.memberId());
@@ -68,7 +74,7 @@ public class AuthTokenService {
 				claims.memberId(), revoked);
 			throw new UnauthorizedException();
 		}
-		return issue(claims.memberId());
+		return new TokenPair(tokenProvider.issueAccessToken(claims.memberId()), issued.token());
 	}
 
 	/**

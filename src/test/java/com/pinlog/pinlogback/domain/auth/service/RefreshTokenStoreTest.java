@@ -106,6 +106,33 @@ class RefreshTokenStoreTest extends IntegrationContainerSupport {
 		assertThat(store.revokeAll(90_006L)).isZero();
 	}
 
+	@Test
+	@DisplayName("회전은 옛 토큰을 소비하고 새 토큰을 남긴다")
+	void rotateConsumesTheOldTokenAndKeepsTheNewOne() {
+		long memberId = 90_008L;
+		store.save(memberId, "jti-old", TTL);
+
+		assertThat(store.rotate(memberId, "jti-old", "jti-new", TTL)).isTrue();
+
+		assertThat(redisTemplate.hasKey(tokenKey(memberId, "jti-old"))).isFalse();
+		assertThat(redisTemplate.hasKey(tokenKey(memberId, "jti-new"))).isTrue();
+		assertThat(store.revokeAll(memberId))
+			.as("옛 jti가 인덱스에 남아 있으면 2가 된다")
+			.isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("이미 소비된 토큰으로 회전하면 새 토큰을 남기지 않는다")
+	void rotateOnConsumedTokenWritesNothing() {
+		// 실패한 회전이 새 토큰을 남기면, 뒤이어 도는 폐기가 그것을 보지 못해 살아남는다.
+		long memberId = 90_009L;
+
+		assertThat(store.rotate(memberId, "jti-gone", "jti-would-be", TTL)).isFalse();
+
+		assertThat(redisTemplate.hasKey(tokenKey(memberId, "jti-would-be"))).isFalse();
+		assertThat(store.revokeAll(memberId)).isZero();
+	}
+
 	private String tokenKey(long memberId, String tokenId) {
 		return "auth:refresh:" + memberId + ":" + tokenId;
 	}

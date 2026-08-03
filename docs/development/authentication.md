@@ -177,7 +177,9 @@ DB가 필요한 인증 테스트는 PostgreSQL Testcontainers를 사용합니다
 
 ### Refresh 회전
 
-`RefreshTokenStore`가 발급한 `jti`마다 Redis 키를 하나 두고(`auth:refresh:{memberId}:{jti}`), 재발급할 때 **삭제로 소비**합니다. `delete`의 반환값이 곧 검사 결과입니다 — 조회 후 삭제로 나누면 두 요청이 같은 토큰을 동시에 소비할 수 있습니다.
+`RefreshTokenStore`가 발급한 `jti`마다 Redis 키를 하나 두고(`auth:refresh:{memberId}:{jti}`), 재발급할 때 **삭제로 소비**합니다. 삭제의 반환값이 곧 검사 결과입니다 — 조회 후 삭제로 나누면 두 요청이 같은 토큰을 동시에 소비할 수 있습니다.
+
+**소비와 새 토큰 저장은 한 스크립트로 처리합니다**(`RefreshTokenStore.rotate`). 둘로 나누면 그 사이에 재사용 감지의 폐기가 끼어, 먼저 도착한 요청이 발급한 토큰이 **폐기가 끝난 뒤에 저장되어** 살아남습니다. 폐기도 스크립트이므로 Redis가 둘을 직렬화합니다([BT-06](../backend/troubleshooting/BT-06-refresh-revocation-leak-under-concurrent-rotation.md)).
 
 회원당 하나가 아니라 `jti`당 하나인 이유는 다중 기기입니다. 회원당 한 개면 한쪽 재발급이 다른 쪽 세션을 끊습니다.
 
