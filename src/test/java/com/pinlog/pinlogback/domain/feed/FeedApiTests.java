@@ -159,12 +159,4 @@ class FeedApiTests extends FeedFixtures {
 		}
 	}
 
-	private JsonNode itemOf(JsonNode response, long collectionId) {
-		for (JsonNode item : response.at("/data/items")) {
-			if (item.at("/collectionId").asLong() == collectionId) {
-				return item;
-			}
-		}
-		return null;
-	}
 }

@@ -20,3 +20,4 @@
 | I7 | back docs README 백엔드 허브화 (back#2) | ✅ 완료 | [../README.md](../README.md) |
 | I8 | Flyway 도입 + ai 스키마·feed_event 마이그레이션 V1/V100~102 (back#3) | ✅ 완료 | [2026-07-23-flyway-ai-schema-migration.md](2026-07-23-flyway-ai-schema-migration.md) |
 | I15 | 백엔드 작업기록 신설 + 문서 재구조화(spec/proposals/implements/troubleshooting) (back#6) | ✅ 완료 | 이 트리 전체 |
+| I16 | Feed `keywords`를 `code`에서 `display_name`으로 교체, 점수 계산 키는 `code` 유지, N+1 쿼리 카운터 신설 (back#146, S15P11A705-252) | ✅ 완료 | [2026-08-03-feed-keyword-display-name.md](2026-08-03-feed-keyword-display-name.md) |

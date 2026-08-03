@@ -1,13 +1,9 @@
 package com.pinlog.pinlogback.domain.feed;
 
-import static com.pinlog.pinlogback.support.AuthTestSupport.loginAs;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +12,6 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 
 import com.pinlog.pinlogback.domain.feed.repository.FeedKeywordRepository;
 import com.pinlog.pinlogback.domain.feed.service.FeedProfile;
-import com.pinlog.pinlogback.global.response.CursorPage;
 
 import tools.jackson.databind.JsonNode;
 
@@ -37,19 +32,24 @@ class FeedKeywordVisibilityTests extends FeedFixtures {
 	void onlyPublicActiveKeywordsCrossTheBoundary() throws Exception {
 		long owner = newMemberId();
 		long viewer = newMemberId();
-		String publicCode = code("PUB");
-		String privateCode = code("PRIV");
-		String blockedCode = code("BLK");
-		String inactiveCode = code("OFF");
+		String publicCode = uniqueCode("PUB");
+		String publicName = uniqueDisplayName("공개");
+		String privateCode = uniqueCode("PRIV");
+		String privateName = uniqueDisplayName("본인만");
+		String blockedCode = uniqueCode("BLK");
+		String blockedName = uniqueDisplayName("차단");
+		String inactiveCode = uniqueCode("OFF");
+		String inactiveName = uniqueDisplayName("폐기");
 
 		long recordId = createRecord(owner, uniqueSeed("visibility"));
-		attachKeyword(recordId, insertPreset(publicCode, "PUBLIC", true));
-		attachKeyword(recordId, insertPreset(privateCode, "PRIVATE_ONLY", true));
-		attachKeyword(recordId, insertPreset(blockedCode, "BLOCKED", true));
-		attachKeyword(recordId, insertPreset(inactiveCode, "PUBLIC", false));
+		attachKeyword(recordId, insertPreset(publicCode, publicName, "PUBLIC", true));
+		attachKeyword(recordId, insertPreset(privateCode, privateName, "PRIVATE_ONLY", true));
+		attachKeyword(recordId, insertPreset(blockedCode, blockedName, "BLOCKED", true));
+		attachKeyword(recordId, insertPreset(inactiveCode, inactiveName, "PUBLIC", false));
 		long collectionId = createCollection(owner, "키워드 책", List.of(recordId));
 
-		// P3·P7 — 타인에게 노출되는 특징은 PUBLIC이고 활성인 Preset뿐이다.
+		// P3·P7 — 타인에게 노출되는 특징은 PUBLIC이고 활성인 Preset뿐이다. 특징은 점수 계산용이라
+		// 표시값이 아니라 code로 키를 잡는다(S15P11A705-252).
 		Map<Long, Map<String, Double>> features =
 			keywordRepository.findPublicKeywordWeights(List.of(collectionId));
 		assertThat(features.get(collectionId)).containsOnlyKeys(publicCode);
@@ -59,16 +59,17 @@ class FeedKeywordVisibilityTests extends FeedFixtures {
 		assertThat(profile.keywordWeights()).containsOnlyKeys(publicCode, privateCode);
 		assertThat(profile.recordCount()).isEqualTo(1);
 
-		// P5·P6 — 응답에는 PUBLIC만 실린다.
-		String payload = mockMvc.perform(get(FEED_URL)
-				.param("size", String.valueOf(CursorPage.MAX_SIZE)).with(loginAs(viewer)))
-			.andExpect(status().isOk())
-			.andReturn().getResponse().getContentAsString();
+		// P5·P6 — 응답에는 PUBLIC의 표시값만 실린다. code는 어느 가시성이든 나가지 않는다.
+		String payload = feedPayload(viewer);
 
 		JsonNode item = itemOf(parse(payload), collectionId);
 		assertThat(item).isNotNull();
-		assertThat(keywordsOf(item)).containsExactly(publicCode);
+		assertThat(keywordsOf(item)).containsExactly(publicName);
 		assertThat(payload)
+			.doesNotContain(privateName)
+			.doesNotContain(blockedName)
+			.doesNotContain(inactiveName)
+			.doesNotContain(publicCode)
 			.doesNotContain(privateCode)
 			.doesNotContain(blockedCode)
 			.doesNotContain(inactiveCode);
@@ -78,8 +79,8 @@ class FeedKeywordVisibilityTests extends FeedFixtures {
 	@Test
 	void keywordWeightsAreNormalized() throws Exception {
 		long owner = newMemberId();
-		String first = code("N1");
-		String second = code("N2");
+		String first = uniqueCode("N1");
+		String second = uniqueCode("N2");
 
 		long recordA = createRecord(owner, uniqueSeed("norm-a"));
 		long recordB = createRecord(owner, uniqueSeed("norm-b"));
@@ -116,22 +117,4 @@ class FeedKeywordVisibilityTests extends FeedFixtures {
 		assertThat(keywordRepository.findPublicKeywordWeights(List.of())).isEmpty();
 	}
 
-	private String code(String prefix) {
-		return prefix + "_" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
-	}
-
-	private List<String> keywordsOf(JsonNode item) {
-		List<String> keywords = new java.util.ArrayList<>();
-		item.at("/keywords").forEach(keyword -> keywords.add(keyword.asString()));
-		return keywords;
-	}
-
-	private JsonNode itemOf(JsonNode response, long collectionId) {
-		for (JsonNode item : response.at("/data/items")) {
-			if (item.at("/collectionId").asLong() == collectionId) {
-				return item;
-			}
-		}
-		return null;
-	}
 }
