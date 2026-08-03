@@ -38,17 +38,30 @@ public interface CollectionRecordRepository extends JpaRepository<CollectionReco
 	long countByCollectionId(Long collectionId);
 
 	/**
-	 * 컬렉션 내부 페이지. 정렬은 담은 순서 최신순(collection_record.created_at DESC, 데이터모델 2.7) —
-	 * Record의 시각을 기준으로 삼으면 Context 수정만으로 순서가 바뀌므로 쓰지 않는다.
+	 * 컬렉션 내부 페이지. 정렬 기준은 담은 시각(collection_record.created_at, 데이터모델 2.7)이며
+	 * 오래된순이 기본이고 방향은 파라미터로 열린다(BD-46) — Record의 시각을 기준으로 삼으면
+	 * Context 수정만으로 순서가 바뀌므로 쓰지 않는다. 방향별 짝 규칙(order by와 커서 부등호가
+	 * 함께 뒤집힌다)은 {@code CollectionRepository}와 같다.
 	 */
 	@Query("select cr from CollectionRecord cr where cr.collectionId = :collectionId"
 		+ " order by cr.createdAt desc, cr.id desc")
-	List<CollectionRecord> findFirstPageByCollectionId(@Param("collectionId") Long collectionId,
+	List<CollectionRecord> findFirstPageByCollectionIdDesc(@Param("collectionId") Long collectionId,
+		Pageable pageable);
+
+	@Query("select cr from CollectionRecord cr where cr.collectionId = :collectionId"
+		+ " order by cr.createdAt asc, cr.id asc")
+	List<CollectionRecord> findFirstPageByCollectionIdAsc(@Param("collectionId") Long collectionId,
 		Pageable pageable);
 
 	@Query("select cr from CollectionRecord cr where cr.collectionId = :collectionId"
 		+ " and (cr.createdAt < :createdAt or (cr.createdAt = :createdAt and cr.id < :id))"
 		+ " order by cr.createdAt desc, cr.id desc")
-	List<CollectionRecord> findPageByCollectionIdAfter(@Param("collectionId") Long collectionId,
+	List<CollectionRecord> findPageByCollectionIdAfterDesc(@Param("collectionId") Long collectionId,
+		@Param("createdAt") Instant createdAt, @Param("id") Long id, Pageable pageable);
+
+	@Query("select cr from CollectionRecord cr where cr.collectionId = :collectionId"
+		+ " and (cr.createdAt > :createdAt or (cr.createdAt = :createdAt and cr.id > :id))"
+		+ " order by cr.createdAt asc, cr.id asc")
+	List<CollectionRecord> findPageByCollectionIdAfterAsc(@Param("collectionId") Long collectionId,
 		@Param("createdAt") Instant createdAt, @Param("id") Long id, Pageable pageable);
 }

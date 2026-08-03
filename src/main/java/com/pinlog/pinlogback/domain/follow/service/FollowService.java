@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.pinlog.pinlogback.domain.ai.repository.ContextKeywordRepository;
+import com.pinlog.pinlogback.domain.collection.dto.CollectionSort;
 import com.pinlog.pinlogback.domain.collection.entity.Collection;
 import com.pinlog.pinlogback.domain.collection.repository.CollectionFirstPageRepository;
 import com.pinlog.pinlogback.domain.collection.repository.CollectionFirstPageRepository.PublishedCollectionRow;
@@ -130,14 +131,15 @@ public class FollowService {
 	 */
 	@Transactional(readOnly = true)
 	public CursorPage<FollowWithCollectionsResponse> listMineWithCollections(Long memberId, String cursor,
-		Integer size, Integer collectionSize) {
+		Integer size, Integer collectionSize, CollectionSort collectionSort) {
 		int pageSize = CursorPage.normalizeSize(size);
 		int collectionPageSize = CursorPage.normalizeSize(collectionSize);
 		List<Follow> rows = followProbe(memberId, cursor, pageSize);
 		boolean hasNext = rows.size() > pageSize;
 		List<Follow> page = hasNext ? rows.subList(0, pageSize) : rows;
 		Map<Long, List<PublishedCollectionRow>> shelves = collectionFirstPageRepository.findPublishedFirstPages(
-			page.stream().map(Follow::getFolloweeMemberId).toList(), collectionPageSize + 1);
+			page.stream().map(Follow::getFolloweeMemberId).toList(), collectionPageSize + 1,
+			collectionSort.ascending());
 		Map<Long, List<String>> keywords = contextKeywordRepository.findCollectionKeywordsPublic(
 			shelves.values().stream()
 				.flatMap(shelf -> shelf.stream().limit(collectionPageSize))
@@ -192,7 +194,7 @@ public class FollowService {
 	 */
 	@Transactional(readOnly = true)
 	public CursorPage<FollowedCollectionResponse> listFollowedCollections(Long memberId, Long followId,
-		String cursor, Integer size) {
+		String cursor, Integer size, CollectionSort sort) {
 		Follow follow = ownedFollow(memberId, followId);
 		if (!memberRepository.isActive(follow.getFolloweeMemberId())) {
 			return CursorPage.empty();
@@ -201,12 +203,18 @@ public class FollowService {
 		Pageable probe = PageRequest.of(0, pageSize + 1);
 		List<Collection> rows;
 		if (cursor == null || cursor.isBlank()) {
-			rows = collectionRepository.findPublishedFirstPageByMemberId(
-				follow.getFolloweeMemberId(), probe);
+			rows = sort.ascending()
+				? collectionRepository.findPublishedFirstPageByMemberIdAsc(
+					follow.getFolloweeMemberId(), probe)
+				: collectionRepository.findPublishedFirstPageByMemberIdDesc(
+					follow.getFolloweeMemberId(), probe);
 		} else {
 			Cursor decoded = Cursor.decode(cursor);
-			rows = collectionRepository.findPublishedPageByMemberIdAfter(
-				follow.getFolloweeMemberId(), decoded.sortKeyAsInstant(), decoded.id(), probe);
+			rows = sort.ascending()
+				? collectionRepository.findPublishedPageByMemberIdAfterAsc(
+					follow.getFolloweeMemberId(), decoded.sortKeyAsInstant(), decoded.id(), probe)
+				: collectionRepository.findPublishedPageByMemberIdAfterDesc(
+					follow.getFolloweeMemberId(), decoded.sortKeyAsInstant(), decoded.id(), probe);
 		}
 		boolean hasNext = rows.size() > pageSize;
 		List<Collection> page = hasNext ? rows.subList(0, pageSize) : rows;
