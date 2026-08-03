@@ -8,6 +8,8 @@ import java.util.Map;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import com.pinlog.pinlogback.domain.ai.KeywordResponseStatus;
+
 /**
  * Record 단위 Keyword 집계(AI 파트 소유 명세 {@code docs/ai/spec/ai-response-assembly.md} 4.1).
  * {@code ai} 스키마를 <b>읽기 조인만</b> 한다 — 요청 경로에서 FastAPI를 호출하지 않는다.
@@ -105,10 +107,66 @@ public class ContextKeywordRepository {
 		ORDER BY cr.collection_id, kp.display_name
 		""";
 
+	/**
+	 * Record 단위 판정 상태 집계(명세 5.1). <b>위 세 쿼리와 별개로 둔다.</b> 저것들은
+	 * {@code keyword_status = 'COMPLETED'} INNER JOIN이라 <b>미완료 Context를 애초에 만나지 못한다</b> —
+	 * 상태를 알아내려면 걸러내지 않은 집합이 필요하므로 같은 쿼리로 합칠 수 없다. 합치려고 조건을
+	 * 풀면 {@code keywords} 배열의 계약이 바뀌고, 그것이 이 변경의 유일한 하위 호환 위험이 된다.
+	 *
+	 * <p>{@code LEFT JOIN}인 것이 요점이다. {@code context_ai_state} 행이 없는 Context도 집계에
+	 * 남아야 한다 — INNER JOIN이면 그런 Record가 결과에서 통째로 빠져 호출부가 상태를 못 받는다.
+	 *
+	 * <p>{@code CASE}의 순서가 곧 명세 5.1의 접기 규칙이며 <b>{@code PROCESSING}이 {@code FAILED}를
+	 * 이긴다.</b> 하나가 실패하고 다른 하나가 처리 중이면 그 처리 중인 것이 끝나며 Keyword가 더
+	 * 붙으므로, 그 상황에서 사실인 답은 "기다리면 온다"다.
+	 *
+	 * <p>{@code CANCELLED}는 두 {@code bool_or} 어디에도 걸리지 않아 자연히 {@code COMPLETED} 쪽으로
+	 * 떨어진다. 의도한 결과다 — 그 Context는 응답 대상이 아니므로(명세 5장) 삭제·교체된 것 때문에
+	 * 살아 있는 Context의 상태가 바뀌면 안 된다.
+	 *
+	 * <p>{@code ct.member_id} 조건은 위 소유자용 쿼리와 같은 이유의 방어다. 검색은 소유자 전용
+	 * 응답이라 남의 Record 상태가 섞일 자리가 없어야 한다.
+	 */
+	private static final String KEYWORD_STATUS_FOR_OWNER_SQL = """
+		SELECT ct.record_id AS record_id,
+			CASE
+				WHEN bool_or(st.keyword_status IN ('PENDING', 'PROCESSING')) THEN 'PROCESSING'
+				WHEN bool_or(st.keyword_status = 'FAILED')                   THEN 'FAILED'
+				ELSE 'COMPLETED'
+			END AS keyword_status
+		FROM core.context ct
+		LEFT JOIN ai.context_ai_state st ON st.context_id = ct.id
+		WHERE ct.record_id IN (:recordIds)
+			AND ct.member_id = :memberId
+			AND ct.deleted_at IS NULL
+		GROUP BY ct.record_id
+		""";
+
 	private final NamedParameterJdbcTemplate jdbc;
 
 	public ContextKeywordRepository(NamedParameterJdbcTemplate jdbc) {
 		this.jdbc = jdbc;
+	}
+
+	/**
+	 * 넘긴 Record들의 판정 상태를 <b>한 번의 쿼리로</b> 모은다(명세 4.3과 같은 이유 — Record별 반복
+	 * 조회는 그대로 N+1이다). 검색 응답 전용이며, 타인 응답에는 상태를 싣지 않는다(명세 5.1 —
+	 * 남의 AI 처리 진행 상황이 새어 나간다).
+	 *
+	 * @return Record id → 판정 상태. <b>활성 Context가 없는 Record는 키가 없다</b> — 호출부가
+	 *     {@link KeywordResponseStatus#COMPLETED}로 채운다. 검색은 활성 Context가 있는 Record만
+	 *     재검증에서 통과시키므로(명세 6.1) 정상 경로에서는 비지 않는다
+	 */
+	public Map<Long, KeywordResponseStatus> findKeywordStatusForOwner(List<Long> recordIds, long memberId) {
+		if (recordIds.isEmpty()) {
+			return Map.of();
+		}
+		Map<Long, KeywordResponseStatus> byRecord = new LinkedHashMap<>();
+		jdbc.query(KEYWORD_STATUS_FOR_OWNER_SQL, Map.of("recordIds", recordIds, "memberId", memberId), rows -> {
+			byRecord.put(rows.getLong("record_id"),
+				KeywordResponseStatus.valueOf(rows.getString("keyword_status")));
+		});
+		return byRecord;
 	}
 
 	/**

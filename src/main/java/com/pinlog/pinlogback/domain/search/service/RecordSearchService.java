@@ -9,6 +9,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 
+import com.pinlog.pinlogback.domain.ai.KeywordResponseStatus;
 import com.pinlog.pinlogback.domain.ai.client.AiSearchClient;
 import com.pinlog.pinlogback.domain.ai.client.AiSearchResponse;
 import com.pinlog.pinlogback.domain.ai.repository.ContextKeywordRepository;
@@ -31,13 +32,13 @@ import com.pinlog.pinlogback.global.response.BoundsResponse;
  * <ol>
  *   <li>FastAPI 호출 — Record 단위로 집계된 {@code (recordId, contextId, similarity)} 목록을 받는다</li>
  *   <li>Core 재검증 — 소유권·삭제·활성 Context·Place를 Spring이 다시 본다(9.5)</li>
- *   <li>조립 — 본문과 Keyword는 Core에서 조회해 붙인다. FastAPI는 본문을 주지 않는다</li>
+ *   <li>조립 — 본문·Keyword·판정 상태는 Core에서 조회해 붙인다. FastAPI는 본문을 주지 않는다</li>
  *   <li>bounds 계산 — <b>재검증을 통과한 것들</b>로만 계산한다</li>
  * </ol>
  *
  * <p><b>{@code @Transactional}을 붙이지 않았다.</b> 붙이면 FastAPI 호출(읽기 타임아웃 5s) 내내 DB
  * 커넥션이 잡혀 있는다 — AI 파트 소유 명세 {@code docs/ai/spec/ai-integration.md} 4.1이 금지하는
- * 바로 그 형태다. 이 메서드의 DB 조회 셋은 서로 다른 스냅샷을 봐도 무방하다: 그 사이에 무엇이
+ * 바로 그 형태다. 이 메서드의 DB 조회 넷은 서로 다른 스냅샷을 봐도 무방하다: 그 사이에 무엇이
  * 지워지든 결과는 "그 항목이 빠진다" 쪽으로만 움직이고, 애초에 검색은 <b>움직이는 대상을 최선으로
  * 재검증</b>하는 일이라 한 스냅샷으로 묶는다고 더 정확해지지 않는다.
  */
@@ -75,10 +76,14 @@ public class RecordSearchService {
 				matches.stream().map(AiSearchResponse.Match::contextId).toList(), memberId)
 			.stream()
 			.collect(Collectors.toMap(Context::getId, Function.identity()));
+		List<Long> verifiedRecordIds = List.copyOf(verified.keySet());
 		Map<Long, List<String>> keywords =
-			contextKeywordRepository.findKeywordsForOwner(List.copyOf(verified.keySet()), memberId);
+			contextKeywordRepository.findKeywordsForOwner(verifiedRecordIds, memberId);
+		Map<Long, KeywordResponseStatus> keywordStatuses =
+			contextKeywordRepository.findKeywordStatusForOwner(verifiedRecordIds, memberId);
 
-		List<RecordSearchItemResponse> items = assemble(matches, verified, matchedContexts, keywords);
+		List<RecordSearchItemResponse> items =
+			assemble(matches, verified, matchedContexts, keywords, keywordStatuses);
 		return new RecordSearchResponse(
 			BoundsResponse.enclosing(items, item -> item.place().lat(), item -> item.place().lng()),
 			items);
@@ -90,10 +95,15 @@ public class RecordSearchService {
 	 * <p><b>탈락은 조용히 처리한다</b>(AI 파트 소유 명세 {@code ai-response-assembly.md} 6.3). 오류로
 	 * 만들지 않고, 줄어든 개수를 다른 Record로 채우지도 않는다 — 채우면 "상위 N개"라는 정렬 계약이
 	 * 깨지고, 오류로 만들면 남이 지운 기록 하나 때문에 내 검색 전체가 실패한다.
+	 *
+	 * <p><b>{@code keywords}와 {@code keywordStatus}는 서로를 검사하지 않는다</b>(명세 5.1). 둘은
+	 * 다른 쿼리에서 오고 그 사이에 판정이 끝날 수 있다 — {@code PROCESSING}인데 배열이 차 있거나
+	 * 그 반대인 조합이 정상적으로 나온다. 여기서 "맞춰" 주면 <b>둘 중 하나를 조용히 거짓으로
+	 * 만드는</b> 셈이고, 어느 쪽을 고쳐도 사용자에게는 그 순간 사실이던 값이 사라진다.
 	 */
 	private List<RecordSearchItemResponse> assemble(List<AiSearchResponse.Match> matches,
 		Map<Long, VerifiedSearchRecord> verified, Map<Long, Context> matchedContexts,
-		Map<Long, List<String>> keywords) {
+		Map<Long, List<String>> keywords, Map<Long, KeywordResponseStatus> keywordStatuses) {
 		List<RecordSearchItemResponse> items = new ArrayList<>(matches.size());
 		for (AiSearchResponse.Match match : matches) {
 			VerifiedSearchRecord record = verified.get(match.recordId());
@@ -108,6 +118,7 @@ public class RecordSearchService {
 					record.lat(), record.lng()),
 				MatchedContextResponse.from(context),
 				keywords.getOrDefault(record.recordId(), List.of()),
+				keywordStatuses.getOrDefault(record.recordId(), KeywordResponseStatus.COMPLETED),
 				record.createdAt()));
 		}
 		return List.copyOf(items);
