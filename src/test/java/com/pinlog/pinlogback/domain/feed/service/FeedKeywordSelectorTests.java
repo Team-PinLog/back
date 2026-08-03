@@ -31,14 +31,14 @@ import com.pinlog.pinlogback.domain.feed.repository.FeedKeywordLabel;
  */
 class FeedKeywordSelectorTests {
 
-	private static final int LIMIT = 4;
+	private static final int LIMIT = 3;
 
 	/**
 	 * KW3 — 빈도가 전부 같을 때 축이 가른다.
 	 *
-	 * <p><b>이 경로가 예외가 아니라 기본이다.</b> 실측에서 4개로 자를 필요가 있는 Collection 6건
-	 * <b>전부</b>가 4위와 5위의 빈도가 같았다(6/6). 빈도 내림차순은 경계에서 한 건도 가르지
-	 * 못하므로, 여기서 축이 안 갈리면 4번째 칸이 사실상 무작위로 정해진다.
+	 * <p><b>이 경로가 예외가 아니라 기본이다.</b> 실측 16건 중 10건(63%)이 모든 Keyword의 빈도가 1이라
+	 * 1순위가 아무 일도 하지 않고, 상한 3에서 자를 필요가 있는 12건 중 11건이 3위·4위 동점이다.
+	 * 여기서 축이 안 갈리면 잘리는 자리가 사실상 무작위로 정해진다.
 	 */
 	@Test
 	void axisSpreadsWithinOneFrequencyGroup() {
@@ -52,7 +52,8 @@ class FeedKeywordSelectorTests {
 		put(weights, labels, "SITUATION_A", 401, "비 오는 날", "SITUATION", 1);
 
 		assertThat(FeedKeywordSelector.select(weights, labels, LIMIT))
-			.containsExactly("친구와", "산책", "조용한", "비 오는 날");
+			.as("상한 3이라 네 번째 축(SITUATION)은 자리를 얻지 못한다")
+			.containsExactly("친구와", "산책", "조용한");
 	}
 
 	/** KW2 — 빈도가 갈리면 빈도만으로 순서가 정해진다. id가 더 커도 빈도가 높으면 앞이다. */
@@ -90,10 +91,10 @@ class FeedKeywordSelectorTests {
 	}
 
 	/**
-	 * KW1·KW4 — 축이 하나뿐이어도 4칸을 채운다.
+	 * KW1·KW4 — 축이 하나뿐이어도 상한만큼 채운다.
 	 *
 	 * <p>「축당 1개」로 못 박으면 이 Collection은 Keyword를 다섯 가지고도 하나만 내보낸다. 실측에서
-	 * 4축을 다 가진 Collection은 31%뿐이라 이 경로가 예외가 아니다.
+	 * 3축 미만인 Collection이 6/16이라 이 경로가 예외가 아니다.
 	 */
 	@Test
 	void singleAxisStillFillsTheLimit() {
@@ -106,7 +107,7 @@ class FeedKeywordSelectorTests {
 		put(weights, labels, "E", 205, "다섯", "ACTIVITY", 1);
 
 		assertThat(FeedKeywordSelector.select(weights, labels, LIMIT))
-			.containsExactly("하나", "둘", "셋", "넷");
+			.containsExactly("하나", "둘", "셋");
 	}
 
 	/**
@@ -123,10 +124,10 @@ class FeedKeywordSelectorTests {
 		put(insertionOrder, labels, "B_OTHER", 203, "셋", "ACTIVITY", 1);
 
 		assertThat(FeedKeywordSelector.select(insertionOrder, labels, LIMIT))
-			.containsExactly("하나", "둘", "셋", "넷");
+			.containsExactly("하나", "둘", "셋");
 		assertThat(FeedKeywordSelector.select(new TreeMap<>(insertionOrder), labels, LIMIT))
 			.as("code 사전순으로 순회해도 결과가 같아야 한다")
-			.containsExactly("하나", "둘", "셋", "넷");
+			.containsExactly("하나", "둘", "셋");
 	}
 
 	/**
@@ -148,7 +149,7 @@ class FeedKeywordSelectorTests {
 
 		assertThat(FeedKeywordSelector.select(weights, labels, LIMIT))
 			.as("폐기된 Preset 자리를 비우지 않고 다음 후보가 채운다")
-			.containsExactly("하나", "셋", "넷", "다섯");
+			.containsExactly("하나", "셋", "넷");
 	}
 
 	/** KW7 — 서로 다른 {@code code}의 표시값이 겹치면 앞의 것만 남고 자리는 다음 후보가 채운다. */
@@ -163,7 +164,7 @@ class FeedKeywordSelectorTests {
 		put(weights, labels, "E", 205, "다섯", "ACTIVITY", 1);
 
 		assertThat(FeedKeywordSelector.select(weights, labels, LIMIT))
-			.containsExactly("하나", "셋", "넷", "다섯");
+			.containsExactly("하나", "셋", "넷");
 	}
 
 	/** KW8·KW9 — 상한 미만은 있는 만큼, 하나도 없으면 빈 목록. 오류가 아니다. */

@@ -37,7 +37,7 @@ abstract class FeedFixtures extends IntegrationContainerSupport {
 
 	/**
 	 * 축을 신경 쓰지 않는 테스트가 쓰는 category. 프리셋의 실제 네 축 중 하나를 골라 둔다 —
-	 * 없는 값을 넣으면 축 정렬을 검증하는 테스트가 현실과 다른 전제 위에서 돌게 된다.
+	 * 없는 값을 넣으면 동점 규칙을 검증하는 테스트가 현실과 다른 전제 위에서 돌게 된다.
 	 */
 	private static final String DEFAULT_CATEGORY = "ATMOSPHERE";
 
@@ -122,8 +122,9 @@ abstract class FeedFixtures extends IntegrationContainerSupport {
 	}
 
 	/**
-	 * category까지 정하는 Preset. 표시 Keyword 정렬의 1순위가 <b>축(category) 내 순위</b>이므로
-	 * (P46, feed-recommendation 3.7.1) 축을 가리는 테스트는 이 오버로드를 쓴다.
+	 * category까지 정하는 Preset. 표시 Keyword 정렬의 <b>동점 규칙</b>이 축(category) 내 순위를
+	 * 쓰므로(P46, feed-recommendation 3.7.1) 축을 가리는 테스트는 이 오버로드를 쓴다.
+	 * <b>1순위는 빈도이며 축은 그것을 뒤집지 않는다.</b>
 	 *
 	 * <p>{@code id}는 {@code max(id) + 1}이라 <b>삽입 순서가 곧 id 순서</b>다 — 동점 규칙이
 	 * {@code preset.id} 오름차순이므로 테스트가 기대 순서를 삽입 순서로 적을 수 있다.

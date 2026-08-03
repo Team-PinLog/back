@@ -37,7 +37,7 @@
 | P33 | back/docs README 백엔드 공통 허브화(AI 편중 시정) | Accepted | [../README.md](../README.md) |
 | P39 | compose 이미지 `postgres:latest` → `pgvector/pgvector:pg16` | Accepted | [implements](../implements/2026-07-23-flyway-ai-schema-migration.md) |
 | P42 | MVP Feed 후보·점수·Cache에서 Place category·region 제외 | Accepted | [P42](P42-feed-mvp-without-place-metadata.md) |
-| P46 | Feed 응답 `keywords` 동점 규칙(축 내 순위 → `preset.id`). 개수 4·빈도 내림차순은 프론트 구두 합의 | Accepted | [P46](P46-feed-keyword-display-order.md) |
+| P46 | Feed 응답 `keywords` 동점 규칙(축 내 순위 → `preset.id`). 개수 3·빈도 내림차순은 프론트 구두 합의 | Accepted | [P46](P46-feed-keyword-display-order.md) |
 
 ## 미결 (백엔드 관련)
 

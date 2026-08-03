@@ -24,9 +24,9 @@ import tools.jackson.databind.JsonNode;
  * 3  preset id ASC    UNIQUE 정수라 여기서 전순서가 완성된다           동점 규칙 — 우리 판단
  * </pre>
  *
- * <p>이 순서로 자른 앞 4개가 응답이다. <b>실측상 화면을 정하는 것은 2·3이다</b> — 시연 DB에서 4개로
- * 자를 필요가 있는 Collection 6건 <b>전부</b>가 4위와 5위의 빈도가 같았다(6/6). 빈도 내림차순은
- * 경계에서 한 건도 가르지 못한다(P46 「실측」).
+ * <p>이 순서로 자른 앞 <b>3개</b>가 응답이다(상한은 프론트 카드 레이아웃 요구, 2026-08-03 구두 합의).
+ * <b>실측상 화면을 정하는 것은 2·3이다</b> — 16건 중 10건(63%)이 모든 Keyword의 빈도가 1이라 1순위가
+ * 아무 일도 하지 않고, 상한 3에서 자를 필요가 있는 12건 중 11건이 3위·4위 동점이다(P46 「실측」).
  *
  * <p>기대 순서를 <b>삽입 순서</b>로 적을 수 있는 것은 {@code insertPreset}이 {@code max(id) + 1}로
  * id를 매기기 때문이다. 먼저 넣은 Preset이 항상 작은 id를 갖는다.
@@ -39,14 +39,14 @@ class FeedKeywordDisplayOrderTests extends FeedFixtures {
 	private final Set<Long> following = new HashSet<>();
 
 	/**
-	 * KW1·KW3 — 축이 넷이고 빈도가 전부 같을 때. 상위 4칸이 <b>서로 다른 축</b>으로 채워지고
-	 * 같은 축의 두 번째(2·4번째로 넣은 것)는 자리를 얻지 못한다.
+	 * KW1·KW3 — 축이 넷이고 빈도가 전부 같을 때. 상위 3칸이 <b>서로 다른 축</b>으로 채워지고 같은 축의
+	 * 두 번째(2·4번째로 넣은 것)는 자리를 얻지 못한다. 상한이 3이라 네 번째 축도 밀린다.
 	 *
-	 * <p>빈도가 경계를 못 가르는 이 상태가 <b>자를 일이 생기는 Collection 전부</b>였다(실측 6/6).
-	 * 여기서 축이 안 갈리면 4번째 칸이 사실상 무작위로 정해진다.
+	 * <p>빈도가 아무것도 못 가르는 이 상태가 실측 16건 중 10건(63%)이다. 여기서 축이 안 갈리면
+	 * 잘리는 자리가 사실상 무작위로 정해진다.
 	 */
 	@Test
-	void topFourAreFilledWithDistinctAxesWhenEveryKeywordHasTheSameFrequency() throws Exception {
+	void topSlotsAreFilledWithDistinctAxesWhenEveryKeywordHasTheSameFrequency() throws Exception {
 		long owner = newMemberId();
 		long viewer = newMemberId();
 		String companionFirst = uniqueDisplayName("친구와");
@@ -66,17 +66,17 @@ class FeedKeywordDisplayOrderTests extends FeedFixtures {
 		long collectionId = createCollection(owner, "네 축 책", List.of(recordId));
 
 		assertThat(keywordsFor(viewer, owner, collectionId))
-			.as("축 내 1순위 넷이 preset id 순으로 나와야 한다")
-			.containsExactly(companionFirst, activityFirst, atmosphere, situation);
+			.as("축 내 1순위가 preset id 순으로 오고 상한 3에서 잘린다. situation=%s는 밀린다", situation)
+			.containsExactly(companionFirst, activityFirst, atmosphere);
 	}
 
 	/**
-	 * KW4 — 축이 하나뿐이어도 4칸을 채운다. 「축당 1개」로 못 박으면 Keyword를 넷 가진 이
-	 * Collection이 하나만 내보내게 된다. 실측에서 4축을 다 가진 Collection은 31%뿐이라
-	 * 이 경로가 예외가 아니다.
+	 * KW4 — 축이 하나뿐이어도 상한만큼 채운다. 「축당 1개」로 못 박으면 Keyword를 다섯 가진 이
+	 * Collection이 하나만 내보내게 된다. 실측에서 3축 미만인 Collection이 6/16이라 이 경로가
+	 * 예외가 아니다.
 	 */
 	@Test
-	void singleAxisStillFillsAllFourSlots() throws Exception {
+	void singleAxisStillFillsEverySlot() throws Exception {
 		long owner = newMemberId();
 		long viewer = newMemberId();
 		String first = uniqueDisplayName("하나");
@@ -94,8 +94,9 @@ class FeedKeywordDisplayOrderTests extends FeedFixtures {
 		long collectionId = createCollection(owner, "한 축 책", List.of(recordId));
 
 		assertThat(keywordsFor(viewer, owner, collectionId))
-			.as("축이 하나여도 4개를 채우고, 동점은 preset id 오름차순으로 푼다")
-			.containsExactly(first, second, third, fourth);
+			.as("축이 하나여도 상한만큼 채우고, 동점은 preset id 오름차순으로 푼다. fourth=%s·fifth=%s는 밀린다",
+				fourth, fifth)
+			.containsExactly(first, second, third);
 	}
 
 	/**
@@ -127,9 +128,9 @@ class FeedKeywordDisplayOrderTests extends FeedFixtures {
 			.containsExactly(repeated, once, otherAxis);
 	}
 
-	/** KW8 — 4개 미만이면 있는 만큼. 실측 25%가 이 경로이며 정상 경로다. */
+	/** KW8 — 상한 미만이면 있는 만큼. 실측 16건 중 3건이 이 경로이며 정상 경로다. */
 	@Test
-	void fewerThanFourKeywordsAreReturnedAsIs() throws Exception {
+	void fewerKeywordsThanTheLimitAreReturnedAsIs() throws Exception {
 		long owner = newMemberId();
 		long viewer = newMemberId();
 		String companion = uniqueDisplayName("동행");
@@ -170,7 +171,7 @@ class FeedKeywordDisplayOrderTests extends FeedFixtures {
 		List<String> first = keywordsFor(viewer, owner, collectionId);
 		List<String> second = keywordsFor(viewer, owner, collectionId);
 
-		assertThat(first).hasSize(4);
+		assertThat(first).hasSize(3);
 		assertThat(second).as("같은 요청에 항상 같은 순서여야 한다").containsExactlyElementsOf(first);
 	}
 
