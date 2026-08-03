@@ -106,6 +106,49 @@ class RefreshTokenStoreTest extends IntegrationContainerSupport {
 		assertThat(store.revokeAll(90_006L)).isZero();
 	}
 
+	@Test
+	@DisplayName("만료로 이미 사라진 토큰은 폐기 수에 세지 않는다")
+	void revokeAllCountsOnlyWhatItActuallyRemoved() {
+		// TTL로 사라진 토큰의 jti는 인덱스에 남는다 — 만료는 SREM을 부르지 않는다. 인덱스 원소 수를
+		// 그대로 돌려주면 그 값이 재사용 감지 로그의 revoked=로 나가 "그때 살아 있던 세션 수"로
+		// 읽히는데, 실제보다 크다. 장애를 조사하는 사람이 그 숫자로 판단한다.
+		long memberId = 90_007L;
+		store.save(memberId, "jti-expired", TTL);
+		store.save(memberId, "jti-alive", TTL);
+		redisTemplate.delete(tokenKey(memberId, "jti-expired"));
+
+		assertThat(store.revokeAll(memberId))
+			.as("인덱스에 남은 jti가 아니라 실제로 지운 토큰을 세야 한다")
+			.isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("회전은 옛 토큰을 소비하고 새 토큰을 남긴다")
+	void rotateConsumesTheOldTokenAndKeepsTheNewOne() {
+		long memberId = 90_008L;
+		store.save(memberId, "jti-old", TTL);
+
+		assertThat(store.rotate(memberId, "jti-old", "jti-new", TTL)).isTrue();
+
+		assertThat(redisTemplate.hasKey(tokenKey(memberId, "jti-old"))).isFalse();
+		assertThat(redisTemplate.hasKey(tokenKey(memberId, "jti-new"))).isTrue();
+		assertThat(store.revokeAll(memberId))
+			.as("옛 jti가 인덱스에 남아 있으면 2가 된다")
+			.isEqualTo(1);
+	}
+
+	@Test
+	@DisplayName("이미 소비된 토큰으로 회전하면 새 토큰을 남기지 않는다")
+	void rotateOnConsumedTokenWritesNothing() {
+		// 실패한 회전이 새 토큰을 남기면, 뒤이어 도는 폐기가 그것을 보지 못해 살아남는다.
+		long memberId = 90_009L;
+
+		assertThat(store.rotate(memberId, "jti-gone", "jti-would-be", TTL)).isFalse();
+
+		assertThat(redisTemplate.hasKey(tokenKey(memberId, "jti-would-be"))).isFalse();
+		assertThat(store.revokeAll(memberId)).isZero();
+	}
+
 	private String tokenKey(long memberId, String tokenId) {
 		return "auth:refresh:" + memberId + ":" + tokenId;
 	}

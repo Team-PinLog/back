@@ -251,6 +251,26 @@ class AuthTokenContractTests extends SocialLoginTestSupport {
 	}
 
 	@Test
+	@DisplayName("재발급이 401이면 인증 쿠키를 만료시킨다")
+	void failedRefreshExpiresAuthCookies() throws Exception {
+		// 실패 경로가 쿠키를 남기면 클라이언트는 죽은 Refresh를 계속 보낸다. 그때마다 재사용으로
+		// 판정돼 폐기가 다시 도므로, 그 사이 새로 로그인한 세션까지 끊긴다. logged_in도 7일짜리로
+		// 남아 UI는 계속 로그인 상태를 가리킨다 — 빠져나갈 상태 전이가 없어진다.
+		//
+		// 로그아웃과 같은 정리를 하지만 의미는 다르다. 로그아웃은 사용자가 끝낸 것이고, 이쪽은
+		// 서버가 세션이 끝났음을 통보하는 것이다. 클라이언트가 할 일은 같으므로 결과도 같다.
+		String refreshToken = cookieValue(login("failed-refresh-clears-cookies"), REFRESH_COOKIE);
+		assertThat(postWithCsrf("/api/core/v1/auth/logout", refreshToken).statusCode()).isEqualTo(204);
+
+		HttpResponse<String> failed = postWithCsrf("/api/core/v1/auth/refresh", refreshToken);
+
+		assertThat(failed.statusCode()).isEqualTo(401);
+		assertThat(setCookie(failed, ACCESS_COOKIE)).contains("Max-Age=0");
+		assertThat(setCookie(failed, REFRESH_COOKIE)).contains("Max-Age=0");
+		assertThat(setCookie(failed, LOGGED_IN_COOKIE)).contains("Max-Age=0");
+	}
+
+	@Test
 	@DisplayName("Access 쿠키를 Refresh 자리에 넣어도 재발급되지 않는다")
 	void accessTokenIsNotAcceptedAsRefreshToken() throws Exception {
 		// 두 토큰의 용도를 구분하지 않으면 수명 30분짜리가 7일짜리 권한을 갖는다.
