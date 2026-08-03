@@ -148,7 +148,7 @@ class FeedServiceTests {
 	 * code를 표시값 쪽에서 못 찾는 상태가 실제로 만들어진다.
 	 */
 	@Test
-	void aCodeWithoutAResolvableDisplayNameIsDroppedRatherThanShownAsCode() {
+	void codeWithoutResolvableDisplayNameIsDroppedRatherThanShownAsCode() {
 		stubCandidateWithKeywords(Map.of("WALK", 0.5, "RETIRED", 0.5));
 		when(keywordRepository.findPublicDisplayNames(any())).thenReturn(Map.of("WALK", "산책"));
 
