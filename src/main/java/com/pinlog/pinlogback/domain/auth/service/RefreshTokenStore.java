@@ -23,9 +23,9 @@ import org.springframework.stereotype.Component;
  * 독립시키는 대신 <b>회원 단위로 모아 볼 수단을 없애는데</b>, {@link #revokeAll}이 그 목록을
  * 필요로 한다. {@code SCAN}으로 대신하지 않는 이유는 BD-35에 있다.
  *
- * <p><b>발급과 폐기는 Lua로 원자적으로 실행한다.</b> 여러 왕복으로 나누면 그 사이에 다른 요청이
- * 끼어들어 "인덱스에 없는 유효 토큰"이나 "TTL 없는 인덱스"가 생기고, 둘 다 폐기를 무력화한다.
- * Redis는 스크립트 하나를 통째로 원자 실행하므로 중간 상태가 관측되지 않는다.
+ * <p><b>발급·회전·폐기는 Lua로 원자적으로 실행한다.</b> 여러 왕복으로 나누면 그 사이에 다른 요청이
+ * 끼어들어 "인덱스에 없는 유효 토큰", "TTL 없는 인덱스", "폐기를 넘긴 토큰"이 생기고, 셋 다 폐기를
+ * 무력화한다. Redis는 스크립트 하나를 통째로 원자 실행하므로 중간 상태가 관측되지 않는다.
  *
  * <p>키를 {@code ARGV}로 조립하는 곳이 있어(폐기) Redis Cluster 전제와는 맞지 않는다. 지금 운영은
  * 단일 인스턴스이며, 클러스터로 가면 이 스크립트를 먼저 손봐야 한다.
@@ -55,7 +55,35 @@ public class RefreshTokenStore {
 		""", Long.class);
 
 	/**
-	 * 인덱스를 읽어 토큰 키를 지우고 인덱스까지 지운다. 폐기한 토큰 수를 돌려준다.
+	 * 옛 토큰을 소비하고 새 토큰을 <b>한 번에</b> 저장한다. 회전의 성패가 곧 반환값이다.
+	 *
+	 * <p>{@link #consume}과 {@link #save}로 나눠 부르면 그 사이에 {@link #revokeAll}이 끼어들 수
+	 * 있고, 그러면 <b>폐기가 끝난 뒤에 저장이 성립해</b> 새 토큰이 살아남는다. 재사용 감지는 동시
+	 * 회전이 트리거이므로, 이 창은 하필 폐기가 가장 필요한 순간에 열린다 — BD-35가 약속한 "전 세션
+	 * 폐기"가 그 순간에만 지켜지지 않는다. Redis가 스크립트를 통째로 실행하므로 이렇게 두면
+	 * {@link #REVOKE_ALL}과 서로 끼어들지 못한다.
+	 *
+	 * <p>옛 키 삭제가 곧 검사다({@link #consume}과 같은 이유). 0이면 이미 회전·폐기된 토큰이므로
+	 * <b>아무것도 쓰지 않고</b> 돌아간다 — 실패한 회전이 새 토큰을 남기면 그것이 다음 사이클까지
+	 * 살아남는다.
+	 */
+	private static final RedisScript<Long> ROTATE = RedisScript.of("""
+		if redis.call('DEL', KEYS[1]) == 0 then
+			return 0
+		end
+		redis.call('SREM', KEYS[3], ARGV[1])
+		redis.call('SET', KEYS[2], '1', 'EX', ARGV[3])
+		redis.call('SADD', KEYS[3], ARGV[2])
+		redis.call('EXPIRE', KEYS[3], ARGV[3])
+		return 1
+		""", Long.class);
+
+	/**
+	 * 인덱스를 읽어 토큰 키를 지우고 인덱스까지 지운다. <b>실제로 지워진</b> 토큰 수를 돌려준다.
+	 *
+	 * <p>인덱스 원소 수를 그대로 돌려주지 않는 이유: TTL로 만료된 토큰의 {@code jti}는 인덱스에
+	 * 남는다(만료는 {@code SREM}을 부르지 않는다). 원소 수를 세면 이미 없는 토큰까지 포함되는데,
+	 * 이 값은 재사용 감지 로그의 {@code revoked=}로 나가 <b>"그때 살아 있던 세션 수"로 읽힌다.</b>
 	 *
 	 * <p>읽기와 삭제를 나누면 그 사이의 정상 회전 한 건이 <b>영구히 폐기되지 않는 토큰</b>을
 	 * 만든다 — 새 {@code jti}는 이미 읽은 목록에 없어 삭제를 피하고, 뒤따르는 인덱스 삭제가
@@ -70,11 +98,12 @@ public class RefreshTokenStore {
 	 */
 	private static final RedisScript<Long> REVOKE_ALL = RedisScript.of("""
 		local ids = redis.call('SMEMBERS', KEYS[1])
+		local revoked = 0
 		for i = 1, #ids do
-			redis.call('DEL', ARGV[1] .. ids[i])
+			revoked = revoked + redis.call('DEL', ARGV[1] .. ids[i])
 		end
 		redis.call('DEL', KEYS[1])
-		return #ids
+		return revoked
 		""", Long.class);
 
 	private final StringRedisTemplate redisTemplate;
@@ -88,6 +117,24 @@ public class RefreshTokenStore {
 			SAVE,
 			List.of(tokenKey(memberId, tokenId), indexKey(memberId)),
 			tokenId, String.valueOf(Math.max(1, ttl.toSeconds())));
+	}
+
+	/**
+	 * 소비와 발급을 한 연산으로 처리한다. 회전은 이 메서드로만 한다 — {@link #consume} 뒤에
+	 * {@link #save}를 부르면 그 사이로 폐기가 지나간다({@link #ROTATE}).
+	 *
+	 * @return 옛 토큰이 유효해 회전에 성공하면 {@code true}. 이미 회전·폐기됐으면 {@code false}이고
+	 *         이때 새 토큰은 저장되지 않는다
+	 */
+	public boolean rotate(Long memberId, String consumedTokenId, String issuedTokenId, Duration ttl) {
+		Long rotated = redisTemplate.execute(
+			ROTATE,
+			List.of(
+				tokenKey(memberId, consumedTokenId),
+				tokenKey(memberId, issuedTokenId),
+				indexKey(memberId)),
+			consumedTokenId, issuedTokenId, String.valueOf(Math.max(1, ttl.toSeconds())));
+		return Long.valueOf(1L).equals(rotated);
 	}
 
 	/**
