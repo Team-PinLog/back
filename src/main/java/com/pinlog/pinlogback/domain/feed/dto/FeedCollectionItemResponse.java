@@ -18,8 +18,9 @@ import com.pinlog.pinlogback.domain.feed.repository.FeedCollectionCard;
  * @param keywords 공개 가능한 {@code PUBLIC} Keyword의 {@code keyword_preset.display_name}이다.
  *                 <b>{@code code}는 내부 식별용이라 노출하지 않는다</b>(08 §6.1 — 모든 Keyword 응답
  *                 공통). 점수 계산은 {@code code}로 하고 여기서만 표시값으로 옮긴다
- *                 (S15P11A705-252). AI 처리가 끝나지 않았으면 빈 배열이며 <b>오류가 아니다</b>
- *                 (feed-recommendation 3.7)
+ *                 (S15P11A705-252). <b>최대 {@link #KEYWORD_LIMIT}개</b>이며 선정·정렬 규칙은
+ *                 feed-recommendation 3.7.1이다. AI 처리가 끝나지 않았으면 빈 배열이며
+ *                 <b>오류가 아니다</b>(feed-recommendation 3.7)
  * @param createdAt Collection 생성 시각
  */
 public record FeedCollectionItemResponse(
@@ -30,6 +31,20 @@ public record FeedCollectionItemResponse(
 	List<String> keywords,
 	Instant createdAt
 ) {
+
+	/**
+	 * 한 카드에 실을 Keyword 상한(S15P11A705-278, P46).
+	 *
+	 * <p><b>설정값이 아니라 상수다.</b> 프론트가 이 수로 카드 레이아웃을 확정하므로 배포마다
+	 * 달라지면 계약이 아니다. {@code feed-scoring.md}의 튜닝값들과는 층이 다르다 — 그쪽은 응답
+	 * 계약에 드러나지 않는 내부 랭킹 거동이라 재배포 없이 움직여도 된다.
+	 *
+	 * <p>4인 근거는 프리셋의 <b>축 수</b>다. {@code COMPANION}(누구와) · {@code ACTIVITY}(무엇을) ·
+	 * {@code ATMOSPHERE}(어떤 분위기) · {@code SITUATION}(어떤 상황) 넷을 한 칸씩 채우면 카드가 한
+	 * 문장으로 읽힌다. <b>프리셋의 축이 늘거나 줄면 이 수도 함께 움직인다</b> — 그때 프론트
+	 * 레이아웃과 함께 다시 정한다.
+	 */
+	public static final int KEYWORD_LIMIT = 4;
 
 	public FeedCollectionItemResponse {
 		keywords = List.copyOf(keywords);

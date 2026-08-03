@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -22,6 +21,7 @@ import com.pinlog.pinlogback.domain.feed.repository.FeedCandidateRepository;
 import com.pinlog.pinlogback.domain.feed.repository.FeedCollectionCard;
 import com.pinlog.pinlogback.domain.feed.repository.FeedEventRepository;
 import com.pinlog.pinlogback.domain.feed.repository.FeedEventRepository.FeedEventRow;
+import com.pinlog.pinlogback.domain.feed.repository.FeedKeywordLabel;
 import com.pinlog.pinlogback.domain.feed.repository.FeedKeywordRepository;
 import com.pinlog.pinlogback.global.exception.InvalidRequestException;
 import com.pinlog.pinlogback.global.response.CursorPage;
@@ -140,22 +140,22 @@ public class FeedService {
 
 		List<ScoredCandidate> scored = scorer.score(
 			candidates, profile, keywords, impressions, coldStart, Instant.now());
-		return new RankedFeed(ranker.arrange(scored, coldStart), keywords, displayNamesOf(keywords));
+		return new RankedFeed(ranker.arrange(scored, coldStart), keywords, labelsOf(keywords));
 	}
 
 	/**
-	 * 후보 전체의 code를 모아 표시값을 <b>한 번에</b> 조회한다(feed-tests N8). 서로 다른 code는
+	 * 후보 전체의 code를 모아 표시 정보를 <b>한 번에</b> 조회한다(feed-tests N8). 서로 다른 code는
 	 * 프리셋 수(27)를 넘지 않으므로 후보가 200건이어도 IN 절 크기가 그만큼 커지지 않는다.
 	 *
 	 * <p>응답에 실릴 항목만 골라 조회하지 않는 것은 의도적이다 — 재검증 탈락분을 다음 후보로
 	 * 채우는 루프가 응답 조립 중에 새 id를 끌어오므로, 그 시점에 조회하면 페이지를 채울 때마다
 	 * 왕복이 늘어난다.
 	 */
-	private Map<String, String> displayNamesOf(Map<Long, Map<String, Double>> keywords) {
+	private Map<String, FeedKeywordLabel> labelsOf(Map<Long, Map<String, Double>> keywords) {
 		Set<String> codes = keywords.values().stream()
 			.flatMap(weights -> weights.keySet().stream())
 			.collect(Collectors.toSet());
-		return keywordRepository.findPublicDisplayNames(codes);
+		return keywordRepository.findPublicKeywordLabels(codes);
 	}
 
 	/**
@@ -221,27 +221,28 @@ public class FeedService {
 	 * 것과 같은 값이므로, 응답에만 다른 가시성 필터가 적용될 경로가 없다. 표시값 조회는 그
 	 * 결과에서 <b>파생</b>될 뿐 대상을 새로 고르지 않는다.
 	 *
-	 * @param displayNames Keyword {@code code} → {@code display_name}. 점수 계산은 {@code code}로
-	 *     하고 옮기는 것은 여기 한 곳뿐이다(08 §6.1, S15P11A705-252)
+	 * @param labels Keyword {@code code} → 표시 정보. 점수 계산은 {@code code}로 하고 옮기는 것은
+	 *     여기 한 곳뿐이다(08 §6.1, S15P11A705-252)
 	 */
 	private record RankedFeed(List<Long> order, Map<Long, Map<String, Double>> keywords,
-		Map<String, String> displayNames) {
+		Map<String, FeedKeywordLabel> labels) {
 
 		/**
-		 * 응답에 실을 Keyword. Keyword가 없으면 빈 배열이며 오류가 아니다
-		 * (feed-recommendation 3.7).
+		 * 응답에 실을 Keyword. 최대 {@link FeedCollectionItemResponse#KEYWORD_LIMIT}개이며 Keyword가
+		 * 없으면 빈 배열이고 오류가 아니다(feed-recommendation 3.7).
 		 *
 		 * <p>표시값을 못 찾은 {@code code}는 <b>버린다</b>. {@code code}로 대신 채우면 그 폴백이 곧
 		 * 08 §6.1 위반이므로, Preset이 도중에 폐기·차단됐을 때의 실패는 "영문이 뜬다"가 아니라
-		 * "덜 뜬다"여야 한다. 정렬은 표시값 기준이다 — 화면에 보이는 순서가 정렬 근거여야 한다.
+		 * "덜 뜬다"여야 한다.
+		 *
+		 * <p>정렬 기준은 {@link FeedKeywordSelector}가 갖는다 — <b>Collection 내재 기준이지 보는
+		 * 사람 기준이 아니다.</b> 여기서 추천 점수를 끌어다 쓰면 같은 Collection이 사람마다 다른
+		 * Keyword를 보여주고, 남의 카드에 내 Profile이 비친다(P46).
 		 */
 		List<String> keywordsOf(FeedCollectionCard card) {
-			return keywords.getOrDefault(card.collectionId(), Map.of()).keySet().stream()
-				.map(displayNames::get)
-				.filter(Objects::nonNull)
-				.distinct()
-				.sorted()
-				.toList();
+			return FeedKeywordSelector.select(
+				keywords.getOrDefault(card.collectionId(), Map.of()), labels,
+				FeedCollectionItemResponse.KEYWORD_LIMIT);
 		}
 	}
 }

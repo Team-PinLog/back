@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 
+import com.pinlog.pinlogback.domain.feed.repository.FeedKeywordLabel;
 import com.pinlog.pinlogback.domain.feed.repository.FeedKeywordRepository;
 
 import tools.jackson.databind.JsonNode;
@@ -117,18 +118,33 @@ class FeedKeywordDisplayNameTests extends FeedFixtures {
 		String blockedCode = uniqueCode("BLK");
 		String inactiveCode = uniqueCode("OFF");
 
-		insertPreset(publicCode, publicName, "PUBLIC", true);
+		int publicId = insertPreset(publicCode, publicName, "ATMOSPHERE", "PUBLIC", true);
 		insertPreset(privateCode, uniqueDisplayName("본인만"), "PRIVATE_ONLY", true);
 		insertPreset(blockedCode, uniqueDisplayName("차단"), "BLOCKED", true);
 		insertPreset(inactiveCode, uniqueDisplayName("폐기"), "PUBLIC", false);
 
-		assertThat(keywordRepository.findPublicDisplayNames(
+		assertThat(keywordRepository.findPublicKeywordLabels(
 			List.of(publicCode, privateCode, blockedCode, inactiveCode)))
-			.containsExactly(Map.entry(publicCode, publicName));
+			.containsExactly(Map.entry(publicCode,
+				new FeedKeywordLabel(publicId, publicName, "ATMOSPHERE")));
+	}
+
+	/**
+	 * 표시값과 함께 {@code id}·{@code category}를 들고 오는 것은 <b>표시 정렬이 그 둘을 쓰기
+	 * 때문이다</b>(feed-recommendation 3.7.1). 축을 따로 조회하면 그만큼 왕복이 는다.
+	 */
+	@Test
+	void theLabelCarriesTheSortingKeysNotJustTheLabel() {
+		String code = uniqueCode("AXIS");
+		String name = uniqueDisplayName("동행");
+		int presetId = insertPreset(code, name, "COMPANION", "PUBLIC", true);
+
+		assertThat(keywordRepository.findPublicKeywordLabels(List.of(code)).get(code))
+			.isEqualTo(new FeedKeywordLabel(presetId, name, "COMPANION"));
 	}
 
 	@Test
-	void resolvingDisplayNamesForNoCodesSkipsTheQuery() {
-		assertThat(keywordRepository.findPublicDisplayNames(List.of())).isEmpty();
+	void resolvingLabelsForNoCodesSkipsTheQuery() {
+		assertThat(keywordRepository.findPublicKeywordLabels(List.of())).isEmpty();
 	}
 }
