@@ -274,6 +274,33 @@ class CollectionApiTests extends IntegrationContainerSupport {
 			.andExpect(status().isNotFound());
 	}
 
+	/**
+	 * {@code CollectionService.requireAllOwnedActiveRecords}가 addRecords 경로에서도 강제되는지
+	 * 고정한다. 이 검사가 뚫리면 남의 Record가 내 Collection에 링크되고,
+	 * {@code CollectionRecordRepository.findByCollectionIdIn}의 javadoc이 근거로 삼는
+	 * "Collection은 소유자 자기 Record만 담는다"는 전제가 깨져 탈퇴 연쇄 삭제(6.9)가
+	 * 그 Record를 남의 Collection에 남긴다.
+	 */
+	@Test
+	void addRecordsWithSomeoneElsesRecordIsHiddenAs404() throws Exception {
+		long owner = newMemberId();
+		long other = newMemberId();
+		long collectionId = createCollection(owner, "본인 컬렉션", List.of(newRecord(owner, "col-add-3a")));
+		long mine = newRecord(owner, "col-add-3b");
+		long notMine = newRecord(other, "col-add-3c");
+
+		mockMvc.perform(post("/v1/collections/{id}/records", collectionId).with(loginAs(owner))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"recordIds\": [" + mine + ", " + notMine + "]}"))
+			.andExpect(status().isNotFound())
+			.andExpect(jsonPath("$.error.code").value("RESOURCE_NOT_FOUND"));
+
+		long linkRows = jdbcTemplate.queryForObject(
+			"SELECT count(*) FROM core.collection_record"
+				+ " WHERE collection_id = ? AND deleted_at IS NULL", Long.class, collectionId);
+		assertThat(linkRows).isEqualTo(1);
+	}
+
 	private long newMemberId() {
 		return memberRepository.save(Member.create()).getId();
 	}
