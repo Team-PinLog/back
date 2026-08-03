@@ -74,7 +74,39 @@ openssl로 미리 만들어 `artifacts/tokens.json`으로 넘긴다.
 4. **검색 품질** — 대량 컨텍스트는 템플릿 조합이고 임베딩은 프리셋 주변에 뿌린 값이다.
    응답 형태와 지연만 본다
 5. **절대 성능 수치** — 로컬 Windows 단일 인스턴스다. 회귀 비교와 구조적 병목 탐지에만 쓴다
-6. **부하 프로파일** — 2단계 범위다. 이 하네스는 1 VU 1 iteration이다
+6. **자연어 검색 부하** — 질의마다 OpenAI 임베딩 실 호출이 나가는 AI 파트 소유 자원이라
+   부하 범위에서 뺐다. 검색 부하는 담당자 합의 후 별도 티켓으로 진행한다
+
+## 부하 프로파일 (S15P11A705-239)
+
+기능 전수 검증과 별개로, 프로파일 4종 × 계열을 돌려 병목을 관측한다.
+
+```bash
+bash tools/run-load.sh <read|write|mixed> <smoke|average|stress|spike>
+bash tools/run-load.sh all     # 유효 조합 10개 전부 (약 70~90분)
+```
+
+| 프로파일 | 모양 | 용도 |
+| --- | --- | --- |
+| smoke | 1 VU × 1분 | 시나리오 회귀 확인 |
+| average | 20 VU 지속 5분 | 평상 부하 기준 |
+| stress | 20→100 VU 계단 8분 | 포화 지점 탐색 |
+| spike | 5→150→5 VU 4분 | 급증 회복력 |
+
+- **읽기**(`load-read.js`): VU를 지도·목록·상세·피드에 고정, kind 태그로 부류별 지연 분리.
+  지도 VU 절반은 heavy 회원(마커 697개)이다.
+- **쓰기**(`load-write.js`): 처리량(VU마다 전용 회원 — 사전 SQL 생성)과 경합(VU 10 고정이
+  한 공유 Record의 Context를 몰아침 — BD-11 직렬화 측정)을 태그로 가른다. 삭제는 Collection
+  먼저, Record force 나중 — 반대 순서는 연쇄 탓에 가짜 404가 오류율을 부풀린다.
+- **혼합**(`load-mixed.js`): 가중 여정(피드40·지도20·상세25·쓰기15 — 출시 전 추정치).
+  average·stress 전용.
+- 실행마다 전역 불변식 스윕을 전후로 돌린다 — back 위반 수가 움직이면 그 실행은 실패다.
+- 산출물은 `artifacts/load/<계열>-<프로파일>/`(summary.json·metrics.csv·k6.log·invariants-*),
+  표 생성은 `PYTHONUTF8=1 python tools/collate-load.py artifacts/load`.
+- 결과와 병목 판정은 `docs/backend/implements/BI-37`에 있다.
+
+부하 실행은 `ai.context_ai_state` 고아를 **대량으로** 남긴다(쓰기 여정의 context churn).
+알려진 잔여물 절 참고 — 정리 방식은 AI 파트와 공동 결정 사안이다.
 
 ## 알려진 잔여물
 
