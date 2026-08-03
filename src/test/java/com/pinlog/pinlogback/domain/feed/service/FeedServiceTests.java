@@ -32,6 +32,7 @@ import com.pinlog.pinlogback.domain.feed.entity.FeedEventType;
 import com.pinlog.pinlogback.domain.feed.repository.FeedCandidateRepository;
 import com.pinlog.pinlogback.domain.feed.repository.FeedCollectionCard;
 import com.pinlog.pinlogback.domain.feed.repository.FeedEventRepository;
+import com.pinlog.pinlogback.domain.feed.repository.FeedKeywordLabel;
 import com.pinlog.pinlogback.domain.feed.repository.FeedKeywordRepository;
 import com.pinlog.pinlogback.global.exception.InvalidRequestException;
 
@@ -127,13 +128,15 @@ class FeedServiceTests {
 
 	/**
 	 * 응답의 {@code keywords}는 점수 계산에 쓴 {@code code}가 아니라 {@code display_name}이다
-	 * (08 §6.1). 정렬도 표시값 기준이다 — 화면에 보이는 순서가 곧 정렬 근거여야 한다.
+	 * (08 §6.1). 순서는 <b>표시값이 아니라 {@code preset.id}</b>가 정한다 — 규칙 자체는
+	 * {@code FeedKeywordSelectorTests}가 갖고, 여기서는 그 규칙이 응답까지 이어지는지만 본다.
 	 */
 	@Test
-	void responseKeywordsAreDisplayNamesSortedByTheDisplayedLabel() {
+	void responseKeywordsAreDisplayNamesOrderedByThePresetIdentity() {
 		stubCandidateWithKeywords(Map.of("WALK", 0.5, "COFFEE_CHAT", 0.5));
-		when(keywordRepository.findPublicDisplayNames(any()))
-			.thenReturn(Map.of("WALK", "산책", "COFFEE_CHAT", "카페"));
+		when(keywordRepository.findPublicKeywordLabels(any())).thenReturn(Map.of(
+			"WALK", new FeedKeywordLabel(201, "산책", "ACTIVITY"),
+			"COFFEE_CHAT", new FeedKeywordLabel(202, "카페", "ACTIVITY")));
 
 		FeedCollectionsResponse response = feedService.recommend(ME, null, null);
 
@@ -150,7 +153,8 @@ class FeedServiceTests {
 	@Test
 	void codeWithoutResolvableDisplayNameIsDroppedRatherThanShownAsCode() {
 		stubCandidateWithKeywords(Map.of("WALK", 0.5, "RETIRED", 0.5));
-		when(keywordRepository.findPublicDisplayNames(any())).thenReturn(Map.of("WALK", "산책"));
+		when(keywordRepository.findPublicKeywordLabels(any()))
+			.thenReturn(Map.of("WALK", new FeedKeywordLabel(201, "산책", "ACTIVITY")));
 
 		FeedCollectionsResponse response = feedService.recommend(ME, null, null);
 
@@ -158,7 +162,7 @@ class FeedServiceTests {
 	}
 
 	/**
-	 * 표시값 조회는 <b>요청당 한 번</b>이다. 항목마다 부르면 그대로 N+1이고, 프리셋이 27개뿐이라
+	 * 표시 정보 조회는 <b>요청당 한 번</b>이다. 항목마다 부르면 그대로 N+1이고, 프리셋이 27개뿐이라
 	 * 개발 데이터에서는 증상이 드러나지 않는다(feed-tests N8).
 	 */
 	@Test
@@ -172,13 +176,14 @@ class FeedServiceTests {
 		when(candidateRepository.findVerifiedCards(any())).thenReturn(List.of(
 			new FeedCollectionCard(7L, "책1", 3, Instant.now()),
 			new FeedCollectionCard(8L, "책2", 3, Instant.now())));
-		when(keywordRepository.findPublicDisplayNames(any()))
-			.thenReturn(Map.of("WALK", "산책", "COFFEE_CHAT", "카페"));
+		when(keywordRepository.findPublicKeywordLabels(any())).thenReturn(Map.of(
+			"WALK", new FeedKeywordLabel(201, "산책", "ACTIVITY"),
+			"COFFEE_CHAT", new FeedKeywordLabel(202, "카페", "ACTIVITY")));
 
 		FeedCollectionsResponse response = feedService.recommend(ME, null, null);
 
 		assertThat(response.items()).hasSize(2);
-		verify(keywordRepository, times(1)).findPublicDisplayNames(any());
+		verify(keywordRepository, times(1)).findPublicKeywordLabels(any());
 	}
 
 	/** E3 — IMPRESSION은 서버가 기록하는 값이므로 클라이언트가 보내면 400이다. */

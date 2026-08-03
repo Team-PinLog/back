@@ -35,6 +35,12 @@ abstract class FeedFixtures extends IntegrationContainerSupport {
 
 	protected static final String FEED_URL = "/v1/feed/collections";
 
+	/**
+	 * 축을 신경 쓰지 않는 테스트가 쓰는 category. 프리셋의 실제 네 축 중 하나를 골라 둔다 —
+	 * 없는 값을 넣으면 동점 규칙을 검증하는 테스트가 현실과 다른 전제 위에서 돌게 된다.
+	 */
+	private static final String DEFAULT_CATEGORY = "ATMOSPHERE";
+
 	protected final JsonMapper jsonMapper = JsonMapper.builder().build();
 
 	@Autowired
@@ -112,15 +118,34 @@ abstract class FeedFixtures extends IntegrationContainerSupport {
 	 * 이 테스트가 임베딩에 의존하지 않는다는 사실 자체가 경계의 증거다.
 	 */
 	protected int insertPreset(String code, String displayName, String visibility, boolean active) {
+		return insertPreset(code, displayName, DEFAULT_CATEGORY, visibility, active);
+	}
+
+	/**
+	 * category까지 정하는 Preset. 표시 Keyword 정렬의 <b>동점 규칙</b>이 축(category) 내 순위를
+	 * 쓰므로(P46, feed-recommendation 3.7.1) 축을 가리는 테스트는 이 오버로드를 쓴다.
+	 * <b>1순위는 빈도이며 축은 그것을 뒤집지 않는다.</b>
+	 *
+	 * <p>{@code id}는 {@code max(id) + 1}이라 <b>삽입 순서가 곧 id 순서</b>다 — 동점 규칙이
+	 * {@code preset.id} 오름차순이므로 테스트가 기대 순서를 삽입 순서로 적을 수 있다.
+	 *
+	 * <p>{@code embedding}은 {@code NOT NULL}이지만 Feed는 벡터를 쓰지 않으므로 0 벡터로 채운다 —
+	 * 이 테스트가 임베딩에 의존하지 않는다는 사실 자체가 경계의 증거다.
+	 *
+	 * @param category {@code COMPANION}(누구와) · {@code ACTIVITY}(무엇을) ·
+	 *     {@code ATMOSPHERE}(어떤 분위기) · {@code SITUATION}(어떤 상황)
+	 */
+	protected int insertPreset(String code, String displayName, String category, String visibility,
+		boolean active) {
 		Integer id = jdbcTemplate.queryForObject(
 			"SELECT coalesce(max(id), 0) + 1 FROM ai.keyword_preset", Integer.class);
 		jdbcTemplate.update("""
 			INSERT INTO ai.keyword_preset
 			\t(id, code, display_name, category, description, examples, embedding,
 			\t embedding_profile, visibility, is_active, version)
-			VALUES (?, ?, ?, 'MOOD', '테스트 프리셋', ARRAY['예시'],
+			VALUES (?, ?, ?, ?, '테스트 프리셋', ARRAY['예시'],
 			\tarray_fill(0::real, ARRAY[1536])::vector, 'test-profile', ?, ?, 1)
-			""", id, code, displayName, visibility, active);
+			""", id, code, displayName, category, visibility, active);
 		return id;
 	}
 
