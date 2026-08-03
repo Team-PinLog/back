@@ -43,11 +43,19 @@ public class FollowController {
 		return followService.follow(me.memberId(), request.collectionId());
 	}
 
+	/**
+	 * {@code collectionSize}를 주면 항목마다 그 책장 Collection의 첫 페이지가 실린다(명세 9.2,
+	 * S15P11A705-244). 없으면 기존 응답 그대로다 — 항목 타입 자체가 갈리므로 반환은 와일드카드다.
+	 */
 	@GetMapping
-	public CursorPage<FollowResponse> listMine(@LoginMember MemberPrincipal me,
+	public CursorPage<?> listMine(@LoginMember MemberPrincipal me,
 		@RequestParam(required = false) String cursor,
-		@RequestParam(required = false) Integer size) {
-		return followService.listMine(me.memberId(), cursor, size);
+		@RequestParam(required = false) Integer size,
+		@RequestParam(required = false) Integer collectionSize) {
+		if (collectionSize == null) {
+			return followService.listMine(me.memberId(), cursor, size);
+		}
+		return followService.listMineWithCollections(me.memberId(), cursor, size, collectionSize);
 	}
 
 	@GetMapping("/{followId}/collections")

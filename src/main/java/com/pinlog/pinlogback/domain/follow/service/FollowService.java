@@ -12,8 +12,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.pinlog.pinlogback.domain.ai.repository.ContextKeywordRepository;
 import com.pinlog.pinlogback.domain.collection.entity.Collection;
+import com.pinlog.pinlogback.domain.collection.repository.CollectionFirstPageRepository;
+import com.pinlog.pinlogback.domain.collection.repository.CollectionFirstPageRepository.PublishedCollectionRow;
 import com.pinlog.pinlogback.domain.collection.repository.CollectionRepository;
 import com.pinlog.pinlogback.domain.follow.dto.FollowResponse;
+import com.pinlog.pinlogback.domain.follow.dto.FollowWithCollectionsResponse;
 import com.pinlog.pinlogback.domain.follow.dto.FollowedCollectionResponse;
 import com.pinlog.pinlogback.domain.follow.entity.Follow;
 import com.pinlog.pinlogback.domain.follow.exception.DuplicateFollowException;
@@ -40,13 +43,16 @@ public class FollowService {
 
 	private final FollowRepository followRepository;
 	private final CollectionRepository collectionRepository;
+	private final CollectionFirstPageRepository collectionFirstPageRepository;
 	private final MemberRepository memberRepository;
 	private final ContextKeywordRepository contextKeywordRepository;
 
 	public FollowService(FollowRepository followRepository, CollectionRepository collectionRepository,
-		MemberRepository memberRepository, ContextKeywordRepository contextKeywordRepository) {
+		CollectionFirstPageRepository collectionFirstPageRepository, MemberRepository memberRepository,
+		ContextKeywordRepository contextKeywordRepository) {
 		this.followRepository = followRepository;
 		this.collectionRepository = collectionRepository;
+		this.collectionFirstPageRepository = collectionFirstPageRepository;
 		this.memberRepository = memberRepository;
 		this.contextKeywordRepository = contextKeywordRepository;
 	}
@@ -102,15 +108,7 @@ public class FollowService {
 	@Transactional(readOnly = true)
 	public CursorPage<FollowResponse> listMine(Long memberId, String cursor, Integer size) {
 		int pageSize = CursorPage.normalizeSize(size);
-		Pageable probe = PageRequest.of(0, pageSize + 1);
-		List<Follow> rows;
-		if (cursor == null || cursor.isBlank()) {
-			rows = followRepository.findFirstPageByFollowerMemberId(memberId, probe);
-		} else {
-			Cursor decoded = Cursor.decode(cursor);
-			rows = followRepository.findPageByFollowerMemberIdAfter(
-				memberId, decoded.sortKeyAsInstant(), decoded.id(), probe);
-		}
+		List<Follow> rows = followProbe(memberId, cursor, pageSize);
 		boolean hasNext = rows.size() > pageSize;
 		List<Follow> page = hasNext ? rows.subList(0, pageSize) : rows;
 		List<FollowResponse> items = page.stream().map(FollowResponse::from).toList();
@@ -119,6 +117,73 @@ public class FollowService {
 		}
 		Follow last = page.get(page.size() - 1);
 		return CursorPage.of(items, Cursor.encode(last.getCreatedAt(), last.getId()));
+	}
+
+	/**
+	 * 팔로우 목록에 책장별 Collection 첫 페이지 동봉(API 명세 9.2, S15P11A705-244). 팔로우 축은
+	 * {@link #listMine}과 같은 질의를 타고, Collection은 페이지 전체를 창 함수 한 번으로 모은다 —
+	 * 책장마다 9.3을 반복 호출하던 것을 요청 1회로 줄이는 것이 이 메서드의 존재 이유라, 서버가
+	 * 책장 수만큼 질의하면 자리만 옮긴 N+1이다.
+	 *
+	 * <p>{@code collectionSize} 보정은 {@code size}와 같은 {@link CursorPage#normalizeSize} 하나를
+	 * 쓴다 — 서버 방어 상한의 답은 하나라는 규약(S15P11A705-117)이다.
+	 */
+	@Transactional(readOnly = true)
+	public CursorPage<FollowWithCollectionsResponse> listMineWithCollections(Long memberId, String cursor,
+		Integer size, Integer collectionSize) {
+		int pageSize = CursorPage.normalizeSize(size);
+		int collectionPageSize = CursorPage.normalizeSize(collectionSize);
+		List<Follow> rows = followProbe(memberId, cursor, pageSize);
+		boolean hasNext = rows.size() > pageSize;
+		List<Follow> page = hasNext ? rows.subList(0, pageSize) : rows;
+		Map<Long, List<PublishedCollectionRow>> shelves = collectionFirstPageRepository.findPublishedFirstPages(
+			page.stream().map(Follow::getFolloweeMemberId).toList(), collectionPageSize + 1);
+		Map<Long, List<String>> keywords = contextKeywordRepository.findCollectionKeywordsPublic(
+			shelves.values().stream()
+				.flatMap(shelf -> shelf.stream().limit(collectionPageSize))
+				.map(PublishedCollectionRow::collectionId)
+				.toList());
+		List<FollowWithCollectionsResponse> items = page.stream()
+			.map(follow -> new FollowWithCollectionsResponse(
+				follow.getId(), follow.getDisplayName(), follow.getCreatedAt(),
+				collectionFirstPage(
+					shelves.getOrDefault(follow.getFolloweeMemberId(), List.of()),
+					collectionPageSize, keywords)))
+			.toList();
+		if (!hasNext) {
+			return CursorPage.last(items);
+		}
+		Follow last = page.get(page.size() - 1);
+		return CursorPage.of(items, Cursor.encode(last.getCreatedAt(), last.getId()));
+	}
+
+	/**
+	 * 한 책장의 초과 행 판정과 커서 발급. 커서는 마지막으로 <b>실린</b> 항목을 가리켜야
+	 * 9.3이 그다음부터 이어진다 — 초과 행을 가리키면 그 행이 응답에서 빠진 채 건너뛰어진다.
+	 */
+	private CursorPage<FollowedCollectionResponse> collectionFirstPage(List<PublishedCollectionRow> probeRows,
+		int pageSize, Map<Long, List<String>> keywords) {
+		boolean hasNext = probeRows.size() > pageSize;
+		List<PublishedCollectionRow> page = hasNext ? probeRows.subList(0, pageSize) : probeRows;
+		List<FollowedCollectionResponse> items = page.stream()
+			.map(row -> new FollowedCollectionResponse(row.collectionId(), row.title(), row.recordCount(),
+				keywords.getOrDefault(row.collectionId(), List.of()), row.createdAt()))
+			.toList();
+		if (!hasNext) {
+			return CursorPage.last(items);
+		}
+		PublishedCollectionRow last = page.get(page.size() - 1);
+		return CursorPage.of(items, Cursor.encode(last.createdAt(), last.collectionId()));
+	}
+
+	private List<Follow> followProbe(Long memberId, String cursor, int pageSize) {
+		Pageable probe = PageRequest.of(0, pageSize + 1);
+		if (cursor == null || cursor.isBlank()) {
+			return followRepository.findFirstPageByFollowerMemberId(memberId, probe);
+		}
+		Cursor decoded = Cursor.decode(cursor);
+		return followRepository.findPageByFollowerMemberIdAfter(
+			memberId, decoded.sortKeyAsInstant(), decoded.id(), probe);
 	}
 
 	/**
