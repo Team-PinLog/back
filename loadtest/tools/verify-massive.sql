@@ -83,23 +83,36 @@ SELECT 6, '통계: 대상 테이블 pg_stats 존재',
           AND tablename IN ('member','place','record','context','collection',
                             'collection_record','follow'));
 
+-- 정합 검사는 **벤치 생성분에 한정한다.** 기존 시드에는 알려진 기준선 위반이 있고
+-- (빈 Collection 137건 등, BI-33에서 시드 생성기 산물로 삼분류 완료), 그걸 여기서 다시
+-- 세면 생성기 결함과 구분되지 않는다. 전역 기준선은 verify-invariants.sql 소관이다.
+CREATE TEMP TABLE bench_member_id AS
+SELECT DISTINCT member_id FROM core.social_account
+WHERE provider_user_id LIKE 'BENCH-%';
+CREATE INDEX ON bench_member_id (member_id);
+ANALYZE bench_member_id;
+
 -- [5] 정합: record_count = 활성 링크 수 (BD-20). 벤치 컬렉션은 삭제 행이 없으므로 전수 일치해야 한다.
 INSERT INTO verify_result
-SELECT 7, '정합: collection.record_count = 활성 링크 수 (BD-20)',
+SELECT 7, '정합(벤치): collection.record_count = 활성 링크 수 (BD-20)',
        NOT EXISTS (
            SELECT 1
            FROM core.collection c
            LEFT JOIN LATERAL (
                SELECT count(*) AS links FROM core.collection_record cr
                WHERE cr.collection_id = c.id AND cr.deleted_at IS NULL) l ON true
-           WHERE c.deleted_at IS NULL AND c.record_count <> l.links),
+           WHERE c.deleted_at IS NULL
+             AND c.member_id IN (SELECT member_id FROM bench_member_id)
+             AND c.record_count <> l.links),
        COALESCE((SELECT '불일치 ' || count(*) || '건' FROM (
            SELECT 1
            FROM core.collection c
            LEFT JOIN LATERAL (
                SELECT count(*) AS links FROM core.collection_record cr
                WHERE cr.collection_id = c.id AND cr.deleted_at IS NULL) l ON true
-           WHERE c.deleted_at IS NULL AND c.record_count <> l.links) s
+           WHERE c.deleted_at IS NULL
+             AND c.member_id IN (SELECT member_id FROM bench_member_id)
+             AND c.record_count <> l.links) s
            HAVING count(*) > 0), '전수 일치');
 
 -- [6] 정합: 발행됐는데 published_at이 없는 행 없음 (BD-33 / V5 CHECK와 같은 조건)
@@ -112,17 +125,20 @@ SELECT 8, '정합: is_published → published_at NOT NULL (BD-33)',
                  HAVING count(*) > 0), '위반 없음');
 
 -- [7] 정합: Collection은 활성 Record 최소 1건 (BD-11). 벤치 컬렉션은 8건씩 링크했으므로 0이면 생성기 결함.
+--     (기존 시드의 빈 Collection 137건은 알려진 기준선이라 여기서 세지 않는다 — BI-33.)
 INSERT INTO verify_result
-SELECT 9, '정합: 빈 활성 Collection 없음 (BD-11)',
+SELECT 9, '정합(벤치): 빈 활성 Collection 없음 (BD-11)',
        NOT EXISTS (
            SELECT 1 FROM core.collection c
            WHERE c.deleted_at IS NULL
+             AND c.member_id IN (SELECT member_id FROM bench_member_id)
              AND NOT EXISTS (
                  SELECT 1 FROM core.collection_record cr
                  WHERE cr.collection_id = c.id AND cr.deleted_at IS NULL)),
        COALESCE((SELECT '빈 컬렉션 ' || count(*) || '건' FROM (
            SELECT 1 FROM core.collection c
            WHERE c.deleted_at IS NULL
+             AND c.member_id IN (SELECT member_id FROM bench_member_id)
              AND NOT EXISTS (
                  SELECT 1 FROM core.collection_record cr
                  WHERE cr.collection_id = c.id AND cr.deleted_at IS NULL)) s
