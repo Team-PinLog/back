@@ -550,6 +550,182 @@ class RecordSearchApiTests extends IntegrationContainerSupport {
 			.andExpect(jsonPath("$.error.code").value("UNAUTHORIZED"));
 	}
 
+	/**
+	 * 판정이 끝났으면 {@code COMPLETED}다 — <b>Keyword가 0건이어도</b> 그렇다(응답 조립 명세 5.1).
+	 * back#136의 증상이 정확히 이 조합이었다: 붙일 프리셋이 없어 0건으로 완료된 기록에 화면이
+	 * "AI가 분석 중"을 영구히 띄웠다. 이 단언이 필드를 넣은 이유 자체다.
+	 */
+	@Test
+	void judgementThatFinishedIsCompletedEvenWithNoKeyword() throws Exception {
+		long me = newMemberId();
+		long recordId = newRecord(me, "search-st-done", "37.5000000", "127.0000000");
+		long contextId = newContext(recordId, me, "여기 느끼해서 다신 안감");
+		putState(contextId, "COMPLETED");
+		STUB.willReturn(new FastApiSearchStub.Match(recordId, contextId, 0.81));
+
+		search(me, "질의")
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items[0].keywords").isEmpty())
+			.andExpect(jsonPath("$.data.items[0].keywordStatus").value("COMPLETED"));
+	}
+
+	/**
+	 * {@code PENDING}과 {@code PROCESSING}은 응답에서 <b>같은 값으로 접힌다</b>(명세 5.1). 사용자가
+	 * 내릴 판단은 「기다리면 오는가」 하나이고 두 상태는 그 답이 같다. 내부 값을 그대로 내보내면
+	 * 클라이언트가 구분할 필요 없는 것을 구분하게 된다.
+	 */
+	@Test
+	void bothPendingAndProcessingSurfaceAsProcessing() throws Exception {
+		long me = newMemberId();
+		for (String internal : List.of("PENDING", "PROCESSING")) {
+			long recordId = newRecord(me, "search-st-" + internal, "37.5000000", "127.0000000");
+			long contextId = newContext(recordId, me, "방금 저장한 맥락");
+			putState(contextId, internal);
+			STUB.willReturn(new FastApiSearchStub.Match(recordId, contextId, 0.79));
+
+			search(me, "질의")
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.data.items[0].keywordStatus")
+					.value("PROCESSING"));
+		}
+	}
+
+	/** {@code FAILED}는 그대로 나간다 — 기다려도 오지 않으므로 재시도·문의를 유도할 수 있어야 한다. */
+	@Test
+	void failedJudgementIsReportedSoTheUserCanRetry() throws Exception {
+		long me = newMemberId();
+		long recordId = newRecord(me, "search-st-failed", "37.5000000", "127.0000000");
+		long contextId = newContext(recordId, me, "판정이 실패한 맥락");
+		putState(contextId, "FAILED");
+		STUB.willReturn(new FastApiSearchStub.Match(recordId, contextId, 0.75));
+
+		search(me, "질의")
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items[0].keywordStatus").value("FAILED"));
+	}
+
+	/**
+	 * <b>{@code PROCESSING}이 {@code FAILED}를 이긴다</b>(명세 5.1). 한 Record에 실패한 Context와
+	 * 처리 중인 Context가 함께 있으면, 그 처리 중인 것이 끝나며 Keyword가 <b>더 붙는다</b> — 그
+	 * 상황에서 사실인 답은 "기다리면 온다"다. 반대로 접으면 아직 올 것이 있는데 재시도를 권하게 된다.
+	 *
+	 * <p>이 단언이 없으면 {@code CASE}의 두 분기를 맞바꿔도 나머지 테스트가 전부 통과한다.
+	 */
+	@Test
+	void recordStillProcessingOneContextIsProcessingEvenIfAnotherFailed() throws Exception {
+		long me = newMemberId();
+		long recordId = newRecord(me, "search-st-mixed", "37.5000000", "127.0000000");
+		long failed = newContext(recordId, me, "실패한 맥락");
+		long processing = newContext(recordId, me, "아직 처리 중인 맥락");
+		putState(failed, "FAILED");
+		putState(processing, "PROCESSING");
+		STUB.willReturn(new FastApiSearchStub.Match(recordId, failed, 0.73));
+
+		search(me, "질의")
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items[0].keywordStatus").value("PROCESSING"));
+	}
+
+	/**
+	 * {@code CANCELLED}는 집계에 넣지 않는다(명세 5.1). 그 Context는 삭제·교체되어 애초에 응답
+	 * 대상이 아니므로, 그것 때문에 <b>살아 있는 Context의 상태가 바뀌면 안 된다.</b>
+	 *
+	 * <p>여기서 {@code deleted_at}을 채우지 않는 것이 의도다. 지우면 {@code deleted_at} 조건에
+	 * 걸려 빠지므로 <b>상태값 처리 자체를 확인할 수 없다</b> — 두 방어선 중 하나만 남겨 그 하나를 본다.
+	 */
+	@Test
+	void cancelledContextDoesNotDragTheRecordStatus() throws Exception {
+		long me = newMemberId();
+		long recordId = newRecord(me, "search-st-cancelled", "37.5000000", "127.0000000");
+		long live = newContext(recordId, me, "살아 있는 맥락");
+		long cancelled = newContext(recordId, me, "취소된 구 맥락");
+		attachKeyword(live, insertPreset("친구와", "PUBLIC", true));
+		putState(cancelled, "CANCELLED");
+		STUB.willReturn(new FastApiSearchStub.Match(recordId, live, 0.72));
+
+		search(me, "질의")
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items[0].keywordStatus").value("COMPLETED"))
+			.andExpect(jsonPath("$.data.items[0].keywords", Matchers.contains("친구와")));
+	}
+
+	/**
+	 * {@code context_ai_state} 행이 없으면 {@code COMPLETED}다(명세 5.1). {@code PROCESSING}으로
+	 * 접는 쪽이 직관적으로 보이지만, 그러면 <b>영영 오지 않는 것에 "분석 중"을 띄우게 되어 이
+	 * 필드가 없애려는 증상이 그대로 재발한다.</b>
+	 *
+	 * <p>정상 경로에서는 나오지 않는 상태다 — {@code ContextAiStateRepository}가 Context 생성과 같은
+	 * 트랜잭션에서 {@code PENDING}을 넣는다. 그래서 이것은 "있을 수 있는 상태"가 아니라
+	 * <b>어긋난 데이터가 화면을 망가뜨리지 않는지</b>를 보는 단언이다.
+	 */
+	@Test
+	void recordWithNoAiStateRowIsCompletedRatherThanForeverProcessing() throws Exception {
+		long me = newMemberId();
+		long recordId = newRecord(me, "search-st-norow", "37.5000000", "127.0000000");
+		long contextId = newContext(recordId, me, "상태 행이 없는 맥락");
+		STUB.willReturn(new FastApiSearchStub.Match(recordId, contextId, 0.70));
+
+		search(me, "질의")
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items[0].keywordStatus").value("COMPLETED"));
+	}
+
+	/**
+	 * <b>이 티켓의 주 리스크가 하위 호환이다.</b> 필드를 더하는 변경이 기존 필드를 건드리지 않았음을
+	 * 확인한다 — {@code keywordStatus}를 읽지 않는 클라이언트는 필드가 생기기 전과 완전히 같은
+	 * 응답을 봐야 한다.
+	 *
+	 * <p>구조적 근거는 {@code ContextKeywordRepository}의 기존 세 쿼리를 <b>한 글자도 바꾸지
+	 * 않았다</b>는 것이지만, "안 바꿨다"는 코드 읽기라 <b>미완료 상태에서도 배열이 그대로인지</b>를
+	 * 실행으로 붙잡아 둔다. 상태 조회가 기존 조회에 조건을 흘려보내면 여기서 드러난다.
+	 */
+	@Test
+	void addingTheStatusFieldChangesNothingAboutTheKeywordsArray() throws Exception {
+		long me = newMemberId();
+		long recordId = newRecord(me, "search-st-compat", "37.5000000", "127.0000000");
+		long done = newContext(recordId, me, "판정이 끝난 맥락");
+		long pending = newContext(recordId, me, "아직 처리 중인 맥락");
+		attachKeyword(done, insertPreset("혼자 가기 좋은", "PRIVATE_ONLY", true));
+		attachKeyword(done, insertPreset("모두에게 보이는", "PUBLIC", true));
+		attachKeyword(done, insertPreset("차단된 것", "BLOCKED", true));
+		putState(pending, "PENDING");
+		STUB.willReturn(new FastApiSearchStub.Match(recordId, done, 0.69));
+
+		search(me, "질의")
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items[0].keywords",
+				Matchers.containsInAnyOrder("혼자 가기 좋은", "모두에게 보이는")))
+			.andExpect(jsonPath("$.data.items[0].keywordStatus").value("PROCESSING"))
+			.andExpect(jsonPath("$.data.items[0].recordId").value(recordId))
+			.andExpect(jsonPath("$.data.items[0].similarity").value(0.69))
+			.andExpect(jsonPath("$.data.items[0].matchedContext.contextId").value(done))
+			.andExpect(jsonPath("$.data.items[0].place.name").value("장소 search-st-compat"))
+			.andExpect(jsonPath("$.data.items[0].createdAt").isNotEmpty());
+	}
+
+	/**
+	 * 남의 Record 상태가 섞이지 않는다. 쿼리의 {@code ct.member_id} 조건이 지켜지는지 보는 단언이며,
+	 * 빠지면 <b>남의 Context 상태가 내 검색 결과의 상태를 정한다.</b>
+	 *
+	 * <p>같은 Record에 두 사람의 Context가 달리는 것은 정상 데이터가 아니다 — 그래서 이것도
+	 * "어긋난 데이터에서도 방어선이 서는지"를 보는 단언이다.
+	 */
+	@Test
+	void anotherMembersContextDoesNotDecideMyRecordStatus() throws Exception {
+		long me = newMemberId();
+		long other = newMemberId();
+		long recordId = newRecord(me, "search-st-owner", "37.5000000", "127.0000000");
+		long mine = newContext(recordId, me, "내 맥락");
+		long theirs = newContext(recordId, other, "남의 맥락");
+		putState(mine, "COMPLETED");
+		putState(theirs, "PROCESSING");
+		STUB.willReturn(new FastApiSearchStub.Match(recordId, mine, 0.68));
+
+		search(me, "질의")
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items[0].keywordStatus").value("COMPLETED"));
+	}
+
 	private ResultActions search(long memberId, String query) throws Exception {
 		return mockMvc.perform(post(SEARCH_URL).with(loginAs(memberId))
 			.contentType(MediaType.APPLICATION_JSON)
@@ -583,6 +759,18 @@ class RecordSearchApiTests extends IntegrationContainerSupport {
 			INSERT INTO ai.context_keyword (context_id, keyword_id, confidence, preset_version)
 			VALUES (?, ?, 0.900, 1)
 			""", contextId, presetId);
+	}
+
+	/**
+	 * Keyword 없이 판정 상태만 놓는다. {@link #attachKeyword}는 {@code COMPLETED}로 고정하므로
+	 * 미완료·실패 상태를 만들 수 없다.
+	 */
+	private void putState(long contextId, String keywordStatus) {
+		jdbcTemplate.update("""
+			INSERT INTO ai.context_ai_state (context_id, embedding_status, keyword_status)
+			VALUES (?, 'COMPLETED', ?)
+			ON CONFLICT (context_id) DO UPDATE SET keyword_status = excluded.keyword_status
+			""", contextId, keywordStatus);
 	}
 
 	private int insertPreset(String displayName, String visibility, boolean active) {
