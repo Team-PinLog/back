@@ -79,7 +79,11 @@ public class RefreshTokenStore {
 		""", Long.class);
 
 	/**
-	 * 인덱스를 읽어 토큰 키를 지우고 인덱스까지 지운다. 폐기한 토큰 수를 돌려준다.
+	 * 인덱스를 읽어 토큰 키를 지우고 인덱스까지 지운다. <b>실제로 지워진</b> 토큰 수를 돌려준다.
+	 *
+	 * <p>인덱스 원소 수를 그대로 돌려주지 않는 이유: TTL로 만료된 토큰의 {@code jti}는 인덱스에
+	 * 남는다(만료는 {@code SREM}을 부르지 않는다). 원소 수를 세면 이미 없는 토큰까지 포함되는데,
+	 * 이 값은 재사용 감지 로그의 {@code revoked=}로 나가 <b>"그때 살아 있던 세션 수"로 읽힌다.</b>
 	 *
 	 * <p>읽기와 삭제를 나누면 그 사이의 정상 회전 한 건이 <b>영구히 폐기되지 않는 토큰</b>을
 	 * 만든다 — 새 {@code jti}는 이미 읽은 목록에 없어 삭제를 피하고, 뒤따르는 인덱스 삭제가
@@ -94,11 +98,12 @@ public class RefreshTokenStore {
 	 */
 	private static final RedisScript<Long> REVOKE_ALL = RedisScript.of("""
 		local ids = redis.call('SMEMBERS', KEYS[1])
+		local revoked = 0
 		for i = 1, #ids do
-			redis.call('DEL', ARGV[1] .. ids[i])
+			revoked = revoked + redis.call('DEL', ARGV[1] .. ids[i])
 		end
 		redis.call('DEL', KEYS[1])
-		return #ids
+		return revoked
 		""", Long.class);
 
 	private final StringRedisTemplate redisTemplate;
