@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.pinlog.pinlogback.domain.ai.repository.ContextKeywordRepository;
+import com.pinlog.pinlogback.domain.collection.dto.CollectionSort;
 import com.pinlog.pinlogback.domain.collection.entity.Collection;
 import com.pinlog.pinlogback.domain.collection.repository.CollectionRepository;
 import com.pinlog.pinlogback.domain.follow.dto.FollowedCollectionResponse;
@@ -59,7 +60,8 @@ public class ShelfService {
 	 * @param collectionId 공개 진입점
 	 */
 	@Transactional(readOnly = true)
-	public ShelfResponse browse(Long viewerId, Long collectionId, String cursor, Integer size) {
+	public ShelfResponse browse(Long viewerId, Long collectionId, String cursor, Integer size,
+		CollectionSort sort) {
 		Collection entry = collectionRepository.findById(collectionId)
 			.filter(Collection::isPublished)
 			.orElseThrow(ResourceNotFoundException::new);
@@ -72,23 +74,29 @@ public class ShelfService {
 			.findByFolloweeMemberIdAndFollowerMemberId(authorId, viewerId)
 			.map(ShelfFollowState::from)
 			.orElseGet(ShelfFollowState::notFollowed);
-		return new ShelfResponse(collectionId, follow, page(authorId, cursor, size));
+		return new ShelfResponse(collectionId, follow, page(authorId, cursor, size, sort));
 	}
 
 	/**
 	 * 발행 Collection 커서 페이지. {@code size}는 공용 계약대로 보정하며 범위 밖 값을 400으로
 	 * 거절하지 않는다 — "서버 방어 상한의 답은 하나"라는 S15P11A705-117 규약이다.
 	 */
-	private CursorPage<FollowedCollectionResponse> page(Long authorId, String cursor, Integer size) {
+	private CursorPage<FollowedCollectionResponse> page(Long authorId, String cursor, Integer size,
+		CollectionSort sort) {
 		int pageSize = CursorPage.normalizeSize(size);
 		Pageable probe = PageRequest.of(0, pageSize + 1);
 		List<Collection> rows;
 		if (cursor == null || cursor.isBlank()) {
-			rows = collectionRepository.findPublishedFirstPageByMemberId(authorId, probe);
+			rows = sort.ascending()
+				? collectionRepository.findPublishedFirstPageByMemberIdAsc(authorId, probe)
+				: collectionRepository.findPublishedFirstPageByMemberIdDesc(authorId, probe);
 		} else {
 			Cursor decoded = Cursor.decode(cursor);
-			rows = collectionRepository.findPublishedPageByMemberIdAfter(
-				authorId, decoded.sortKeyAsInstant(), decoded.id(), probe);
+			rows = sort.ascending()
+				? collectionRepository.findPublishedPageByMemberIdAfterAsc(
+					authorId, decoded.sortKeyAsInstant(), decoded.id(), probe)
+				: collectionRepository.findPublishedPageByMemberIdAfterDesc(
+					authorId, decoded.sortKeyAsInstant(), decoded.id(), probe);
 		}
 		boolean hasNext = rows.size() > pageSize;
 		List<Collection> page = hasNext ? rows.subList(0, pageSize) : rows;

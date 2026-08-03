@@ -32,23 +32,50 @@ public interface CollectionRepository extends JpaRepository<Collection, Long> {
 	@Query("select c from Collection c where c.id = :collectionId")
 	Optional<Collection> findByIdForUpdate(@Param("collectionId") Long collectionId);
 
+	/**
+	 * 목록 커서 쿼리는 방향별로 짝을 이룬다(BD-46). <b>{@code order by}와 커서 비교 부등호가
+	 * 함께 뒤집혀야 한다</b> — 내림차순은 {@code <}(더 오래된 것이 다음), 오름차순은 {@code >}
+	 * (더 최신인 것이 다음)이다. 한쪽만 뒤집으면 컴파일도 단순 조회 테스트도 통과한 채 커서
+	 * 페이지가 조용히 어긋나므로, 방향을 파라미터로 섞지 않고 메서드를 나눈다. 인덱스
+	 * ({@code ix_collection_member}, created_at DESC)는 btree 역방향 스캔으로 양방향을 받는다.
+	 */
 	@Query("select c from Collection c where c.memberId = :memberId"
 		+ " order by c.createdAt desc, c.id desc")
-	List<Collection> findFirstPageByMemberId(@Param("memberId") Long memberId, Pageable pageable);
+	List<Collection> findFirstPageByMemberIdDesc(@Param("memberId") Long memberId, Pageable pageable);
+
+	@Query("select c from Collection c where c.memberId = :memberId"
+		+ " order by c.createdAt asc, c.id asc")
+	List<Collection> findFirstPageByMemberIdAsc(@Param("memberId") Long memberId, Pageable pageable);
 
 	@Query("select c from Collection c where c.memberId = :memberId"
 		+ " and (c.createdAt < :createdAt or (c.createdAt = :createdAt and c.id < :id))"
 		+ " order by c.createdAt desc, c.id desc")
-	List<Collection> findPageByMemberIdAfter(@Param("memberId") Long memberId,
+	List<Collection> findPageByMemberIdAfterDesc(@Param("memberId") Long memberId,
+		@Param("createdAt") Instant createdAt, @Param("id") Long id, Pageable pageable);
+
+	@Query("select c from Collection c where c.memberId = :memberId"
+		+ " and (c.createdAt > :createdAt or (c.createdAt = :createdAt and c.id > :id))"
+		+ " order by c.createdAt asc, c.id asc")
+	List<Collection> findPageByMemberIdAfterAsc(@Param("memberId") Long memberId,
 		@Param("createdAt") Instant createdAt, @Param("id") Long id, Pageable pageable);
 
 	@Query("select c from Collection c where c.memberId = :memberId and c.isPublished = true"
 		+ " order by c.createdAt desc, c.id desc")
-	List<Collection> findPublishedFirstPageByMemberId(@Param("memberId") Long memberId, Pageable pageable);
+	List<Collection> findPublishedFirstPageByMemberIdDesc(@Param("memberId") Long memberId, Pageable pageable);
+
+	@Query("select c from Collection c where c.memberId = :memberId and c.isPublished = true"
+		+ " order by c.createdAt asc, c.id asc")
+	List<Collection> findPublishedFirstPageByMemberIdAsc(@Param("memberId") Long memberId, Pageable pageable);
 
 	@Query("select c from Collection c where c.memberId = :memberId and c.isPublished = true"
 		+ " and (c.createdAt < :createdAt or (c.createdAt = :createdAt and c.id < :id))"
 		+ " order by c.createdAt desc, c.id desc")
-	List<Collection> findPublishedPageByMemberIdAfter(@Param("memberId") Long memberId,
+	List<Collection> findPublishedPageByMemberIdAfterDesc(@Param("memberId") Long memberId,
+		@Param("createdAt") Instant createdAt, @Param("id") Long id, Pageable pageable);
+
+	@Query("select c from Collection c where c.memberId = :memberId and c.isPublished = true"
+		+ " and (c.createdAt > :createdAt or (c.createdAt = :createdAt and c.id > :id))"
+		+ " order by c.createdAt asc, c.id asc")
+	List<Collection> findPublishedPageByMemberIdAfterAsc(@Param("memberId") Long memberId,
 		@Param("createdAt") Instant createdAt, @Param("id") Long id, Pageable pageable);
 }

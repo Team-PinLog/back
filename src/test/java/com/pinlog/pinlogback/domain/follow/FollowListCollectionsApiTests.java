@@ -51,20 +51,20 @@ class FollowListCollectionsApiTests extends CoreApiFixtures {
 		assertThat(data.at("/items/0/followId").asLong()).isEqualTo(followB);
 		assertThat(data.at("/items/1/followId").asLong()).isEqualTo(followA);
 
-		// 책장마다 자기 Collection만, 최신순 첫 페이지만 담긴다.
+		// 책장마다 자기 Collection만, 오래된순(기본) 첫 페이지만 담긴다(S15P11A705-265).
 		JsonNode shelfB = data.at("/items/0/collections");
 		assertThat(collectionIds(shelfB)).containsExactly(b1);
 		assertThat(shelfB.at("/hasNext").asBoolean()).isFalse();
 		assertThat(shelfB.at("/nextCursor").isNull()).isTrue();
 
 		JsonNode shelfA = data.at("/items/1/collections");
-		assertThat(collectionIds(shelfA)).containsExactly(a3, a2);
+		assertThat(collectionIds(shelfA)).containsExactly(a1, a2);
 		assertThat(shelfA.at("/hasNext").asBoolean()).isTrue();
 		assertThat(shelfA.at("/nextCursor").asText()).isNotBlank();
 
 		// 항목 형태는 9.3과 같다.
 		JsonNode first = shelfA.at("/items/0");
-		assertThat(first.at("/title").asText()).isEqualTo("A 셋째");
+		assertThat(first.at("/title").asText()).isEqualTo("A 첫째");
 		assertThat(first.at("/recordCount").asInt()).isZero();
 		assertThat(first.at("/keywords").isArray()).isTrue();
 		assertThat(first.at("/createdAt").asText()).isNotBlank();
@@ -106,7 +106,7 @@ class FollowListCollectionsApiTests extends CoreApiFixtures {
 
 	/**
 	 * 안쪽 커서는 새 계약이 아니다 — 기존 9.3 엔드포인트에 그대로 넣으면
-	 * {@code collectionSize} 다음 항목부터 이어지고 중복이 없다.
+	 * {@code collectionSize} 다음 항목부터 이어지고 중복이 없다. 기본 방향은 오래된순이다.
 	 */
 	@Test
 	void innerNextCursorContinuesOnTheExistingEndpointWithoutDuplicates() throws Exception {
@@ -118,10 +118,40 @@ class FollowListCollectionsApiTests extends CoreApiFixtures {
 		long followId = follow(me, c1);
 
 		JsonNode shelf = listWithCollections(me, "2").at("/items/0/collections");
+		assertThat(collectionIds(shelf)).containsExactly(c1, c2);
+
+		JsonNode rest = parse(mockMvc.perform(
+				get("/v1/follows/{followId}/collections", followId).with(loginAs(me))
+					.param("cursor", shelf.at("/nextCursor").asText()))
+			.andExpect(status().isOk())
+			.andReturn().getResponse().getContentAsString()).at("/data");
+
+		assertThat(collectionIds(rest)).containsExactly(c3);
+		assertThat(rest.at("/hasNext").asBoolean()).isFalse();
+	}
+
+	/**
+	 * {@code collectionSort}로 동봉 페이지를 최신순으로 받으면, 이어받는 9.3 호출도 같은
+	 * {@code sort}를 줘야 커서가 이어진다 — 동봉 페이지와 9.3은 한 커서 계약이다(S15P11A705-265).
+	 */
+	@Test
+	void collectionSortFlipsEmbeddedPagesAndChainsWithSameDirection() throws Exception {
+		long me = newMemberId();
+		long owner = newMemberId();
+		long c1 = shelfCollection(owner, "첫째");
+		long c2 = shelfCollection(owner, "둘째");
+		long c3 = shelfCollection(owner, "셋째");
+		long followId = follow(me, c1);
+
+		JsonNode shelf = parse(mockMvc.perform(get("/v1/follows").with(loginAs(me))
+				.param("collectionSize", "2").param("collectionSort", "CREATED_AT_DESC"))
+			.andExpect(status().isOk())
+			.andReturn().getResponse().getContentAsString()).at("/data/items/0/collections");
 		assertThat(collectionIds(shelf)).containsExactly(c3, c2);
 
 		JsonNode rest = parse(mockMvc.perform(
 				get("/v1/follows/{followId}/collections", followId).with(loginAs(me))
+					.param("sort", "CREATED_AT_DESC")
 					.param("cursor", shelf.at("/nextCursor").asText()))
 			.andExpect(status().isOk())
 			.andReturn().getResponse().getContentAsString()).at("/data");

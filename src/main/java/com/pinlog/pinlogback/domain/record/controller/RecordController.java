@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.pinlog.pinlogback.domain.record.dto.ContextCreateRequest;
 import com.pinlog.pinlogback.domain.record.dto.ContextMutationResponse;
+import com.pinlog.pinlogback.domain.record.dto.ContextSort;
 import com.pinlog.pinlogback.domain.record.dto.ContextUpdateRequest;
 import com.pinlog.pinlogback.domain.record.dto.MapResponse;
 import com.pinlog.pinlogback.domain.record.dto.RecordByPlaceResponse;
@@ -72,9 +73,11 @@ public class RecordController {
 		return recordService.getByKakaoPlaceId(me.memberId(), kakaoPlaceId);
 	}
 
+	/** {@code contexts}의 기본 정렬은 최초 작성 시각 오름차순이다(명세 5.2, BD-25·BD-46). */
 	@GetMapping("/{recordId}")
-	public RecordDetailResponse detail(@LoginMember MemberPrincipal me, @PathVariable Long recordId) {
-		return recordService.getDetail(me.memberId(), recordId);
+	public RecordDetailResponse detail(@LoginMember MemberPrincipal me, @PathVariable Long recordId,
+		@RequestParam(defaultValue = "CREATED_AT_ASC") ContextSort contextSort) {
+		return recordService.getDetail(me.memberId(), recordId, contextSort);
 	}
 
 	@PostMapping("/{recordId}/contexts")
