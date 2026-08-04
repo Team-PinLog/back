@@ -60,7 +60,11 @@ Regression이 실패하면 PR을 만들지 않고 실패 내용을 보고한다.
 - 본문 항목:
   - **요약**: 무엇을, 왜 (1~3줄)
   - **Jira (필수)**: 키 또는 URL
-  - **관련 GitHub Issue (선택)**: 있을 때만
+  - **관련 GitHub Issue**: 이슈가 있으면 **`Closes #N`**으로 쓴다. 링크만 걸면 머지해도 이슈가 닫히지 않아 매번 손으로 닫게 된다. `gh issue develop`로 브랜치를 연결해 두어도 마찬가지다 — 그 연결은 이슈 화면에 브랜치를 표시할 뿐이고, 닫는 것은 본문(또는 커밋 메시지)의 키워드다. 여러 개면 `Closes #A` · `Closes #B`로 **줄을 나눈다**(쉼표로 이으면 첫 번째만 인식된다). 다른 저장소는 `Closes Team-PinLog/front#93` 형식이다. 생성 뒤 인식 여부를 확인한다:
+
+    ```bash
+    gh api graphql -f query='{repository(owner:"Team-PinLog",name:"back"){pullRequest(number:PR){closingIssuesReferences(first:5){nodes{number}}}}}'
+    ```
   - **변경 사항**: 항목별
   - **테스트 / 검증**: 템플릿의 체크박스 4개(`clean check` / DB 변경 시 통합 테스트 / migration 변경 시 빈 DB 테스트 / API 계약 변경 시 문서 갱신)를 해당 항목만 남겨 체크하고, 2단계에서 모은 RED/GREEN/Regression의 **실행 명령과 결과를 그대로** 덧붙인다
   - **배경 · 리뷰 포인트 · 미결/후속**: 템플릿 주석대로 필요할 때만 (단순 feat/fix면 생략)
