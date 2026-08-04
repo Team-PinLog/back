@@ -11,6 +11,10 @@ server:
     context-path: /api/core
 
 spring:
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
   # 로컬 .env를 프로퍼티로 올린다. Spring Boot는 .env를 자동으로 읽지 않아서,
   # 이게 없으면 소셜 로그인 자격증명이 애플리케이션에 전달되지 않는다(compose만 읽는다).
   # optional: 이므로 .env가 없는 CI·운영 컨테이너에서도 기동이 깨지지 않는다.
@@ -139,6 +143,10 @@ pinlog:
       # 스레드 점유만 늘린다(AI 파트 소유 명세 docs/ai/spec/ai-integration.md 3장).
       connect-timeout: 1s
       read-timeout: 5s
+    place-suggestion:
+      connect-timeout: 1s
+      read-timeout: 35s
+      max-concurrent-requests: 1
     # 유실·정지된 AI 처리를 복구하는 재스캔과 FAILED Finalizer. 정본은 AI 파트가 소유한
     # docs/ai/spec/ai-rescan-scheduler.md 2장이며 여기서 임의로 바꾸지 않는다. 상수로 박지 않는
     # 이유는 튜닝 대상인 것도 있지만, 무엇보다 "만료됐다"를 테스트에서 만들 수 없기 때문이다.
