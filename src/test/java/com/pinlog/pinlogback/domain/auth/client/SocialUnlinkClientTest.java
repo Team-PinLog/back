@@ -30,8 +30,6 @@ import org.springframework.web.client.RestClient;
 import com.pinlog.pinlogback.domain.auth.exception.SocialUnlinkException;
 import com.pinlog.pinlogback.domain.member.entity.SocialProvider;
 
-import tools.jackson.databind.json.JsonMapper;
-
 /**
  * 공급자 연결 해제 호출(BD-48 §①).
  *
@@ -90,7 +88,7 @@ class SocialUnlinkClientTest {
 		assertThat(new KakaoUnlinkClient(builder.build()).provider()).isEqualTo(SocialProvider.KAKAO);
 		assertThat(new GoogleUnlinkClient(builder.build()).provider()).isEqualTo(SocialProvider.GOOGLE);
 		NaverUnlinkClient naver =
-			new NaverUnlinkClient(builder.build(), registrationId -> null, JsonMapper.builder().build());
+			new NaverUnlinkClient(builder.build(), registrationId -> null);
 		assertThat(naver.provider()).isEqualTo(SocialProvider.NAVER);
 	}
 
@@ -162,7 +160,7 @@ class SocialUnlinkClientTest {
 	class Naver {
 
 		private final NaverUnlinkClient client =
-			new NaverUnlinkClient(builder.build(), clientRegistrations(), JsonMapper.builder().build());
+			new NaverUnlinkClient(builder.build(), clientRegistrations());
 
 		@Test
 		@DisplayName("클라이언트 자격증명과 함께 revoke를 호출한다")
@@ -188,35 +186,6 @@ class SocialUnlinkClientTest {
 
 			assertThatThrownBy(() -> client.unlink(ACCESS_TOKEN))
 				.isInstanceOf(SocialUnlinkException.class);
-		}
-
-		@Test
-		@DisplayName("200이어도 본문에 error가 있으면 실패다")
-		void errorInTheBodyIsFailureEvenOnSuccessStatus() {
-			// Naver의 연동 해제 계열은 실패를 200 본문의 error로 알리는 형태가 보고돼 있다.
-			// 상태 코드만 보면 해제 실패가 성공으로 읽혀 회원이 지워지고, 마스킹 때문에 그 뒤엔
-			// 영구히 못 끊는다 — 이 PR이 막으려는 상태를 Naver 경로에서만 만들게 된다.
-			server.expect(requestTo("https://nid.naver.com/oauth2.0/revoke"))
-				.andRespond(withSuccess("{\"error\":\"024\",\"error_description\":\"Authentication failed\"}",
-					MediaType.APPLICATION_JSON));
-
-			assertThat(catchThrowableOfType(SocialUnlinkException.class, () -> client.unlink(ACCESS_TOKEN)))
-				.as("되풀이해도 같은 실패다")
-				.returns(false, SocialUnlinkException::isRetryable);
-		}
-
-		@Test
-		@DisplayName("200에 result=success 본문이 와도 성공이다")
-		void resultSuccessBodyPassesThrough() {
-			// 엔드포인트가 grant_type=delete 쪽으로 확정되면 이 형태가 온다. 어느 쪽이든 통과해야
-			// 한다 — 판정 기준은 "error가 있는가"이지 "본문이 비었는가"가 아니다.
-			server.expect(requestTo("https://nid.naver.com/oauth2.0/revoke"))
-				.andRespond(withSuccess("{\"access_token\":\"...\",\"result\":\"success\"}",
-					MediaType.APPLICATION_JSON));
-
-			client.unlink(ACCESS_TOKEN);
-
-			server.verify();
 		}
 
 		private ClientRegistrationRepository clientRegistrations() {

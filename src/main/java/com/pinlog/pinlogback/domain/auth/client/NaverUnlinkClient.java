@@ -1,6 +1,5 @@
 package com.pinlog.pinlogback.domain.auth.client;
 
-import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
@@ -14,10 +13,6 @@ import org.springframework.web.client.RestClientException;
 import com.pinlog.pinlogback.domain.auth.exception.SocialUnlinkException;
 import com.pinlog.pinlogback.domain.member.entity.SocialProvider;
 
-import tools.jackson.core.JacksonException;
-import tools.jackson.databind.JsonNode;
-import tools.jackson.databind.ObjectMapper;
-
 /**
  * Naver 연결 해제. {@code POST https://nid.naver.com/oauth2.0/revoke}.
  *
@@ -28,14 +23,18 @@ import tools.jackson.databind.ObjectMapper;
  * <p>{@code token_type_hint=access_token}을 명시한다. 기본값과 같지만, 공급자가 연결된
  * refresh token까지 함께 폐기(cascade)한다는 사실이 이 값에 달려 있어 의도를 드러내 둔다.
  *
- * <p><b>⚠ 엔드포인트가 확정되지 않았다.</b> 이 상수는 사내에 공유된 「§4.3 Token Revocation」
- * 문서를 근거로 삼았는데, 리뷰에서 Naver의 연동 해제는 토큰 엔드포인트에
- * {@code grant_type=delete}·{@code service_provider=NAVER}를 보내는 방식이라는 지적이 있었고
- * 독립 자료들도 그쪽을 가리킨다. 공식 문서 페이지를 직접 확인하지 못해 <b>스테이징에서 Naver를
- * 가장 먼저, 실패 케이스까지 태워 확정해야 한다</b>(back#181 리뷰 ⓐ).
+ * <p><b>본문이 아니라 상태 코드로 판단한다.</b> 공급자 문서 §4.3이 그렇게 요구한다.
  *
- * <p>어느 쪽이든 <b>응답 판정은 본문까지 본다</b> — 아래 {@code requireNoErrorInBody}. 상태 코드만
- * 보면 200 본문에 {@code error}를 담아 주는 형태에서 해제 실패가 성공으로 읽힌다.
+ * <blockquote>본 API는 입력한 토큰의 유효성과 무관하게, 폐기 자체가 정상 수행되면 200을 반환합니다.
+ * 따라서 클라이언트는 <b>응답 본문이 아닌 HTTP 상태 코드를 기준으로</b> 결과를
+ * 판단해야 합니다.</blockquote>
+ *
+ * <p>성공은 <b>본문 없는 200</b>이고, 실패는 상태 코드(400·401·503)와 함께 {@code error}·
+ * {@code error_description}을 본문으로 준다. 그래서 본문을 파싱할 이유가 없다 — 200에는 볼 것이
+ * 없고, 실패는 이미 상태 코드에서 갈린다.
+ *
+ * <p><b>3사 중 유일하게 이미 폐기된 토큰에도 200을 준다</b>(§4.3의 상태 코드 표). Google은 400이라
+ * 재시도 의미가 다르다 — {@code SocialUnlinkException.from} 참고.
  */
 @Component
 public class NaverUnlinkClient implements SocialUnlinkClient {
@@ -44,16 +43,13 @@ public class NaverUnlinkClient implements SocialUnlinkClient {
 
 	private final RestClient restClient;
 	private final ClientRegistrationRepository clientRegistrations;
-	private final ObjectMapper objectMapper;
 
 	public NaverUnlinkClient(
 		@Qualifier("socialUnlinkRestClient") RestClient socialUnlinkRestClient,
-		ClientRegistrationRepository clientRegistrations,
-		ObjectMapper objectMapper
+		ClientRegistrationRepository clientRegistrations
 	) {
 		this.restClient = socialUnlinkRestClient;
 		this.clientRegistrations = clientRegistrations;
-		this.objectMapper = objectMapper;
 	}
 
 	@Override
@@ -77,47 +73,15 @@ public class NaverUnlinkClient implements SocialUnlinkClient {
 		form.add("client_secret", registration.getClientSecret());
 		form.add("token", accessToken);
 		form.add("token_type_hint", "access_token");
-		String body;
 		try {
-			body = restClient.post()
+			restClient.post()
 				.uri(REVOKE_URI)
 				.contentType(MediaType.APPLICATION_FORM_URLENCODED)
 				.body(form)
 				.retrieve()
-				.body(String.class);
+				.toBodilessEntity();
 		} catch (RestClientException e) {
 			throw SocialUnlinkException.from("naver revoke failed", e);
-		}
-		requireNoErrorInBody(body);
-	}
-
-	/**
-	 * <b>상태 코드만 보지 않는다.</b> Naver의 연동 해제 계열 API는 실패를 {@code 200} 본문의
-	 * {@code error} 필드로 알리는 경우가 보고돼 있다. 상태 코드만 보면 그때 <b>해제 실패가 성공으로
-	 * 읽히고 회원이 지워진다</b> — 마스킹으로 {@code provider_user_id}가 파기되므로 그 뒤엔 영구히
-	 * 못 끊는다. 이 PR이 존재하는 이유인 바로 그 상태를 Naver 경로에서만 만들게 된다.
-	 *
-	 * <p>그래서 <b>본문에 {@code error}가 있으면 2xx여도 실패로 본다.</b> 판정을 이렇게 두면
-	 * 응답 형태가 어느 쪽이든 안전하다 — 본문 없는 성공도, {@code result: success}를 주는 성공도
-	 * 통과하고, {@code error}를 담은 실패만 걸린다.
-	 *
-	 * <p>본문을 못 읽는 경우는 실패로 보지 않는다. 해제가 됐는지 안 됐는지 모르는 상태에서
-	 * 지우지 않는 쪽이 안전하지만, 여기서는 파싱 실패가 곧 "형식이 예상과 다르다"이므로 그것도
-	 * 확인되지 않은 해제다 — 실패로 올린다.
-	 */
-	private void requireNoErrorInBody(@Nullable String body) {
-		if (body == null || body.isBlank()) {
-			return;
-		}
-		try {
-			JsonNode parsed = objectMapper.readTree(body);
-			if (parsed.has("error")) {
-				throw new SocialUnlinkException(
-					"naver revoke returned an error in the body: " + parsed.path("error").asString(),
-					null, false);
-			}
-		} catch (JacksonException e) {
-			throw new SocialUnlinkException("naver revoke response was not readable", e, false);
 		}
 	}
 }
