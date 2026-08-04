@@ -70,6 +70,8 @@ public final class FastApiProcessStub {
 		ACCEPTED,
 		/** 5xx — 상대 장애. */
 		SERVER_ERROR,
+		/** 4xx — 요청 자체의 문제. 몇 번을 다시 보내도 같으므로 재시도 대상이 아니다. */
+		BAD_REQUEST,
 		/** 응답 없이 연결을 끊는다 — 연결·타임아웃 계열 실패에 해당한다. */
 		HANG_UP
 	}
@@ -131,8 +133,17 @@ public final class FastApiProcessStub {
 			exchange.close();
 			return;
 		}
-		exchange.sendResponseHeaders(current == Mode.ACCEPTED ? 202 : 503, -1);
+		exchange.sendResponseHeaders(statusOf(current), -1);
 		exchange.close();
+	}
+
+	private int statusOf(Mode current) {
+		return switch (current) {
+			case ACCEPTED -> 202;
+			case BAD_REQUEST -> 400;
+			case SERVER_ERROR -> 503;
+			case HANG_UP -> throw new IllegalStateException("HANG_UP은 응답을 보내지 않는다");
+		};
 	}
 
 	private Received observe(HttpExchange exchange, JsonNode body, long contextId) {

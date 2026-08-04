@@ -197,6 +197,10 @@ class ContextAiEnqueueTests extends IntegrationContainerSupport {
 	/**
 	 * FastAPI가 5xx를 돌려줘도 Core와 PENDING은 남아야 한다. 롤백시키면 사용자가 저장한 기록이
 	 * <b>상대 서버 장애 때문에</b> 사라진다.
+	 *
+	 * <p>재시도까지 전부 받아 두는 이유: 5xx는 이제 재시도 토픽 체인을 탄다(BD-48,
+	 * 테스트 프로파일 attempts=3). 여기서 소비하지 않으면 남은 재시도가 <b>뒤 테스트의 "호출이
+	 * 없어야 한다" 검증 구간에</b> 도착해 엉뚱한 테스트를 깨뜨린다.
 	 */
 	@Test
 	void serverErrorFromFastApiDoesNotRollBackTheContextOrItsPendingRow() throws Exception {
@@ -206,6 +210,8 @@ class ContextAiEnqueueTests extends IntegrationContainerSupport {
 		RecordCreateResponse created = recordService.create(memberId, createRequest("ai-enqueue-5", "5xx여도 남아야 한다"));
 
 		assertThat(STUB.awaitCall()).isNotNull();
+		assertThat(STUB.awaitCall()).as("재시도 1").isNotNull();
+		assertThat(STUB.awaitCall()).as("재시도 2 — 체인의 마지막").isNotNull();
 		long contextId = onlyContextId(created.recordId());
 		assertThat(contextRepository.findById(contextId)).isPresent();
 		assertThat(stateOf(contextId))
@@ -213,7 +219,7 @@ class ContextAiEnqueueTests extends IntegrationContainerSupport {
 			.containsEntry("embedding_status", "PENDING");
 	}
 
-	/** 연결이 끊기는 실패(다운·타임아웃 계열)도 같다. 클라이언트가 예외를 삼키지 않으면 여기서 드러난다. */
+	/** 연결이 끊기는 실패(다운·타임아웃 계열)도 같다. 재시도를 전부 받아 두는 이유는 5xx 테스트와 같다. */
 	@Test
 	void droppedConnectionDoesNotRollBackTheContextOrItsPendingRow() throws Exception {
 		STUB.reset(FastApiProcessStub.Mode.HANG_UP);
@@ -222,6 +228,8 @@ class ContextAiEnqueueTests extends IntegrationContainerSupport {
 		RecordCreateResponse created = recordService.create(memberId, createRequest("ai-enqueue-6", "끊겨도 남아야 한다"));
 
 		assertThat(STUB.awaitCall()).isNotNull();
+		assertThat(STUB.awaitCall()).as("재시도 1").isNotNull();
+		assertThat(STUB.awaitCall()).as("재시도 2 — 체인의 마지막").isNotNull();
 		long contextId = onlyContextId(created.recordId());
 		assertThat(contextRepository.findById(contextId)).isPresent();
 		assertThat(stateOf(contextId)).containsEntry("embedding_status", "PENDING");

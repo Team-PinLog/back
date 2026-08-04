@@ -13,6 +13,8 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 
 import com.pinlog.pinlogback.domain.ai.AiProperties;
+import com.pinlog.pinlogback.domain.ai.exception.AiProcessFatalException;
+import com.pinlog.pinlogback.domain.ai.exception.AiProcessRetryableException;
 import com.pinlog.pinlogback.global.web.TraceIdFilter;
 
 /**
@@ -23,11 +25,12 @@ import com.pinlog.pinlogback.global.web.TraceIdFilter;
  * 통보용 웹훅·콜백이 없으므로 이 클래스는 응답 본문을 읽지 않는다. 정합성의 근거는 이 호출이
  * 아니라 DB에 영속된 {@code ai.context_ai_state}다 — 이 호출은 "지금 처리하면 조금 빨라지는 힌트"다.
  *
- * <p><b>모든 실패를 삼킨다.</b> 예외를 밖으로 던지면 호출자(커밋 이후 리스너)를 타고 올라가
- * 사용자 응답을 오류로 만들 수 있는데, Core 데이터는 이미 커밋되어 정상이므로 그것은 거짓말이다.
- * 상태를 {@code FAILED}로 바꾸지도, {@code retry_count}를 올리지도 않는다 — 호출 실패는 FastAPI
- * 내부 작업의 실패가 아니고, 두 주체가 같은 사유로 FAILED를 각각 기록하면 원인 추적이 불가능해진다.
- * {@code PENDING}이 남아 있으므로 재스캔이 같은 Context를 다시 집는다.
+ * <p>실패의 취급이 호출자마다 다르므로 진입점이 둘이다. {@link #process}는 <b>모든 실패를
+ * 삼킨다</b> — 재스캔 경로에서 예외는 아무것도 복구하지 못하고, {@code PENDING}이 남아 다음
+ * 회차가 같은 Context를 다시 집는다. {@link #processOrThrow}는 실패를 분류해 던진다 — 큐 소비
+ * 경로에서는 던지는 것이 곧 재시도 체인·DLT 격리의 신호다(BD-48). 어느 쪽도 상태를
+ * {@code FAILED}로 바꾸거나 {@code retry_count}를 올리지 않는다 — 호출 실패는 FastAPI 내부
+ * 작업의 실패가 아니고, 두 주체가 같은 사유로 FAILED를 각각 기록하면 원인 추적이 불가능해진다.
  */
 @Component
 public class AiProcessClient {
@@ -75,6 +78,20 @@ public class AiProcessClient {
 
 	/** 호출 결과를 반환하지 않는다. 호출자가 분기할 수 있으면 그 분기가 곧 Core 트랜잭션 결과에 스며든다. */
 	public void process(ContextProcessRequest request) {
+		try {
+			processOrThrow(request);
+		} catch (AiProcessRetryableException | AiProcessFatalException e) {
+			// 로그는 processOrThrow가 이미 남겼다. 재스캔 경로에서 실패는 여기서 끝난다 —
+			// PENDING이 남아 있으므로 다음 회차가 같은 Context를 다시 집는다.
+		}
+	}
+
+	/**
+	 * 실패를 분류해 던진다. 5xx·연결 계열은 {@link AiProcessRetryableException}(다시 보내면 성공할
+	 * 수 있다), 4xx는 {@link AiProcessFatalException}(요청 자체의 문제라 몇 번을 보내도 같다).
+	 * 401·403도 fatal이다 — 시크릿·헤더 설정이 고쳐지기 전에는 재시도가 전부 같은 답을 받는다.
+	 */
+	public void processOrThrow(ContextProcessRequest request) {
 		String requestId = currentRequestId();
 		try {
 			restClient.post()
@@ -86,12 +103,20 @@ public class AiProcessClient {
 				.toBodilessEntity();
 			log.debug("AI process 접수됨: contextId={}, requestId={}", request.contextId(), requestId);
 		} catch (RestClientResponseException e) {
-			// 4xx는 요청 payload 형식 문제일 가능성이 있어 사람이 봐야 한다. 5xx는 상대 장애이므로
-			// 재스캔이 흡수한다. 응답 본문은 남기지 않는다 — 내부 API라도 로그로 새어 나갈 이유가 없다.
+			// 4xx는 요청 payload 형식 문제일 가능성이 있어 사람이 봐야 한다. 응답 본문은 남기지
+			// 않는다 — 내부 API라도 로그로 새어 나갈 이유가 없다.
 			logByStatus(e, request, requestId);
+			if (e.getStatusCode().is4xxClientError()) {
+				throw new AiProcessFatalException(
+					"AI process 호출이 " + e.getStatusCode().value() + "로 거절됐다: contextId=" + request.contextId(), e);
+			}
+			throw new AiProcessRetryableException(
+				"AI process 호출이 " + e.getStatusCode().value() + "를 받았다: contextId=" + request.contextId(), e);
 		} catch (RuntimeException e) {
 			log.warn("AI process 호출 실패(연결·타임아웃): contextId={}, requestId={}, cause={}",
 				request.contextId(), requestId, e.toString());
+			throw new AiProcessRetryableException(
+				"AI process 호출이 연결 단계에서 실패했다: contextId=" + request.contextId(), e);
 		}
 	}
 
