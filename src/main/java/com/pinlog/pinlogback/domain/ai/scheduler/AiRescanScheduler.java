@@ -19,12 +19,13 @@ import com.pinlog.pinlogback.domain.ai.service.ContextProcessRequestAssembler;
  * (AI 파트 소유 명세 {@code docs/ai/spec/ai-rescan-scheduler.md} 3.1).
  *
  * <p><b>이 클래스가 없으면 한 번 실패한 Context는 영구히 {@code PENDING}으로 남는다.</b> 실패 경로
- * 네 곳이 모두 "재스캔이 복구한다"를 안전망으로 전제한다 — 큐 포화로 버려진 요청
- * ({@link com.pinlog.pinlogback.domain.ai.AiIntegrationConfig}), 삼켜진 호출 실패
- * ({@link AiProcessClient}), 커밋 이후 리스너의 조립 실패
- * ({@link com.pinlog.pinlogback.domain.ai.event.ContextAiRequestedListener}), 그리고 FastAPI가 202
- * 이후 내부에서 실패한 경우. 상태만 보면 "처리 대기 중"이라 정상과 구별되지 않는 것이 이 문제의
- * 성질이다.
+ * 네 곳이 모두 "재스캔이 복구한다"를 안전망으로 전제한다 — 발행 실패·브로커 장애로 큐에 실리지
+ * 못한 요청({@link com.pinlog.pinlogback.domain.ai.queue.ContextAiProcessPublisher}), 재시도 체인
+ * 소진으로 DLT에 격리된 메시지
+ * ({@link com.pinlog.pinlogback.domain.ai.queue.ContextAiProcessConsumer}), 재스캔 자신의 호출
+ * 실패({@link AiProcessClient}가 삼킨다), 그리고 FastAPI가 202 이후 내부에서 실패한 경우. 상태만
+ * 보면 "처리 대기 중"이라 정상과 구별되지 않는 것이 이 문제의 성질이다. 이 안전망은 브로커와
+ * 독립이다 — FastAPI를 큐 없이 직접 호출하므로 브로커가 통째로 죽어도 복구가 돈다(BD-48).
  *
  * <p><b>순서가 계약이다.</b> {@code Finalize → 후보 잠금·retry 증가 → 커밋 → Context 재조회 → 삭제
  * 확인 → FastAPI 호출}. Finalize를 먼저 두는 이유는 나중에 두면 같은 회차에서 방금
