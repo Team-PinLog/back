@@ -8,7 +8,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.env.MockEnvironment;
 import org.springframework.mock.web.MockHttpServletRequest;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.registration.InMemoryClientRegistrationRepository;
+import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestCustomizers;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 
 import com.pinlog.pinlogback.global.security.token.JwtKeyProvider;
@@ -34,6 +39,47 @@ class WithdrawalAwareAuthorizationRequestResolverTest {
 		new JwtTokenProvider(properties, new JwtKeyProvider(properties, new MockEnvironment()));
 	private final WithdrawalAwareAuthorizationRequestResolver resolver =
 		new WithdrawalAwareAuthorizationRequestResolver(new StubResolver(), tokenProvider);
+
+	@Test
+	@DisplayName("티켓은 공급자에게 나가는 인가 URL에 실리지 않는다")
+	void ticketNeverReachesTheProvider() {
+		// 실제 위임 구현으로 확인해야 하는 항목이다. 스텁은 이 성질을 증명하지 못한다.
+		// 티켓이 인가 URL에 실리면 공급자 서버 로그와 리퍼러에 계정 삭제 권한이 남는다.
+		DefaultOAuth2AuthorizationRequestResolver delegate = new DefaultOAuth2AuthorizationRequestResolver(
+			new InMemoryClientRegistrationRepository(googleRegistration()),
+			OAuthEndpointPaths.AUTHORIZATION_BASE_URI);
+		delegate.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce());
+		WithdrawalAwareAuthorizationRequestResolver real =
+			new WithdrawalAwareAuthorizationRequestResolver(delegate, tokenProvider);
+		String ticket = tokenProvider.issueWithdrawalTicket(MEMBER_ID);
+
+		MockHttpServletRequest request = new MockHttpServletRequest(
+			"GET", OAuthEndpointPaths.AUTHORIZATION_BASE_URI + "/google");
+		request.setParameter(WithdrawalAwareAuthorizationRequestResolver.TICKET_PARAMETER, ticket);
+		OAuth2AuthorizationRequest resolved = real.resolve(request);
+
+		assertThat(resolved).isNotNull();
+		assertThat(resolved.getAuthorizationRequestUri()).doesNotContain(ticket);
+		assertThat(resolved.getAdditionalParameters())
+			.doesNotContainKey(WithdrawalAwareAuthorizationRequestResolver.TICKET_PARAMETER);
+		// 그러면서 의도는 우리 쪽에 남아 있어야 한다.
+		assertThat(resolved.getAttributes())
+			.containsEntry(WithdrawalAwareAuthorizationRequestResolver.WITHDRAWAL_MEMBER_ID, MEMBER_ID);
+	}
+
+	private ClientRegistration googleRegistration() {
+		return ClientRegistration.withRegistrationId("google")
+			.clientId("client")
+			.clientSecret("secret")
+			.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+			.redirectUri("https://pinlog.example/api/core/v1/auth/{registrationId}/callback")
+			.authorizationUri("https://accounts.google.com/o/oauth2/v2/auth")
+			.tokenUri("https://oauth2.googleapis.com/token")
+			.userInfoUri("https://www.googleapis.com/oauth2/v3/userinfo")
+			.userNameAttributeName("sub")
+			.scope("openid", "email")
+			.build();
+	}
 
 	@Test
 	@DisplayName("티켓이 없으면 평범한 로그인 인가 요청 그대로다")

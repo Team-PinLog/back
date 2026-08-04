@@ -46,6 +46,10 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 	@Autowired
 	private MemberWithdrawalService memberWithdrawalService;
 
+	/** 실제 조립 결과. 위 스텁과 달리 이것은 컨텍스트가 무엇을 찾았는지를 보여 준다. */
+	@Autowired
+	private List<SocialUnlinkClient> registeredUnlinkClients;
+
 	private RecordingUnlinkClient google;
 	private WithdrawalCompletionService completionService;
 
@@ -54,6 +58,15 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 		google = new RecordingUnlinkClient(SocialProvider.GOOGLE);
 		completionService = new WithdrawalCompletionService(
 			socialAccountRepository, memberWithdrawalService, List.of(google));
+	}
+
+	@Test
+	@DisplayName("지원하는 세 공급자 모두 해제 클라이언트를 갖는다")
+	void everySupportedProviderHasAnUnlinkClient() {
+		// 하나가 Bean으로 안 잡혀도 컴파일과 나머지 테스트는 통과한다. 증상은 그 공급자로 가입한
+		// 회원만 탈퇴하지 못하는 것이라 배포 후에야 드러난다.
+		assertThat(registeredUnlinkClients).extracting(SocialUnlinkClient::provider)
+			.containsExactlyInAnyOrder(SocialProvider.values());
 	}
 
 	@Test
