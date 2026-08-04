@@ -122,11 +122,23 @@ class FeedChannelPlanTests extends IntegrationContainerSupport {
 	}
 
 	/**
-	 * {@code enable_seqscan}을 세션이 아니라 트랜잭션 범위로 끈다. 세션으로 끄면 같은 커넥션을
-	 * 물려받는 뒤 테스트의 계획까지 바꿔 놓는다.
+	 * 순서를 보존하는 Index Scan만 남기고 대안 경로를 막은 뒤 EXPLAIN한다.
+	 *
+	 * <p><b>{@code enable_seqscan}만 끄면 부족하다.</b> 플래너가 Bitmap Index Scan을 고르는데
+	 * 그것은 힙 순서로 읽어 인덱스 정렬을 잃으므로, 정렬키가 올바른데도 전체 Sort가 붙어
+	 * {@code Presorted Key}가 사라진다. 실제로 그 때문에 이 테스트가 공유 테스트 DB의 행 수에
+	 * 따라 붙었다 떨어졌다 했다. 그래서 {@code enable_bitmapscan}도 함께 끈다.
+	 *
+	 * <p>둘을 끄면 남는 것은 정렬을 보존하는 Index Scan뿐이다. 그 상태에서 인덱스 순서를
+	 * <b>쓸 수 있으면</b> Incremental Sort가 {@code Presorted Key}를 남기고, 정렬키가 표현식이면
+	 * 여전히 전체 Sort가 붙는다 — 이것이 판별의 근거다.
+	 *
+	 * <p>세션이 아니라 실행 직후 되돌린다. 세션에 남기면 같은 커넥션을 물려받는 뒤 테스트의
+	 * 계획까지 바꿔 놓는다.
 	 */
 	private String explain(String sql, Map<String, Object> params) {
 		jdbc.getJdbcTemplate().execute("SET enable_seqscan = off");
+		jdbc.getJdbcTemplate().execute("SET enable_bitmapscan = off");
 		try {
 			List<Map<String, Object>> rows = jdbc.queryForList("EXPLAIN " + sql, params);
 			return rows.stream()
@@ -136,6 +148,7 @@ class FeedChannelPlanTests extends IntegrationContainerSupport {
 				.toString();
 		} finally {
 			jdbc.getJdbcTemplate().execute("RESET enable_seqscan");
+			jdbc.getJdbcTemplate().execute("RESET enable_bitmapscan");
 		}
 	}
 }
