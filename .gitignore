@@ -57,3 +57,9 @@ out/
 
 # 검증 하네스 산출물. 서명된 access token과 개인키 사본이 들어가므로 절대 커밋하지 않는다.
 loadtest/artifacts/
+
+# 개인키·인증서는 절대 커밋하지 않는다. .env*와 같은 이유다.
+*.pem
+*.key
+*.p12
+*.jks
