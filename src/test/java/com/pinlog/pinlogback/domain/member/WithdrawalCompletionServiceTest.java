@@ -101,6 +101,23 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 	}
 
 	@Test
+	@DisplayName("계속 일시적 실패면 상한에서 멈춘다")
+	void stopsAtTheAttemptCap() {
+		// 상한 분기를 단독으로 실행하는 유일한 테스트다. 이것이 없으면 상수를 3으로 되돌리거나
+		// 조건을 어긋나게 써도 깨지는 것이 없다 — 방금 튜닝한 값이라 더 그렇다.
+		long memberId = newMemberId();
+		givenSocialAccount(memberId, SocialProvider.GOOGLE, "google-cap-1", "k@example.com");
+		google.transientFailuresLeft = 99;
+
+		assertThatThrownBy(() -> completionService.complete(
+			memberId, SocialProvider.GOOGLE, "google-cap-1", ACCESS_TOKEN))
+			.isInstanceOf(SocialUnlinkException.class);
+
+		assertThat(google.attempts).as("상한만큼만 시도한다").isEqualTo(2);
+		assertThat(deletedAtOf("core.member", memberId)).isNull();
+	}
+
+	@Test
 	@DisplayName("응답이 유실된 뒤의 확정 실패는 성공으로 간주하지 않는다")
 	void definiteFailureAfterALostResponseIsNotTreatedAsSuccess() {
 		// 실제로 일어나는 순서다 — 시도1이 타임아웃(공급자에서는 해제 성공), 시도2가 400.
