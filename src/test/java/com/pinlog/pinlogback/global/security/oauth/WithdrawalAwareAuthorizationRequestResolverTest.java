@@ -15,6 +15,7 @@ import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequest
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
+import org.springframework.security.oauth2.core.endpoint.PkceParameterNames;
 
 import com.pinlog.pinlogback.global.security.token.JwtKeyProvider;
 import com.pinlog.pinlogback.global.security.token.JwtProperties;
@@ -65,6 +66,40 @@ class WithdrawalAwareAuthorizationRequestResolverTest {
 		// 그러면서 의도는 우리 쪽에 남아 있어야 한다.
 		assertThat(resolved.getAttributes())
 			.containsEntry(WithdrawalAwareAuthorizationRequestResolver.WITHDRAWAL_MEMBER_ID, MEMBER_ID);
+	}
+
+	@Test
+	@DisplayName("attributes에 의도를 얹어도 PKCE가 살아남는다")
+	void addingTheIntentDoesNotDropPkce() {
+		// 우리는 위임 결과를 복사해 attributes를 더한다. 그 과정에서 code_verifier가 떨어지면
+		// 인가 자체는 성공하고 토큰 교환만 invalid_grant으로 죽는다 — 탈퇴가 통째로 불가능해지는데
+		// 증상은 콜백 실패 하나로만 보인다.
+		DefaultOAuth2AuthorizationRequestResolver delegate = new DefaultOAuth2AuthorizationRequestResolver(
+			new InMemoryClientRegistrationRepository(googleRegistration()),
+			OAuthEndpointPaths.AUTHORIZATION_BASE_URI);
+		delegate.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce());
+		WithdrawalAwareAuthorizationRequestResolver real =
+			new WithdrawalAwareAuthorizationRequestResolver(delegate, tokenProvider);
+
+		MockHttpServletRequest login = new MockHttpServletRequest(
+			"GET", OAuthEndpointPaths.AUTHORIZATION_BASE_URI + "/google");
+		MockHttpServletRequest withdrawal = new MockHttpServletRequest(
+			"GET", OAuthEndpointPaths.AUTHORIZATION_BASE_URI + "/google");
+		withdrawal.setParameter(WithdrawalAwareAuthorizationRequestResolver.TICKET_PARAMETER,
+			tokenProvider.issueWithdrawalTicket(MEMBER_ID));
+
+		OAuth2AuthorizationRequest plain = real.resolve(login);
+		OAuth2AuthorizationRequest withIntent = real.resolve(withdrawal);
+
+		assertThat(plain).isNotNull();
+		assertThat(withIntent).isNotNull();
+		assertThat(withIntent.getAttributes())
+			.as("로그인 왕복이 갖는 것을 탈퇴 왕복도 그대로 가져야 한다")
+			.containsKey(PkceParameterNames.CODE_VERIFIER);
+		assertThat(withIntent.getAdditionalParameters())
+			.containsKey(PkceParameterNames.CODE_CHALLENGE)
+			.containsKey(PkceParameterNames.CODE_CHALLENGE_METHOD);
+		assertThat(plain.getAttributes()).containsKey(PkceParameterNames.CODE_VERIFIER);
 	}
 
 	private ClientRegistration googleRegistration() {
