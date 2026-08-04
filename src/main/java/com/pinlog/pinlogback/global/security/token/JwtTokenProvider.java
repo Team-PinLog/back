@@ -41,6 +41,8 @@ public class JwtTokenProvider {
 	static final String TOKEN_USE = "token_use";
 	private static final String ACCESS = "access";
 	private static final String REFRESH = "refresh";
+	/** 탈퇴 인가 왕복을 시작할 권한(BD-48). Access·Refresh와 섞이면 안 되므로 용도를 따로 둔다. */
+	private static final String WITHDRAWAL = "withdrawal";
 	private static final JWSAlgorithm ALGORITHM = JWSAlgorithm.RS256;
 
 	private final JwtProperties properties;
@@ -76,6 +78,24 @@ public class JwtTokenProvider {
 		String tokenId = UUID.randomUUID().toString();
 		String token = sign(memberId, REFRESH, properties.refreshTokenTtl().toSeconds(), tokenId);
 		return new IssuedRefreshToken(token, tokenId);
+	}
+
+	/**
+	 * 탈퇴 인가 왕복을 시작할 권한을 발급한다(BD-48).
+	 *
+	 * <p>인가 진입은 브라우저 내비게이션이라 {@code GET}이다. 의도를 쿼리 파라미터로만 받으면
+	 * 악성 사이트가 피해자를 그 경로로 유도해 계정 삭제까지 이르게 할 수 있다 —
+	 * {@code DELETE /v1/me}에 CSRF를 걸어도 그 뒤 단계가 GET이라 우회된다. 서명한 티켓을 요구하면
+	 * 공격자는 키가 없어 만들 수 없다.
+	 */
+	public String issueWithdrawalTicket(Long memberId) {
+		return sign(memberId, WITHDRAWAL, properties.withdrawalTicketTtl().toSeconds(),
+			UUID.randomUUID().toString());
+	}
+
+	/** @return 검증을 통과한 탈퇴 티켓의 회원 식별자. 실패하면 빈 값 */
+	public Optional<Long> parseWithdrawalTicket(String ticket) {
+		return parse(ticket, WITHDRAWAL).map(VerifiedToken::memberId);
 	}
 
 	/** @return 검증을 통과한 Access 토큰의 회원 식별자. 실패하면 빈 값 */

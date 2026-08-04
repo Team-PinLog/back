@@ -20,7 +20,7 @@ class JwtTokenProviderTest {
 	private static final String ISSUER = "pinlog";
 
 	private final JwtProperties properties =
-		new JwtProperties(null, Duration.ofMinutes(30), Duration.ofDays(7), ISSUER);
+		new JwtProperties(null, Duration.ofMinutes(30), Duration.ofDays(7), Duration.ofMinutes(5), ISSUER);
 	private final JwtKeyProvider keyProvider = new JwtKeyProvider(properties, new MockEnvironment());
 	private final JwtTokenProvider tokenProvider = new JwtTokenProvider(properties, keyProvider);
 
@@ -104,7 +104,7 @@ class JwtTokenProviderTest {
 		// nimbus의 DefaultJWTClaimsVerifier는 기본 60초의 시계 오차를 허용한다. 분산 환경에서
 		// 필요한 관용이라 그대로 두되, 그만큼 실제 만료가 늦다는 뜻이므로 여유를 두고 검증한다.
 		JwtProperties expiring =
-			new JwtProperties(null, Duration.ofMinutes(-5), Duration.ofDays(7), ISSUER);
+			new JwtProperties(null, Duration.ofMinutes(-5), Duration.ofDays(7), Duration.ofMinutes(5), ISSUER);
 		JwtTokenProvider provider = new JwtTokenProvider(expiring, keyProvider);
 
 		assertThat(tokenProvider.parseAccessToken(provider.issueAccessToken(1L))).isEmpty();
@@ -115,7 +115,7 @@ class JwtTokenProviderTest {
 	void expiryToleratesClockSkew() {
 		// 위 테스트가 왜 -5분인지를 고정한다. 이 관용을 없애려면 명시적으로 줄여야 한다.
 		JwtProperties justExpired =
-			new JwtProperties(null, Duration.ofSeconds(-5), Duration.ofDays(7), ISSUER);
+			new JwtProperties(null, Duration.ofSeconds(-5), Duration.ofDays(7), Duration.ofMinutes(5), ISSUER);
 		JwtTokenProvider provider = new JwtTokenProvider(justExpired, keyProvider);
 
 		assertThat(tokenProvider.parseAccessToken(provider.issueAccessToken(1L))).contains(1L);
@@ -125,7 +125,7 @@ class JwtTokenProviderTest {
 	@DisplayName("발급자가 다른 토큰은 거부된다")
 	void tokenFromAnotherIssuerIsRejected() {
 		JwtProperties otherIssuer =
-			new JwtProperties(null, Duration.ofMinutes(30), Duration.ofDays(7), "someone-else");
+			new JwtProperties(null, Duration.ofMinutes(30), Duration.ofDays(7), Duration.ofMinutes(5), "someone-else");
 		JwtTokenProvider provider = new JwtTokenProvider(otherIssuer, keyProvider);
 
 		assertThat(tokenProvider.parseAccessToken(provider.issueAccessToken(1L))).isEmpty();
