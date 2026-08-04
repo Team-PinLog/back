@@ -66,6 +66,10 @@ class ContextAiKafkaPipelineTests extends IntegrationContainerSupport {
 	@Autowired
 	private KafkaTemplate<String, String> kafkaTemplate;
 
+	/** 토픽은 컨텍스트마다 격리된다({@code IntegrationContainerSupport}) — 하드코딩하면 남의 토픽을 본다. */
+	@Autowired
+	private AiQueueProperties queueProperties;
+
 	@BeforeEach
 	void resetStub() {
 		STUB.reset(FastApiProcessStub.Mode.ACCEPTED);
@@ -139,7 +143,7 @@ class ContextAiKafkaPipelineTests extends IntegrationContainerSupport {
 			contextId);
 		STUB.reset(FastApiProcessStub.Mode.ACCEPTED);
 
-		kafkaTemplate.send("context-ai.process", Long.toString(contextId),
+		kafkaTemplate.send(queueProperties.topic(), Long.toString(contextId),
 			new ContextAiProcessMessage(contextId, memberId, created.recordId()).toJson()).get();
 
 		assertThat(STUB.noCallWithin(2000))
@@ -159,7 +163,7 @@ class ContextAiKafkaPipelineTests extends IntegrationContainerSupport {
 		assertThat(STUB.awaitCall()).isNotNull();
 		STUB.reset(FastApiProcessStub.Mode.ACCEPTED);
 
-		kafkaTemplate.send("context-ai.process", Long.toString(oldContextId),
+		kafkaTemplate.send(queueProperties.topic(), Long.toString(oldContextId),
 			new ContextAiProcessMessage(oldContextId, memberId, recordId).toJson()).get();
 
 		assertThat(STUB.noCallWithin(2000)).as("삭제된 Context는 호출을 생략한다").isTrue();
@@ -182,7 +186,7 @@ class ContextAiKafkaPipelineTests extends IntegrationContainerSupport {
 			ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 		long deadline = System.nanoTime() + timeout.toNanos();
 		try (KafkaConsumer<String, String> probe = new KafkaConsumer<>(props)) {
-			probe.subscribe(List.of("context-ai.process-dlt"));
+			probe.subscribe(List.of(queueProperties.topic() + "-dlt"));
 			while (System.nanoTime() < deadline) {
 				for (ConsumerRecord<String, String> record : probe.poll(Duration.ofMillis(500))) {
 					if (ContextAiProcessMessage.fromJson(record.value()).contextId() == contextId) {
