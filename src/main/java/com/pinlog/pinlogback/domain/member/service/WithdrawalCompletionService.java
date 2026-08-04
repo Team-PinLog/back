@@ -67,7 +67,19 @@ public class WithdrawalCompletionService {
 	 */
 	public void complete(
 		Long memberId, SocialProvider provider, String providerUserId, String accessToken) {
-		requireOwnAccount(memberId, provider, providerUserId);
+		List<SocialAccount> accounts = socialAccountRepository.findByMemberId(memberId);
+		if (accounts.isEmpty()) {
+			// 탭 두 개로 동시에 탈퇴하면 두 번째가 늦게 도착한다. 실패로 다루면 프론트가 거짓을
+			// 말하므로 완료로 본다.
+			//
+			// 이 왕복이 만든 새 인가는 끊지 않는다. 마스킹으로 원본 식별자가 사라져 방금 인증된
+			// 계정이 그 회원의 것인지 확인할 수 없고, 확인 없이 끊으면 남의 연결을 끊는 경로가
+			// 열린다(BD-48 §⑤). 남는 연결은 사용자가 공급자 설정에서 지울 수 있다.
+			log.info("withdrawal already completed, treating as done: memberId={}", memberId);
+			return;
+		}
+		requireSingleAccount(memberId, accounts);
+		requireOwnAccount(memberId, provider, providerUserId, accounts);
 
 		SocialUnlinkClient client = unlinkClients.get(provider);
 		if (client == null) {
@@ -128,10 +140,22 @@ public class WithdrawalCompletionService {
 		}
 	}
 
+	/**
+	 * 한 번의 왕복은 한 공급자만 인가하는데 소프트 삭제는 그 회원의 계정을 전부 마스킹한다. 둘
+	 * 있는데 하나만 끊고 지우면 나머지는 <b>영구히 못 끊는다</b>. {@code WithdrawalAuthorizationService}가
+	 * 먼저 막지만 그 보증이 다른 클래스에 있어 여기서 한 번 더 확인한다 — 되돌릴 수 없는 쪽이다.
+	 */
+	private void requireSingleAccount(Long memberId, List<SocialAccount> accounts) {
+		if (accounts.size() > 1) {
+			throw new IllegalStateException(
+				"한 번의 인가 왕복으로는 계정 " + accounts.size() + "개를 해제할 수 없다: memberId=" + memberId);
+		}
+	}
+
 	/** 공급자 화면에서 다른 계정을 고를 수 있다. 확인하지 않으면 남의 연결을 끊는다(BD-48 §⑤). */
-	private void requireOwnAccount(Long memberId, SocialProvider provider, String providerUserId) {
-		boolean owned = socialAccountRepository.findByMemberId(memberId).stream()
-			.anyMatch(account -> matches(account, provider, providerUserId));
+	private void requireOwnAccount(
+		Long memberId, SocialProvider provider, String providerUserId, List<SocialAccount> accounts) {
+		boolean owned = accounts.stream().anyMatch(account -> matches(account, provider, providerUserId));
 		if (!owned) {
 			throw new WithdrawalAccountMismatchException(memberId);
 		}

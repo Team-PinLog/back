@@ -1,6 +1,7 @@
 package com.pinlog.pinlogback.domain.member;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.ArrayList;
@@ -159,6 +160,42 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 		assertThatThrownBy(() -> completionService.complete(
 			memberId, SocialProvider.KAKAO, "google-complete-4", ACCESS_TOKEN))
 			.isInstanceOf(WithdrawalAccountMismatchException.class);
+	}
+
+	@Test
+	@DisplayName("소셜 계정이 여럿이면 지우지 않고 멈춘다")
+	void refusesWhenTheMemberHasMoreThanOneSocialAccount() {
+		// 한 번의 왕복은 한 공급자만 인가한다. 하나만 끊고 마스킹하면 나머지는 provider_user_id가
+		// 파기돼 영구히 못 끊는다 — 이 설계가 막으려던 바로 그 상태다.
+		// 지금은 도달할 수 없지만(계정 생성 경로가 로그인 하나뿐) 결과가 영구적이라 닫아 둔다.
+		long memberId = newMemberId();
+		givenSocialAccount(memberId, SocialProvider.GOOGLE, "google-multi-1", "h@example.com");
+		givenSocialAccount(memberId, SocialProvider.KAKAO, "kakao-multi-1", "h@example.com");
+
+		assertThatThrownBy(() -> completionService.complete(
+			memberId, SocialProvider.GOOGLE, "google-multi-1", ACCESS_TOKEN))
+			.isInstanceOf(IllegalStateException.class);
+
+		assertThat(google.attempts).as("끊을 수 없는 계정이 남으므로 시작도 하지 않는다").isZero();
+		assertThat(deletedAtOf("core.member", memberId)).isNull();
+	}
+
+	@Test
+	@DisplayName("이미 탈퇴한 회원의 두 번째 왕복은 완료로 본다")
+	void secondRoundTripOfAnAlreadyWithdrawnMemberIsIdempotent() {
+		// 탭 두 개로 동시에 탈퇴하면 두 번째가 늦게 도착한다. 소프트 삭제된 계정은 조회되지 않아
+		// 소유 확인이 실패하는데, 그것을 "남의 계정"과 같이 다루면 프론트가 거짓을 말한다.
+		long memberId = newMemberId();
+		givenSocialAccount(memberId, SocialProvider.GOOGLE, "google-twice-1", "i@example.com");
+		completionService.complete(memberId, SocialProvider.GOOGLE, "google-twice-1", ACCESS_TOKEN);
+
+		assertThatCode(() -> completionService.complete(
+			memberId, SocialProvider.GOOGLE, "google-twice-1", ACCESS_TOKEN))
+			.doesNotThrowAnyException();
+
+		// 마스킹으로 원본 식별자가 사라져 이 계정이 그 회원의 것인지 확인할 수 없다. 확인 없이
+		// 끊으면 남의 연결을 끊는 경로가 열리므로(§⑤) 두 번째는 호출하지 않는다.
+		assertThat(google.attempts).isEqualTo(1);
 	}
 
 	@Test

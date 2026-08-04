@@ -1,17 +1,24 @@
 package com.pinlog.pinlogback.domain.auth.controller;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 
+import org.jspecify.annotations.Nullable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.pinlog.pinlogback.domain.auth.exception.UnsupportedSocialProviderException;
 import com.pinlog.pinlogback.domain.member.entity.SocialProvider;
+import com.pinlog.pinlogback.global.security.oauth.ClientRedirectCodes;
 import com.pinlog.pinlogback.global.security.oauth.OAuthEndpointPaths;
+import com.pinlog.pinlogback.global.security.oauth.WithdrawalAwareAuthorizationRequestResolver;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -32,6 +39,41 @@ import jakarta.servlet.http.HttpServletRequest;
 @RestController
 @RequestMapping("/v1/auth")
 public class SocialLoginController {
+
+	private final String clientRedirectUri;
+
+	public SocialLoginController(
+		@Value("${pinlog.auth.client-redirect-uri}") String clientRedirectUri) {
+		this.clientRedirectUri = clientRedirectUri;
+	}
+
+	/**
+	 * 인가 진입이 요청을 만들지 못했을 때만 닿는다.
+	 *
+	 * <p>{@code OAuth2AuthorizationRequestRedirectFilter}가 처리한 요청은 여기 오지 않는다 — 필터가
+	 * 리다이렉트로 응답을 끝내기 때문이다. 즉 이 메서드는 <b>resolver가 {@code null}을 돌려준
+	 * 경우</b>만 받는다.
+	 *
+	 * <p>탈퇴 티켓이 실려 있었다면 위조이거나 만료다. 그대로 두면 404라 사용자는 이유를 모르므로,
+	 * 복귀 경로에 코드를 실어 돌려보낸다(BD-48 §④). 티켓이 없었다면 지원하지 않는 registrationId로
+	 * 내부 경로를 직접 두드린 것이라 404가 맞다.
+	 */
+	@GetMapping("/authorize/{registrationId}")
+	public ResponseEntity<Void> authorizationRequestNotResolved(
+		@RequestParam(name = WithdrawalAwareAuthorizationRequestResolver.TICKET_PARAMETER,
+			required = false) @Nullable String ticket
+	) {
+		if (ticket == null) {
+			throw new UnsupportedSocialProviderException("authorize");
+		}
+		return ResponseEntity.status(HttpStatus.FOUND)
+			.location(URI.create(UriComponentsBuilder.fromUriString(clientRedirectUri)
+				.queryParam("error", ClientRedirectCodes.WITHDRAWAL_FAILED)
+				.encode(StandardCharsets.UTF_8)
+				.build()
+				.toUriString()))
+			.build();
+	}
 
 	@GetMapping("/{provider}/login")
 	public ResponseEntity<Void> login(@PathVariable String provider, HttpServletRequest request) {
