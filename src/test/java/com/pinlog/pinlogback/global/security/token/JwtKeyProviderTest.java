@@ -18,6 +18,7 @@ class JwtKeyProviderTest {
 
 	private static final Duration ACCESS_TTL = Duration.ofMinutes(30);
 	private static final Duration REFRESH_TTL = Duration.ofDays(7);
+	private static final Duration WITHDRAWAL_TTL = Duration.ofMinutes(5);
 
 	@Test
 	@DisplayName("키가 없으면 로컬·테스트에서는 임시 키쌍을 만든다")
@@ -75,7 +76,7 @@ class JwtKeyProviderTest {
 
 	/** 키 미주입을 재현하려면 {@code null}을 넣어야 하므로 파라미터도 nullable이다. */
 	private JwtProperties properties(@Nullable String privateKey) {
-		return new JwtProperties(privateKey, ACCESS_TTL, REFRESH_TTL, "pinlog");
+		return new JwtProperties(privateKey, ACCESS_TTL, REFRESH_TTL, WITHDRAWAL_TTL, "pinlog");
 	}
 
 	private String generatePkcs8Pem() throws Exception {

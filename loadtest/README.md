@@ -108,6 +108,47 @@ bash tools/run-load.sh all     # 유효 조합 10개 전부 (약 70~90분)
 부하 실행은 `ai.context_ai_state` 고아를 **대량으로** 남긴다(쓰기 여정의 context churn).
 알려진 잔여물 절 참고 — 정리 방식은 AI 파트와 공동 결정 사안이다.
 
+## 대량 벤치 (S15P11A705-283)
+
+인덱스·쿼리 계획 검증용 볼륨을 만든다. 현재 시드(record 117k)에서는 플래너가 Seq Scan을
+골라도 손해가 없어 인덱스 설계의 옳고 그름이 판별되지 않는다 — record 1천만 · 회원 10만
+규모에서만 계획이 갈린다.
+
+```bash
+bash tools/run-massive.sh                # 회원 10만 → record 1천만 (적재+검증)
+MEMBERS=1000 bash tools/run-massive.sh   # 축소 실행(약 11만 건) — 생성기 자체 확인용
+```
+
+- **이어 붙인다, 지우지 않는다.** 새 id를 현재 최대값 뒤에 만들어 골든 셋(member 1~6 ·
+  place 1~25 · record 1~25)과 기존 시드를 보존한다. 되돌리기는 `tools/teardown-massive.sql`
+  (벤치 행만 표식 `BENCH-`로 찾아 걷어냄) — 통째 초기화면 볼륨 삭제가 훨씬 빠르다.
+- **분포는 구간표다** (균등이면 선택도 추정이 현실과 어긋난다): monster 0.05%×20,000건 ·
+  heavy 0.95%×4,000 · mid 9%×400 · light 40%×30 · tiny 50%×8 → p50 두 자리 · p90 세 자리 ·
+  max 다섯 자리.
+- **`ai` 스키마와 `core.feed_event`는 만들지 않는다**(AI 파트 소유). 따라서 이 볼륨으로는
+  Keyword 집계·노출 패널티 쿼리를 검증할 수 없다.
+- 검증(`tools/verify-massive.sql`)은 행 수·분포·골든 보존·통계 갱신에 더해 값 정합
+  (BD-11·20·33)을 PASS/FAIL로 판정하고, FAIL이 있으면 0이 아닌 코드로 끝난다.
+
+### 측정 전 자원 한도
+
+로컬 Docker는 메모리가 15GiB라 천만 행도 페이지 캐시에 다 들어간다(적중률 99.99%) —
+그대로 재면 "전부 메모리에 있는" 비현실을 잰다. 측정 전에 운영과 같은 한도(1Gi·1cpu,
+`infra/platform/postgres/statefulset.yaml`)를 얹는다:
+
+```bash
+docker compose -f compose.yaml -f compose.bench.yaml up -d postgres   # 한도 얹기
+docker compose up -d postgres                                         # 되돌리기
+```
+
+**적재는 한도 없이, 측정은 한도 얹고.** 순서가 바뀌면 인덱스 재생성(maintenance_work_mem
+256MB)이 1Gi 안에서 기어간다 — run-massive.sh가 한도 걸린 컨테이너를 감지하면 중단한다.
+
+적재 실측(2026-08-03, 회원 10만 → record 1,000만): 적재+인덱스 재생성+ANALYZE **296초**,
+DB 707MB → **5,906MB**. 검증 10종 전부 PASS — 회원당 record 분포 p50 19 · p90 103 ·
+max 20,000(실측 형태 유지), 1Gi 한도 상태 콜드 스캔에서 캐시 적중률 0%·디스크 읽기
+369,185블록(약 2.9GB)으로 한도가 실제 I/O를 만들어 내는 것을 확인.
+
 ## 알려진 잔여물
 
 `teardown-test-member.sql`은 `core`만 지운다. `ai.context_ai_state` 등은 `core.context`를

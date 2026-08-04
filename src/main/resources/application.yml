@@ -120,6 +120,9 @@ pinlog:
       # 수명의 원본은 BD-21이다. 여기서 임의로 바꾸지 않는다.
       access-token-ttl: 30m
       refresh-token-ttl: 7d
+      # 탈퇴 인가 왕복을 시작할 권한의 수명(BD-48). 사용자가 공급자 화면을 거치는 동안만
+      # 유효하면 된다. 값의 근거는 민감 작업 전 재인증에 최근성 창을 두는 업계 관행이다.
+      withdrawal-ticket-ttl: 5m
       issuer: pinlog
   # FastAPI AI Server 연동. 정본은 AI 파트가 소유한 docs/ai/spec/ai-integration.md 2.1이다.
   ai:

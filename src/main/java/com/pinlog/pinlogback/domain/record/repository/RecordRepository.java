@@ -61,22 +61,43 @@ public interface RecordRepository extends JpaRepository<Record, Long> {
 	@Query("select r from Record r where r.id = :recordId")
 	Optional<Record> findByIdForUpdate(@Param("recordId") Long recordId);
 
+	/**
+	 * 지도 마커(API 명세 4.2). {@code keyword}는 서비스가 소문자화·이스케이프·{@code %} 감싸기까지
+	 * 마친 완성된 LIKE 패턴이며, {@code null}이면 필터하지 않는다 — 가공을 쿼리의 {@code concat}이
+	 * 아니라 서비스에 두는 이유는 null 파라미터 때문이다. {@code lower(concat('%', :keyword, '%'))}
+	 * 안의 null은 Postgres가 타입을 추론하지 못해 {@code lower(bytea)} 오류가 되고, {@code like}의
+	 * 우변 자리는 text로 고정되어 안전하다.
+	 *
+	 * <p>keyword 조건에 인덱스를 붙이지 않는다. 이 쿼리는 record.member_id로 드라이빙하고 place는
+	 * PK 조인이라, LIKE는 이미 회원 단위로 좁혀진 수십~수백 행에 필터로만 적용된다.
+	 *
+	 * <p><b>정렬은 여기서 하지 않는다.</b> 이름순은 DB collation에 따라 결과가 달라진다 — 한글에
+	 * 동순위 가중치를 주는 collation에서는 {@code ORDER BY p.name}이 사실상 무순서다. 환경에
+	 * 좌우되지 않도록 서비스가 Java {@code Collator}로 정렬한다.
+	 */
 	@Query("select new com.pinlog.pinlogback.domain.record.dto.MapMarkerResponse("
 		+ "r.id, p.id, p.name, p.lat, p.lng)"
 		+ " from Record r join Place p on p.id = r.placeId"
-		+ " where r.memberId = :memberId")
-	List<MapMarkerResponse> findMarkers(@Param("memberId") Long memberId);
+		+ " where r.memberId = :memberId"
+		+ " and (:keyword is null"
+		+ " or lower(p.name) like :keyword escape '!'"
+		+ " or lower(p.address) like :keyword escape '!')")
+	List<MapMarkerResponse> findMarkers(@Param("memberId") Long memberId, @Param("keyword") String keyword);
 
 	@Query("select new com.pinlog.pinlogback.domain.record.dto.MapMarkerResponse("
 		+ "r.id, p.id, p.name, p.lat, p.lng)"
 		+ " from Record r join Place p on p.id = r.placeId"
 		+ " where r.memberId = :memberId"
 		+ " and p.lat between :swLat and :neLat"
-		+ " and p.lng between :swLng and :neLng")
+		+ " and p.lng between :swLng and :neLng"
+		+ " and (:keyword is null"
+		+ " or lower(p.name) like :keyword escape '!'"
+		+ " or lower(p.address) like :keyword escape '!')")
 	List<MapMarkerResponse> findMarkersWithinBounds(
 		@Param("memberId") Long memberId,
 		@Param("swLat") BigDecimal swLat,
 		@Param("swLng") BigDecimal swLng,
 		@Param("neLat") BigDecimal neLat,
-		@Param("neLng") BigDecimal neLng);
+		@Param("neLng") BigDecimal neLng,
+		@Param("keyword") String keyword);
 }

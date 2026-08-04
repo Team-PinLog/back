@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -23,7 +24,8 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class OAuthLoginFailureHandler implements AuthenticationFailureHandler {
 
-	private static final String ERROR_CODE = "OAUTH_FAILED";
+	/** RFC 6749 §4.1.2.1이 규정한 값. 사용자가 공급자 화면에서 거절했을 때 온다. */
+	private static final String ACCESS_DENIED = "access_denied";
 
 	private final String clientRedirectUri;
 
@@ -47,12 +49,40 @@ public class OAuthLoginFailureHandler implements AuthenticationFailureHandler {
 		log.warn("social login failed: [{}] {}",
 			exception.getClass().getSimpleName(), exception.getMessage(), exception);
 
-		String target = UriComponentsBuilder.fromUriString(clientRedirectUri)
-			.queryParam("error", ERROR_CODE)
+		response.sendRedirect(redirectWith(errorCodeFor(request, exception)));
+	}
+
+	/**
+	 * 클라이언트 복귀 경로에 코드를 실어 돌려보낸다. 성공 처리도 탈퇴 실패를 이리로 넘기므로
+	 * 코드를 받는 형태로 열어 둔다.
+	 */
+	String redirectWith(String errorCode) {
+		return UriComponentsBuilder.fromUriString(clientRedirectUri)
+			.queryParam("error", errorCode)
 			.encode(StandardCharsets.UTF_8)
 			.build()
 			.toUriString();
+	}
 
-		response.sendRedirect(target);
+	/**
+	 * 이 왕복이 탈퇴였는지는 소비된 인가 요청만 안다(BD-48 §③). 실패 경로에서도 그 정보가 필요한
+	 * 이유는 어휘가 갈리기 때문이다 — 사용자가 공급자 화면에서 취소했을 때 프론트가 보여야 하는
+	 * 문구가 로그인과 탈퇴에서 다르다.
+	 *
+	 * <p>탈퇴 왕복이라고 전부 "취소"는 아니다. 토큰 교환 실패나 공급자 장애도 이리로 오는데 그것을
+	 * 취소라고 하면 사실이 아니다 — {@code access_denied}일 때만 취소로 부른다.
+	 */
+	private String errorCodeFor(HttpServletRequest request, AuthenticationException exception) {
+		if (WithdrawalAwareAuthorizationRequestResolver.withdrawalMemberId(request).isEmpty()) {
+			return ClientRedirectCodes.OAUTH_FAILED;
+		}
+		return isAccessDenied(exception)
+			? ClientRedirectCodes.WITHDRAWAL_CANCELLED
+			: ClientRedirectCodes.WITHDRAWAL_FAILED;
+	}
+
+	private boolean isAccessDenied(AuthenticationException exception) {
+		return exception instanceof OAuth2AuthenticationException oauth2
+			&& ACCESS_DENIED.equals(oauth2.getError().getErrorCode());
 	}
 }

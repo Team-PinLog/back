@@ -24,6 +24,8 @@ import com.pinlog.pinlogback.global.security.oauth.CookieOAuth2AuthorizationRequ
 import com.pinlog.pinlogback.global.security.oauth.OAuthEndpointPaths;
 import com.pinlog.pinlogback.global.security.oauth.OAuthLoginFailureHandler;
 import com.pinlog.pinlogback.global.security.oauth.OAuthLoginSuccessHandler;
+import com.pinlog.pinlogback.global.security.oauth.RequestScopedOAuth2AuthorizedClientRepository;
+import com.pinlog.pinlogback.global.security.oauth.WithdrawalAwareAuthorizationRequestResolver;
 import com.pinlog.pinlogback.global.security.token.JwtProperties;
 import com.pinlog.pinlogback.global.security.token.JwtTokenProvider;
 
@@ -48,6 +50,14 @@ public class SecurityConfig {
 		"/v1/auth/**"
 	};
 
+	/**
+	 * place 썸네일 정적 이미지(S15P11A705-305). 프론트가 {@code <img src>}로 직접 로드하는
+	 * 경로라 인증을 요구하면 화면에서 이미지가 깨지고, 장소 이미지는 비밀이 아니다.
+	 */
+	private static final String[] PUBLIC_STATIC_ASSETS = {
+		"/images/places/**"
+	};
+
 	/** 운영 프로파일에서는 springdoc 자체가 꺼져 있어 404가 된다(application-prod.yml). */
 	private static final String[] PUBLIC_API_DOCS = {
 		"/v3/api-docs",
@@ -62,15 +72,19 @@ public class SecurityConfig {
 	 * <p>기본 resolver는 client secret이 있는 confidential client에는 PKCE를 넣지 않으므로
 	 * 명시적으로 켠다. baseUri는 {@link OAuthEndpointPaths}가 갖는 내부 경로이고,
 	 * {@code SocialLoginController}가 명세 경로에서 그리로 넘긴다.
+	 *
+	 * <p>그 위를 {@link WithdrawalAwareAuthorizationRequestResolver}가 감싼다 — 같은 진입을
+	 * 로그인과 탈퇴가 공유하고, 어느 쪽인지는 티켓이 확정한다(BD-48).
 	 */
 	@Bean
 	public OAuth2AuthorizationRequestResolver authorizationRequestResolver(
-		ClientRegistrationRepository clientRegistrationRepository
+		ClientRegistrationRepository clientRegistrationRepository,
+		JwtTokenProvider jwtTokenProvider
 	) {
 		DefaultOAuth2AuthorizationRequestResolver resolver = new DefaultOAuth2AuthorizationRequestResolver(
 			clientRegistrationRepository, OAuthEndpointPaths.AUTHORIZATION_BASE_URI);
 		resolver.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce());
-		return resolver;
+		return new WithdrawalAwareAuthorizationRequestResolver(resolver, jwtTokenProvider);
 	}
 
 	/**
@@ -109,6 +123,7 @@ public class SecurityConfig {
 		RestAccessDeniedHandler accessDeniedHandler,
 		OAuth2AuthorizationRequestResolver authorizationRequestResolver,
 		CookieOAuth2AuthorizationRequestRepository authorizationRequestRepository,
+		RequestScopedOAuth2AuthorizedClientRepository authorizedClientRepository,
 		OAuthLoginSuccessHandler successHandler,
 		OAuthLoginFailureHandler failureHandler,
 		CookieCsrfTokenRepository csrfTokenRepository,
@@ -122,6 +137,8 @@ public class SecurityConfig {
 					.authorizationRequestResolver(authorizationRequestResolver)
 					// 기본 구현은 HttpSession을 쓴다. STATELESS 선언과 어긋나므로 쿠키로 바꾼다.
 					.authorizationRequestRepository(authorizationRequestRepository))
+				// 여기도 기본 구현이 HttpSession을 쓴다. 공급자 토큰은 콜백 한 요청에서만 필요하다.
+				.authorizedClientRepository(authorizedClientRepository)
 				// 콜백 경로. registrationId를 state에서 꺼내므로 마지막 세그먼트가 아니어도 된다.
 				.redirectionEndpoint(endpoint -> endpoint.baseUri(OAuthEndpointPaths.CALLBACK_BASE_URI))
 				.successHandler(successHandler)
@@ -130,6 +147,7 @@ public class SecurityConfig {
 				.requestMatchers(PUBLIC_ACTUATOR).permitAll()
 				.requestMatchers(PUBLIC_AUTH).permitAll()
 				.requestMatchers(PUBLIC_API_DOCS).permitAll()
+				.requestMatchers(PUBLIC_STATIC_ASSETS).permitAll()
 				.anyRequest().authenticated())
 			// 쿠키 인증이라 CSRF 방어가 필요하다(08 §1.7). spa()가 요청 핸들러와 저장소를 함께
 			// 잡아 주는데, 저장소만 우리 것으로 덮어쓴다 — Path 때문이다(csrfTokenRepository() 참고).
