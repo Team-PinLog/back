@@ -12,6 +12,10 @@ public enum ErrorCode {
 	SELF_FOLLOW_NOT_ALLOWED(HttpStatus.UNPROCESSABLE_CONTENT, "자기 자신의 책장은 팔로우할 수 없습니다."),
 	DUPLICATE_FOLLOW(HttpStatus.CONFLICT, "이미 팔로우한 책장입니다."),
 	DELETE_CONFIRMATION_REQUIRED(HttpStatus.CONFLICT, "삭제 확인이 필요합니다."),
+	// 한 번의 인가 왕복은 한 공급자만 해제한다. 계정이 여럿이면 나머지가 마스킹으로 영구히
+	// 못 끊기므로 시작하지 않는다(BD-48 §⑥). 500이 아니라 409인 이유는 이것이 터진 것이 아니라
+	// 막은 것이기 때문이다 — 500이면 운영 알림이 버그로 운다.
+	WITHDRAWAL_NOT_SUPPORTED(HttpStatus.CONFLICT, "지금 계정 구성으로는 탈퇴를 진행할 수 없습니다."),
 	RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "요청한 리소스를 찾을 수 없습니다."),
 	// AI 검색 실패 둘. 빈 결과로 치환하지 않는 것이 계약이다 — 빈 결과는 "일치하는 기록이 없음"으로
 	// 보여 장애·설정 오류를 숨긴다(ai 레포 docs/spec/model-profile.md 3.1). 자연어 검색에만 해당하며
