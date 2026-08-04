@@ -38,9 +38,9 @@ import tools.jackson.databind.json.JsonMapper;
  * 코드(별 커넥션 DB 조회)를 돌려야 하는데, 요청·응답 기록만 해 주는 mock 서버로는 그 지점을 잡을
  * 수 없다. 새 테스트 의존성도 필요 없다.
  */
-final class FastApiProcessStub {
+public final class FastApiProcessStub {
 
-	static final String PATH = "/internal/v1/context/process";
+	public static final String PATH = "/internal/v1/context/process";
 
 	private static final JsonMapper JSON = JsonMapper.builder().build();
 
@@ -54,7 +54,7 @@ final class FastApiProcessStub {
 	 * @param embeddingStatus 보였다면 그 값. 아니면 {@code null}
 	 * @param keywordStatus 보였다면 그 값. 아니면 {@code null}
 	 */
-	record Received(
+	public record Received(
 		long contextId,
 		String internalSecret,
 		String text,
@@ -65,7 +65,7 @@ final class FastApiProcessStub {
 	}
 
 	/** 대역의 응답 방식. 실패 경로가 롤백을 유발하지 않는 것을 확인하려면 실패를 만들 수 있어야 한다. */
-	enum Mode {
+	public enum Mode {
 		/** 정상 접수. */
 		ACCEPTED,
 		/** 5xx — 상대 장애. */
@@ -79,7 +79,7 @@ final class FastApiProcessStub {
 	private final BlockingQueue<Received> received = new LinkedBlockingQueue<>();
 	private final AtomicReference<Mode> mode = new AtomicReference<>(Mode.ACCEPTED);
 
-	FastApiProcessStub(PostgreSQLContainer postgres) {
+	public FastApiProcessStub(PostgreSQLContainer postgres) {
 		this.postgres = postgres;
 		try {
 			this.server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -91,22 +91,22 @@ final class FastApiProcessStub {
 		server.start();
 	}
 
-	String baseUrl() {
+	public String baseUrl() {
 		return "http://127.0.0.1:" + server.getAddress().getPort();
 	}
 
-	void reset(Mode next) {
+	public void reset(Mode next) {
 		mode.set(next);
 		received.clear();
 	}
 
 	/** 호출이 오지 않으면 {@code null}. 비동기 호출이라 폴링이 아니라 대기로 받는다. */
-	Received awaitCall() throws InterruptedException {
+	public Received awaitCall() throws InterruptedException {
 		return received.poll(15, TimeUnit.SECONDS);
 	}
 
 	/** 호출이 오지 <b>않았음</b>을 확인할 때 쓴다. 짧게 기다린 뒤 비어 있으면 참으로 본다. */
-	boolean noCallWithin(long millis) throws InterruptedException {
+	public boolean noCallWithin(long millis) throws InterruptedException {
 		return received.poll(millis, TimeUnit.MILLISECONDS) == null;
 	}
 
@@ -114,7 +114,7 @@ final class FastApiProcessStub {
 	 * 대역을 쓰는 클래스가 끝날 때 닫는다. {@code stop}은 실행자를 건드리지 않으므로 직접 내린다 —
 	 * 그러지 않으면 non-daemon 스레드 둘이 JVM 끝까지 남는다.
 	 */
-	void stop() {
+	public void stop() {
 		server.stop(0);
 		if (server.getExecutor() instanceof ExecutorService executor) {
 			executor.shutdownNow();

@@ -1,19 +1,13 @@
 package com.pinlog.pinlogback.domain.ai;
 
-import java.util.concurrent.Executor;
-
 import org.apache.kafka.clients.admin.NewTopic;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.scheduling.TaskScheduler;
-import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
-import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.client.RestClient;
 
@@ -25,17 +19,15 @@ import com.pinlog.pinlogback.domain.ai.service.AiRescanProperties;
  * 패키지에 두는 기준은 {@code docs/development/package-structure.md}의 보안 설정과 같다 — 설정과
  * 그 설정이 조립하는 구현이 떨어져 있으면 한쪽만 고치게 된다.
  *
- * <p>{@link EnableScheduling}이 여기 있는 것은 {@link EnableAsync}와 같은 사정이다. 둘 다 애플리케이션
- * <b>전역</b> 스위치인데, 켜야 하는 이유가 이 연동에만 있다. {@code global/config}로 올리면 스위치와
- * 그 스위치의 유일한 소비자가 떨어져 앉는다.
+ * <p>{@link EnableScheduling}이 여기 있는 것도 같은 사정이다. 애플리케이션 <b>전역</b> 스위치인데,
+ * 켜야 하는 이유가 이 연동(재스캔)에만 있다. {@code global/config}로 올리면 스위치와 그 스위치의
+ * 유일한 소비자가 떨어져 앉는다. 한때 여기 있던 {@code @EnableAsync}와 {@code aiCallExecutor}
+ * (커밋 후 FastAPI 호출용 인메모리 큐)는 Kafka 발행으로 대체되어 사라졌다(BD-48).
  */
 @Configuration
-@EnableAsync
 @EnableScheduling
 @EnableConfigurationProperties({AiProperties.class, AiRescanProperties.class, AiQueueProperties.class})
 public class AiIntegrationConfig {
-
-	private static final Logger log = LoggerFactory.getLogger(AiIntegrationConfig.class);
 
 	/**
 	 * Context→AI 요청의 본 토픽(BD-48). 재시도 토픽과 DLT는 {@code @RetryableTopic}이 여기서
@@ -116,26 +108,4 @@ public class AiIntegrationConfig {
 		return scheduler;
 	}
 
-	/**
-	 * AI 호출 전용 풀(명세 4.2). 공용 executor를 쓰지 않는 이유는 FastAPI 장애가 다른 비동기 작업까지
-	 * 굶기지 않게 하기 위해서다.
-	 *
-	 * <p><b>큐가 차면 버린다.</b> {@code CallerRunsPolicy}를 쓰면 요청 스레드가 외부 호출을 대신
-	 * 수행해 FastAPI 장애가 그대로 Core 처리량 저하가 된다. 버려진 요청은 {@code PENDING}으로 남아
-	 * 재스캔 대상이 되므로 유실이 아니다 — 그래서 버리는 쪽이 안전하다.
-	 */
-	@Bean
-	public Executor aiCallExecutor() {
-		ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-		executor.setThreadNamePrefix("ai-call-");
-		executor.setCorePoolSize(2);
-		executor.setMaxPoolSize(4);
-		executor.setQueueCapacity(100);
-		// 버린 사실은 남긴다. 조용히 버리면 "왜 PENDING만 쌓이는가"를 알 길이 없다. 예외를 던지는
-		// AbortPolicy는 쓰지 않는다 — 커밋 이후 리스너를 타고 올라가 정상 응답을 오류로 만든다.
-		executor.setRejectedExecutionHandler((task, pool) ->
-			log.debug("AI 호출 큐 포화로 요청을 버렸다. PENDING이 남아 재스캔이 다시 집는다."));
-		executor.initialize();
-		return executor;
-	}
 }
