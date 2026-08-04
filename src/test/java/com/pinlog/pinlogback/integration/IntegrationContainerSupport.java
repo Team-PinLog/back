@@ -1,8 +1,13 @@
 package com.pinlog.pinlogback.integration;
 
+import java.util.UUID;
+
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -47,12 +52,38 @@ import org.testcontainers.utility.DockerImageName;
 //
 // 끄지 않고 늘리는 이유: @Scheduled 등록 자체가 검증 대상이다(fixedDelay 인지, 전용 스케줄러를
 // 쓰는지). 조건부로 끄면 그 계약을 볼 수 없다.
+// 큐 재시도도 줄인다. 기본값(4회, 1s부터 지수 백오프)이면 재시도 체인 소진(DLT 격리)을 검증하는
+// 테스트가 회차마다 합계 7초를 기다린다. 줄여도 검증 대상(체인을 타고 DLT에 도달한다)은 같다.
+//
+// Hikari 풀도 줄인다. 스위트가 캐시하는 Spring 컨텍스트 하나마다 풀(기본 10)이 통째로 살아
+// 남는데, Kafka 큐 도입으로 전용 컨텍스트가 하나 더 생기며 Postgres 기본 max_connections(100)를
+// 넘겼다 — 실제로 too many clients로 죽었다. 테스트는 순차 실행이라 5로도 남는다.
 @TestPropertySource(properties = {
 	"pinlog.ai.base-url=http://127.0.0.1:1",
 	"pinlog.ai.internal-secret=test-internal-secret",
-	"pinlog.ai.rescan.interval=PT1H"
+	"pinlog.ai.rescan.interval=PT1H",
+	"pinlog.ai.queue.retry-attempts=3",
+	"pinlog.ai.queue.retry-initial-delay-ms=100",
+	"spring.datasource.hikari.maximum-pool-size=5"
 })
 public abstract class IntegrationContainerSupport {
+
+	/**
+	 * 큐 토픽·그룹을 <b>Spring 컨텍스트마다</b> 격리한다. 캐시된 컨텍스트들은 스위트가 끝날 때까지
+	 * 살아서 컨슈머를 계속 돌리는데, 토픽·그룹을 공유하면 새 컨텍스트가 뜰 때마다 리밸런스가 나고
+	 * 커밋 안 된 offset이 재전달되어 <b>다른 클래스의 "호출이 없어야 한다" 검증 구간에</b> 남의
+	 * 호출이 흘러든다(실측: rollingBackTheTransactionNeverReachesFastApi가 그렇게 깨졌다).
+	 * 토픽이 갈리면 컨슈머가 서로의 메시지를 볼 수 없어 재생·리밸런스 간섭이 구조적으로 사라진다.
+	 *
+	 * <p>이 메서드는 컨텍스트 생성 시 한 번 돌므로 suffix는 컨텍스트 단위로 고정된다. 같은 설정을
+	 * 공유해 컨텍스트를 재사용하는 클래스들은 같은 토픽을 이어 쓴다 — 그것이 캐시의 의미다.
+	 */
+	@DynamicPropertySource
+	static void isolatedQueuePerContext(DynamicPropertyRegistry registry) {
+		String suffix = UUID.randomUUID().toString().substring(0, 8);
+		registry.add("pinlog.ai.queue.topic", () -> "context-ai.process-test-" + suffix);
+		registry.add("pinlog.ai.queue.group", () -> "pinlog-back-test-" + suffix);
+	}
 
 	/** {@code org.testcontainers.containers.PostgreSQLContainer}는 2.x에서 deprecated다. */
 	@ServiceConnection
@@ -67,6 +98,11 @@ public abstract class IntegrationContainerSupport {
 	protected static final GenericContainer<?> REDIS =
 		new GenericContainer<>(DockerImageName.parse("redis:7.4.5-alpine")).withExposedPorts(6379);
 
+	/** {@code compose.yaml}의 kafka와 같은 태그. Context→AI 큐(BD-48)가 이 브로커를 쓴다. */
+	@ServiceConnection
+	protected static final KafkaContainer KAFKA =
+		new KafkaContainer(DockerImageName.parse("apache/kafka:4.1.0"));
+
 	static {
 		// JVM 전체에서 한 번만 띄운다(Testcontainers 싱글턴 컨테이너 패턴).
 		//
@@ -80,6 +116,7 @@ public abstract class IntegrationContainerSupport {
 		// 여기서 수동으로 시작하면 컨테이너 하나가 실행 내내 살아 있고, 정리는 JVM 종료 시 Ryuk가 한다.
 		POSTGRES.start();
 		REDIS.start();
+		KAFKA.start();
 	}
 
 }

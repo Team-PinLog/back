@@ -1,4 +1,4 @@
-# 로컬 개발 override. compose.yaml이 띄운 Postgres/Redis에 접속한다.
+# 로컬 개발 override. compose.yaml이 띄운 Postgres/Redis/Kafka에 접속한다.
 # 로컬 전용 값만 두고, 실제 비밀번호·토큰은 넣지 않는다(configuration.md).
 spring:
   datasource:
@@ -9,6 +9,8 @@ spring:
     redis:
       host: localhost
       port: 16379
+  kafka:
+    bootstrap-servers: localhost:19092
 
 # JWT_PRIVATE_KEY를 주지 않으면 기동할 때 임시 키쌍을 만든다(BD-31). 재시작하면 기존 토큰이
 # 무효가 되니 고정하고 싶으면 .env에 PEM을 넣는다 — 절차는 authentication.md 8장.

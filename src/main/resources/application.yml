@@ -82,6 +82,20 @@ spring:
       # 없으므로 짧게 끊고 실패로 처리한다.
       timeout: 2s
       connect-timeout: 1s
+  kafka:
+    # Context→AI 요청 경로의 브로커(BD-48). 브로커 배포는 INFRA 소유이며, 주소는 infra가 주입하는
+    # 환경변수를 따른다(BD-46과 같은 원칙). 기본값은 로컬 compose.yaml의 HOST 리스너다.
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+    producer:
+      properties:
+        # 브로커 장애·버퍼 포화 시 send()가 호출 스레드를 붙잡는 상한. 기본 60초는 AFTER_COMMIT
+        # 리스너가 요청 스레드에서 돌므로 사용자 응답을 그만큼 지연시킨다. 초과하면 발행 실패로
+        # 삼켜지고 PENDING이 남아 재스캔이 복구한다 — Redis timeout을 짧게 끊는 것과 같은 사정이다.
+        "[max.block.ms]": 1000
+    consumer:
+      # 컨슈머 그룹이 처음 붙거나 offset이 만료됐을 때 놓친 메시지를 버리지 않고 따라잡는다.
+      # 중복 소비는 소비자의 멱등 가드(상태 기준)가 흡수한다.
+      auto-offset-reset: earliest
   jpa:
     hibernate:
       ddl-auto: validate
@@ -139,6 +153,17 @@ pinlog:
       # 스레드 점유만 늘린다(AI 파트 소유 명세 docs/ai/spec/ai-integration.md 3장).
       connect-timeout: 1s
       read-timeout: 5s
+    # Context→AI 요청을 나르는 큐(BD-48). 커밋 후 발행 → back 내부 컨슈머가 소비해 FastAPI를
+    # 호출한다. 재시도 값이 설정인 이유는 rescan과 같다 — 테스트가 체인 소진을 기다릴 수 있어야 한다.
+    queue:
+      topic: context-ai.process
+      group: pinlog-back
+      # 재시도 토픽 체인의 총 시도 횟수(본 토픽 1회 + 재시도 토픽 3회). 소진되면 DLT로 격리된다.
+      # 재스캔(max-retry 3)과 별개 예산이다 — 체인은 순간 장애를, 재스캔은 그 밖의 모든 유실을 맡는다.
+      retry-attempts: 4
+      # 지수 백오프: 1s → 2s → 4s. 재스캔 주기(5m)보다 훨씬 짧은 구간을 맡는다.
+      retry-initial-delay-ms: 1000
+      retry-multiplier: 2.0
     # 유실·정지된 AI 처리를 복구하는 재스캔과 FAILED Finalizer. 정본은 AI 파트가 소유한
     # docs/ai/spec/ai-rescan-scheduler.md 2장이며 여기서 임의로 바꾸지 않는다. 상수로 박지 않는
     # 이유는 튜닝 대상인 것도 있지만, 무엇보다 "만료됐다"를 테스트에서 만들 수 없기 때문이다.
