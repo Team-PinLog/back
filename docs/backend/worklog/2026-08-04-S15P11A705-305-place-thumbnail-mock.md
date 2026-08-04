@@ -6,9 +6,9 @@
 
 카카오 로컬 API는 장소 사진을 주지 않아 place에는 이미지가 없었다. 시연에서 상세 화면이
 비어 보이는 문제를 실사진 수집 없이 풀기 위해, `core.place.thumbnail_url`(V7, nullable)을
-추가하고 정적 리소스 이미지 4장을 `/images/places/`에 두어 시연 대상 place에 SQL로 수동
-연결하는 목업 단계를 택했다. 출처 후보로 카카오 이미지 검색 API(`/v2/search/image`)를
-확인해 두었고, 전환 시 이번 컬럼·응답 계약(`PlaceSummaryResponse.thumbnailUrl`)을 그대로
+추가하고 `/images/places/` 정적 경로의 이미지를 시연 대상 place에 SQL로 수동 연결하는
+목업 단계를 택했다. 출처 후보로 카카오 이미지 검색 API(`/v2/search/image`)를 확인해
+두었고, 전환 시 이번 컬럼·응답 계약(`PlaceSummaryResponse.thumbnailUrl`)을 그대로
 재사용한다.
 
 판단 두 가지:
@@ -20,4 +20,8 @@
   보장되지 않으므로 `PUBLIC_STATIC_ASSETS`(`/images/places/**`)를 permitAll로 열었다.
 
 이미지는 WebP로 계획했으나 로컬에 인코더가 없어 JPEG(1200×900, 4:3, 장당 ≤31KB)로
-생성했다. 계약(경로·비율·용량 상한)은 동일하다. 시연 준비 SQL은 PR 본문에 기록한다.
+생성했다. 계약(경로·비율·용량 상한)은 동일하다. 처음엔 이 더미를 main 정적 리소스에
+뒀는데, 시연용 실제 이미지(표지)가 나오면 버려질 파일이라 **테스트 리소스로 옮겼다** —
+테스트 클래스패스의 `static/`도 MockMvc에서 동일하게 서빙되므로 경로·인증 제외 검증은
+유지되고, 배포 산출물에는 더미가 실리지 않는다. 표지가 나오면 같은 파일명 규약으로
+`src/main/resources/static/images/places/`에 커밋한다. 시연 준비 SQL은 PR 본문에 기록한다.
