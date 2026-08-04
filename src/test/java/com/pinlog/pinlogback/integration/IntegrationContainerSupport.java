@@ -3,6 +3,7 @@ package com.pinlog.pinlogback.integration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.test.context.TestPropertySource;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.kafka.KafkaContainer;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -47,10 +48,14 @@ import org.testcontainers.utility.DockerImageName;
 //
 // 끄지 않고 늘리는 이유: @Scheduled 등록 자체가 검증 대상이다(fixedDelay 인지, 전용 스케줄러를
 // 쓰는지). 조건부로 끄면 그 계약을 볼 수 없다.
+// 큐 재시도도 줄인다. 기본값(4회, 1s부터 지수 백오프)이면 재시도 체인 소진(DLT 격리)을 검증하는
+// 테스트가 회차마다 합계 7초를 기다린다. 줄여도 검증 대상(체인을 타고 DLT에 도달한다)은 같다.
 @TestPropertySource(properties = {
 	"pinlog.ai.base-url=http://127.0.0.1:1",
 	"pinlog.ai.internal-secret=test-internal-secret",
-	"pinlog.ai.rescan.interval=PT1H"
+	"pinlog.ai.rescan.interval=PT1H",
+	"pinlog.ai.queue.retry-attempts=3",
+	"pinlog.ai.queue.retry-initial-delay-ms=100"
 })
 public abstract class IntegrationContainerSupport {
 
@@ -67,6 +72,11 @@ public abstract class IntegrationContainerSupport {
 	protected static final GenericContainer<?> REDIS =
 		new GenericContainer<>(DockerImageName.parse("redis:7.4.5-alpine")).withExposedPorts(6379);
 
+	/** {@code compose.yaml}의 kafka와 같은 태그. Context→AI 큐(BD-48)가 이 브로커를 쓴다. */
+	@ServiceConnection
+	protected static final KafkaContainer KAFKA =
+		new KafkaContainer(DockerImageName.parse("apache/kafka:4.1.0"));
+
 	static {
 		// JVM 전체에서 한 번만 띄운다(Testcontainers 싱글턴 컨테이너 패턴).
 		//
@@ -80,6 +90,7 @@ public abstract class IntegrationContainerSupport {
 		// 여기서 수동으로 시작하면 컨테이너 하나가 실행 내내 살아 있고, 정리는 JVM 종료 시 Ryuk가 한다.
 		POSTGRES.start();
 		REDIS.start();
+		KAFKA.start();
 	}
 
 }
