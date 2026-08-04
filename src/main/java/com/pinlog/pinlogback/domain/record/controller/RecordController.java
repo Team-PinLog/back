@@ -63,8 +63,9 @@ public class RecordController {
 		@RequestParam(required = false) BigDecimal swLat,
 		@RequestParam(required = false) BigDecimal swLng,
 		@RequestParam(required = false) BigDecimal neLat,
-		@RequestParam(required = false) BigDecimal neLng) {
-		return recordService.map(me.memberId(), swLat, swLng, neLat, neLng);
+		@RequestParam(required = false) BigDecimal neLng,
+		@RequestParam(required = false) String keyword) {
+		return recordService.map(me.memberId(), swLat, swLng, neLat, neLng, keyword);
 	}
 
 	@GetMapping("/by-place")
