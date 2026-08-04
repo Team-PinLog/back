@@ -45,6 +45,9 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-security-oauth2-client'
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.0.3'
     implementation 'org.springframework.boot:spring-boot-starter-flyway'
+    // Context→AI 요청 경로의 전달 수단(BD-48). 재시도 토픽 체인·DLT는 spring-kafka의
+    // @RetryableTopic을 쓴다. 버전은 Boot BOM이 관리한다.
+    implementation 'org.springframework.boot:spring-boot-starter-kafka'
     implementation 'io.micrometer:micrometer-registry-prometheus'
     implementation 'org.flywaydb:flyway-database-postgresql'
     compileOnly 'org.projectlombok:lombok'
@@ -58,6 +61,9 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
     testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
     testImplementation 'org.testcontainers:testcontainers-postgresql'
+    testImplementation 'org.testcontainers:testcontainers-kafka'
+    // DLT 검증에서 특정 토픽의 레코드 하나를 기다리는 헬퍼(KafkaTestUtils)용.
+    testImplementation 'org.springframework.kafka:spring-kafka-test'
     testCompileOnly 'org.projectlombok:lombok'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
     testAnnotationProcessor 'org.projectlombok:lombok'
