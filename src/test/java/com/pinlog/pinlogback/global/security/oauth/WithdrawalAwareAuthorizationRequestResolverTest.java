@@ -102,6 +102,80 @@ class WithdrawalAwareAuthorizationRequestResolverTest {
 		assertThat(plain.getAttributes()).containsKey(PkceParameterNames.CODE_VERIFIER);
 	}
 
+	@Test
+	@DisplayName("Google 탈퇴 왕복은 refresh token을 받도록 요청한다")
+	void googleWithdrawalAsksForARefreshToken() {
+		// Google에서 승인을 지우려면 access token이 아니라 refresh token을 폐기해야 한다.
+		// access_type=offline이 없으면 refresh token 자체가 오지 않고, Google은 그것을 첫 인가에만
+		// 주므로 prompt=consent가 있어야 탈퇴 시점에 확실히 받는다.
+		OAuth2AuthorizationRequest resolved = realResolver(googleRegistration())
+			.resolve(withdrawalRequest("google"));
+
+		assertThat(resolved).isNotNull();
+		assertThat(resolved.getAdditionalParameters())
+			.containsEntry("access_type", "offline")
+			.containsEntry("prompt", "consent");
+	}
+
+	@Test
+	@DisplayName("Google 로그인 진입에는 그 파라미터가 붙지 않는다")
+	void googleLoginIsNotAskedForARefreshToken() {
+		// 로그인마다 동의 화면이 뜨는 것은 이 작업이 감수한 대가가 아니다. 탈퇴 왕복에만 붙인다.
+		MockHttpServletRequest login = new MockHttpServletRequest(
+			"GET", OAuthEndpointPaths.AUTHORIZATION_BASE_URI + "/google");
+
+		OAuth2AuthorizationRequest resolved = realResolver(googleRegistration()).resolve(login);
+
+		assertThat(resolved).isNotNull();
+		assertThat(resolved.getAdditionalParameters())
+			.doesNotContainKey("access_type")
+			.doesNotContainKey("prompt");
+	}
+
+	@Test
+	@DisplayName("Kakao 탈퇴 왕복에는 붙이지 않는다 — Google 전용 파라미터다")
+	void otherProvidersAreUntouched() {
+		// Kakao·Naver는 연결 단위 API라 access token으로 이미 끊긴다. 남의 인가 요청에 Google
+		// 전용 파라미터를 실으면 공급자가 거절할 수 있다.
+		OAuth2AuthorizationRequest resolved = realResolver(kakaoRegistration())
+			.resolve(withdrawalRequest("kakao"));
+
+		assertThat(resolved).isNotNull();
+		assertThat(resolved.getAdditionalParameters())
+			.doesNotContainKey("access_type")
+			.doesNotContainKey("prompt");
+	}
+
+	private WithdrawalAwareAuthorizationRequestResolver realResolver(ClientRegistration registration) {
+		DefaultOAuth2AuthorizationRequestResolver delegate = new DefaultOAuth2AuthorizationRequestResolver(
+			new InMemoryClientRegistrationRepository(registration),
+			OAuthEndpointPaths.AUTHORIZATION_BASE_URI);
+		delegate.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce());
+		return new WithdrawalAwareAuthorizationRequestResolver(delegate, tokenProvider);
+	}
+
+	private MockHttpServletRequest withdrawalRequest(String registrationId) {
+		MockHttpServletRequest request = new MockHttpServletRequest(
+			"GET", OAuthEndpointPaths.AUTHORIZATION_BASE_URI + "/" + registrationId);
+		request.setParameter(WithdrawalAwareAuthorizationRequestResolver.TICKET_PARAMETER,
+			tokenProvider.issueWithdrawalTicket(MEMBER_ID));
+		return request;
+	}
+
+	private ClientRegistration kakaoRegistration() {
+		return ClientRegistration.withRegistrationId("kakao")
+			.clientId("client")
+			.clientSecret("secret")
+			.authorizationGrantType(AuthorizationGrantType.AUTHORIZATION_CODE)
+			.redirectUri("https://pinlog.example/api/core/v1/auth/{registrationId}/callback")
+			.authorizationUri("https://kauth.kakao.com/oauth/authorize")
+			.tokenUri("https://kauth.kakao.com/oauth/token")
+			.userInfoUri("https://kapi.kakao.com/v2/user/me")
+			.userNameAttributeName("id")
+			.scope("account_email")
+			.build();
+	}
+
 	private ClientRegistration googleRegistration() {
 		return ClientRegistration.withRegistrationId("google")
 			.clientId("client")

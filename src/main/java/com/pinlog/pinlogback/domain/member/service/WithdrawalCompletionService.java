@@ -7,6 +7,7 @@ import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
+import com.pinlog.pinlogback.domain.auth.client.ProviderTokens;
 import com.pinlog.pinlogback.domain.auth.client.SocialUnlinkClient;
 import com.pinlog.pinlogback.domain.auth.exception.SocialUnlinkException;
 import com.pinlog.pinlogback.domain.auth.exception.UnsupportedSocialProviderException;
@@ -62,13 +63,13 @@ public class WithdrawalCompletionService {
 	 *     만료될 수 있어 쿠키로 다시 식별하지 않는다
 	 * @param provider 방금 인증한 공급자
 	 * @param providerUserId 방금 인증한 공급자 계정
-	 * @param accessToken 방금 발급받은 공급자 access token
+	 * @param tokens 방금 발급받은 공급자 토큰들
 	 * @throws WithdrawalAccountMismatchException 인증된 계정이 그 회원의 것이 아닐 때
 	 * @throws UnsupportedSocialProviderException 그 공급자를 해제할 클라이언트가 없을 때
 	 * @throws com.pinlog.pinlogback.domain.auth.exception.SocialUnlinkException 해제가 실패했을 때
 	 */
 	public void complete(
-		Long memberId, SocialProvider provider, String providerUserId, String accessToken) {
+		Long memberId, SocialProvider provider, String providerUserId, ProviderTokens tokens) {
 		List<SocialAccount> accounts = socialAccountRepository.findByMemberId(memberId);
 		if (accounts.isEmpty()) {
 			// 탭 두 개로 동시에 탈퇴하면 두 번째가 늦게 도착한다. 실패로 다루면 프론트가 거짓을
@@ -87,7 +88,7 @@ public class WithdrawalCompletionService {
 		if (client == null) {
 			throw new UnsupportedSocialProviderException(provider.registrationId());
 		}
-		unlinkAbsorbingTransientFailure(client, accessToken, memberId);
+		unlinkAbsorbingTransientFailure(client, tokens, memberId);
 		log.info("social account unlinked before withdrawal: memberId={}, provider={}",
 			memberId, provider);
 
@@ -117,10 +118,10 @@ public class WithdrawalCompletionService {
 	 * 같아서, 되풀이하면 사용자를 기다리게 할 뿐이다.
 	 */
 	private void unlinkAbsorbingTransientFailure(
-		SocialUnlinkClient client, String accessToken, Long memberId) {
+		SocialUnlinkClient client, ProviderTokens tokens, Long memberId) {
 		for (int attempt = 1; ; attempt++) {
 			try {
-				client.unlink(accessToken);
+				client.unlink(tokens);
 				return;
 			} catch (SocialUnlinkException e) {
 				if (!e.isRetryable() || attempt == MAX_UNLINK_ATTEMPTS) {

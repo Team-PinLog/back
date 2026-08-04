@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
+import org.springframework.security.oauth2.core.endpoint.OAuth2ParameterNames;
 
 import com.pinlog.pinlogback.global.security.token.JwtTokenProvider;
 
@@ -46,6 +47,29 @@ public class WithdrawalAwareAuthorizationRequestResolver implements OAuth2Author
 	 * {@code code_verifier})도 모두 문자열이다. 검증기를 느슨하게 푸는 대신 값을 맞춘다.
 	 */
 	public static final String WITHDRAWAL_MEMBER_ID = "withdrawal_member_id";
+
+	/**
+	 * Google 탈퇴 왕복에만 붙이는 파라미터.
+	 *
+	 * <p><b>Google에서 승인을 지우려면 refresh token을 폐기해야 한다.</b> access token을
+	 * {@code /revoke}에 보내면 {@code 200}이 오지만 그것은 <b>토큰</b>이 폐기된 것이고, 계정의
+	 * 「서드파티 앱 및 서비스」에는 앱이 그대로 남는다(실측). 폐기의 연쇄는 access → refresh 방향이라
+	 * refresh token이 없으면 연쇄할 대상도 없다.
+	 *
+	 * <p>{@code access_type=offline}이 없으면 refresh token 자체가 오지 않고, Google은 그것을
+	 * <b>첫 인가에만</b> 주므로 {@code prompt=consent}가 있어야 탈퇴 시점에 확실히 받는다.
+	 *
+	 * <p><b>로그인 진입에는 붙이지 않는다.</b> 붙이면 매 로그인마다 동의 화면이 뜬다. 탈퇴는 계정
+	 * 삭제 앞이라 명시적 승인이 오히려 맞다.
+	 *
+	 * <p>Kakao·Naver는 연결 단위 API라 access token으로 이미 끊긴다. 남의 인가 요청에 Google 전용
+	 * 파라미터를 실을 이유가 없다.
+	 */
+	private static final String GOOGLE = "google";
+	private static final String ACCESS_TYPE = "access_type";
+	private static final String OFFLINE = "offline";
+	private static final String PROMPT = "prompt";
+	private static final String CONSENT = "consent";
 
 	/**
 	 * 콜백 처리에서 이 왕복이 누구의 탈퇴였는지 읽는다.
@@ -108,9 +132,26 @@ public class WithdrawalAwareAuthorizationRequestResolver implements OAuth2Author
 			return null;
 		}
 
-		return OAuth2AuthorizationRequest.from(resolved)
+		// 값이 문자열인 이유는 BD-49다 — 쿠키가 JSON이라 PolymorphicTypeValidator가 Long 복원을
+		// 거부한다. Google 전용 파라미터는 S15P11A705-309다.
+		OAuth2AuthorizationRequest.Builder builder = OAuth2AuthorizationRequest.from(resolved)
 			.attributes(attributes ->
-				attributes.put(WITHDRAWAL_MEMBER_ID, String.valueOf(memberId.get())))
-			.build();
+				attributes.put(WITHDRAWAL_MEMBER_ID, String.valueOf(memberId.get())));
+		if (GOOGLE.equals(registrationIdOf(resolved))) {
+			builder.additionalParameters(parameters -> {
+				parameters.put(ACCESS_TYPE, OFFLINE);
+				parameters.put(PROMPT, CONSENT);
+			});
+		}
+		return builder.build();
+	}
+
+	/**
+	 * 위임이 {@code attributes}에 넣어 둔 값이다. 경로에서 다시 잘라내지 않는다 — 매칭 규칙이 바뀌면
+	 * 조용히 어긋난다.
+	 */
+	private @Nullable String registrationIdOf(OAuth2AuthorizationRequest resolved) {
+		Object registrationId = resolved.getAttributes().get(OAuth2ParameterNames.REGISTRATION_ID);
+		return registrationId instanceof String value ? value : null;
 	}
 }

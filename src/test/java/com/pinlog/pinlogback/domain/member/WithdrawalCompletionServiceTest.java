@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 
+import com.pinlog.pinlogback.domain.auth.client.ProviderTokens;
 import com.pinlog.pinlogback.domain.auth.client.SocialUnlinkClient;
 import com.pinlog.pinlogback.domain.auth.exception.SocialUnlinkException;
 import com.pinlog.pinlogback.domain.auth.exception.UnsupportedSocialProviderException;
@@ -78,7 +79,8 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 		long accountId =
 			givenSocialAccount(memberId, SocialProvider.GOOGLE, "google-complete-1", "a@example.com");
 
-		completionService.complete(memberId, SocialProvider.GOOGLE, "google-complete-1", ACCESS_TOKEN);
+		completionService.complete(
+			memberId, SocialProvider.GOOGLE, "google-complete-1", ProviderTokens.of(ACCESS_TOKEN));
 
 		assertThat(google.tokens).containsExactly(ACCESS_TOKEN);
 		assertThat(deletedAtOf("core.member", memberId)).isNotNull();
@@ -94,7 +96,7 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 		givenSocialAccount(memberId, SocialProvider.GOOGLE, "google-retry-1", "f@example.com");
 		google.transientFailuresLeft = 1;
 
-		completionService.complete(memberId, SocialProvider.GOOGLE, "google-retry-1", ACCESS_TOKEN);
+		completionService.complete(memberId, SocialProvider.GOOGLE, "google-retry-1", ProviderTokens.of(ACCESS_TOKEN));
 
 		assertThat(google.attempts).isEqualTo(2);
 		assertThat(deletedAtOf("core.member", memberId)).isNotNull();
@@ -110,7 +112,7 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 		google.transientFailuresLeft = 99;
 
 		assertThatThrownBy(() -> completionService.complete(
-			memberId, SocialProvider.GOOGLE, "google-cap-1", ACCESS_TOKEN))
+			memberId, SocialProvider.GOOGLE, "google-cap-1", ProviderTokens.of(ACCESS_TOKEN)))
 			.isInstanceOf(SocialUnlinkException.class);
 
 		assertThat(google.attempts).as("상한만큼만 시도한다").isEqualTo(2);
@@ -132,7 +134,7 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 		google.retryable = false;
 
 		assertThatThrownBy(() -> completionService.complete(
-			memberId, SocialProvider.GOOGLE, "google-lost-1", ACCESS_TOKEN))
+			memberId, SocialProvider.GOOGLE, "google-lost-1", ProviderTokens.of(ACCESS_TOKEN)))
 			.isInstanceOf(SocialUnlinkException.class);
 
 		assertThat(google.attempts).as("무응답 1회 + 확정 실패 1회").isEqualTo(2);
@@ -152,7 +154,7 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 		google.retryable = false;
 
 		assertThatThrownBy(() -> completionService.complete(
-			memberId, SocialProvider.GOOGLE, "google-retry-2", ACCESS_TOKEN))
+			memberId, SocialProvider.GOOGLE, "google-retry-2", ProviderTokens.of(ACCESS_TOKEN)))
 			.isInstanceOf(SocialUnlinkException.class);
 
 		assertThat(google.attempts).isEqualTo(1);
@@ -168,7 +170,7 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 		google.failing = true;
 
 		assertThatThrownBy(() -> completionService.complete(
-			memberId, SocialProvider.GOOGLE, "google-complete-2", ACCESS_TOKEN))
+			memberId, SocialProvider.GOOGLE, "google-complete-2", ProviderTokens.of(ACCESS_TOKEN)))
 			.isInstanceOf(SocialUnlinkException.class);
 
 		assertThat(deletedAtOf("core.member", memberId))
@@ -186,7 +188,7 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 		givenSocialAccount(memberId, SocialProvider.GOOGLE, "google-complete-3", "c@example.com");
 
 		assertThatThrownBy(() -> completionService.complete(
-			memberId, SocialProvider.GOOGLE, "somebody-else", ACCESS_TOKEN))
+			memberId, SocialProvider.GOOGLE, "somebody-else", ProviderTokens.of(ACCESS_TOKEN)))
 			.isInstanceOf(WithdrawalAccountMismatchException.class);
 
 		assertThat(google.tokens).as("남의 연결을 끊지 않는다").isEmpty();
@@ -200,7 +202,7 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 		givenSocialAccount(memberId, SocialProvider.GOOGLE, "google-complete-4", "d@example.com");
 
 		assertThatThrownBy(() -> completionService.complete(
-			memberId, SocialProvider.KAKAO, "google-complete-4", ACCESS_TOKEN))
+			memberId, SocialProvider.KAKAO, "google-complete-4", ProviderTokens.of(ACCESS_TOKEN)))
 			.isInstanceOf(WithdrawalAccountMismatchException.class);
 	}
 
@@ -215,7 +217,7 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 		givenSocialAccount(memberId, SocialProvider.KAKAO, "kakao-multi-1", "h@example.com");
 
 		assertThatThrownBy(() -> completionService.complete(
-			memberId, SocialProvider.GOOGLE, "google-multi-1", ACCESS_TOKEN))
+			memberId, SocialProvider.GOOGLE, "google-multi-1", ProviderTokens.of(ACCESS_TOKEN)))
 			.isInstanceOf(MultipleSocialAccountsNotSupportedException.class);
 
 		assertThat(google.attempts).as("끊을 수 없는 계정이 남으므로 시작도 하지 않는다").isZero();
@@ -229,10 +231,10 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 		// 소유 확인이 실패하는데, 그것을 "남의 계정"과 같이 다루면 프론트가 거짓을 말한다.
 		long memberId = newMemberId();
 		givenSocialAccount(memberId, SocialProvider.GOOGLE, "google-twice-1", "i@example.com");
-		completionService.complete(memberId, SocialProvider.GOOGLE, "google-twice-1", ACCESS_TOKEN);
+		completionService.complete(memberId, SocialProvider.GOOGLE, "google-twice-1", ProviderTokens.of(ACCESS_TOKEN));
 
 		assertThatCode(() -> completionService.complete(
-			memberId, SocialProvider.GOOGLE, "google-twice-1", ACCESS_TOKEN))
+			memberId, SocialProvider.GOOGLE, "google-twice-1", ProviderTokens.of(ACCESS_TOKEN)))
 			.doesNotThrowAnyException();
 
 		// 마스킹으로 원본 식별자가 사라져 이 계정이 그 회원의 것인지 확인할 수 없다. 확인 없이
@@ -247,7 +249,7 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 		givenSocialAccount(memberId, SocialProvider.KAKAO, "kakao-complete-5", "e@example.com");
 
 		assertThatThrownBy(() -> completionService.complete(
-			memberId, SocialProvider.KAKAO, "kakao-complete-5", ACCESS_TOKEN))
+			memberId, SocialProvider.KAKAO, "kakao-complete-5", ProviderTokens.of(ACCESS_TOKEN)))
 			.isInstanceOf(UnsupportedSocialProviderException.class);
 
 		assertThat(deletedAtOf("core.member", memberId)).isNull();
@@ -274,7 +276,7 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 		}
 
 		@Override
-		public void unlink(String accessToken) {
+		public void unlink(ProviderTokens providerTokens) {
 			attempts++;
 			if (transientFailuresLeft > 0) {
 				transientFailuresLeft--;
@@ -283,7 +285,7 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 			if (failing) {
 				throw new SocialUnlinkException("stubbed failure", null, retryable);
 			}
-			tokens.add(accessToken);
+			tokens.add(providerTokens.accessToken());
 		}
 	}
 }

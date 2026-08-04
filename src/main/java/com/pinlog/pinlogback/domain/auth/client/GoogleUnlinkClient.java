@@ -34,9 +34,16 @@ public class GoogleUnlinkClient implements SocialUnlinkClient {
 	}
 
 	@Override
-	public void unlink(String accessToken) {
+	public void unlink(ProviderTokens tokens) {
 		MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
-		form.add("token", accessToken);
+		// refresh token이 있으면 그것을 폐기한다. access token을 보내면 200이 오지만 그것은
+		// 토큰이 폐기된 것이고, 계정의 「서드파티 앱 및 서비스」에는 앱이 그대로 남는다(실측).
+		// 폐기의 연쇄가 access → refresh 방향이라 승인은 refresh token 쪽에 달려 있다.
+		//
+		// 없으면 access token으로 떨어뜨린다 — 승인까지 지우지는 못하지만 토큰은 죽는다.
+		// 인가 요청에 access_type=offline·prompt=consent가 빠지면 여기로 온다.
+		String token = tokens.refreshToken() != null ? tokens.refreshToken() : tokens.accessToken();
+		form.add("token", token);
 		try {
 			restClient.post()
 				.uri(REVOKE_URI)

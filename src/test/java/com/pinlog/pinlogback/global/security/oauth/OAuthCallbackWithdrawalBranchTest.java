@@ -28,9 +28,11 @@ import org.springframework.security.oauth2.core.AuthorizationGrantType;
 import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2RefreshToken;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 
+import com.pinlog.pinlogback.domain.auth.client.ProviderTokens;
 import com.pinlog.pinlogback.domain.auth.exception.SocialUnlinkException;
 import com.pinlog.pinlogback.domain.auth.service.AuthTokenService;
 import com.pinlog.pinlogback.domain.auth.service.AuthTokenService.TokenPair;
@@ -55,6 +57,7 @@ class OAuthCallbackWithdrawalBranchTest {
 	private static final Long MEMBER_ID = 77L;
 	private static final String PROVIDER_USER_ID = "google-user-1";
 	private static final String PROVIDER_ACCESS_TOKEN = "provider-access-token";
+	private static final String PROVIDER_REFRESH_TOKEN = "provider-refresh-token";
 	private static final String CLIENT_REDIRECT_URI = "https://pinlog.example/auth/callback";
 
 	private final SocialLoginService socialLoginService = mock(SocialLoginService.class);
@@ -85,7 +88,8 @@ class OAuthCallbackWithdrawalBranchTest {
 		successHandler.onAuthenticationSuccess(request, response, authentication());
 
 		verify(completionService).complete(
-			eq(MEMBER_ID), eq(SocialProvider.GOOGLE), eq(PROVIDER_USER_ID), eq(PROVIDER_ACCESS_TOKEN));
+			eq(MEMBER_ID), eq(SocialProvider.GOOGLE), eq(PROVIDER_USER_ID),
+			eq(new ProviderTokens(PROVIDER_ACCESS_TOKEN, PROVIDER_REFRESH_TOKEN)));
 		verifyNoInteractions(socialLoginService, authTokenService);
 	}
 
@@ -234,8 +238,9 @@ class OAuthCallbackWithdrawalBranchTest {
 				.authorizationUri("https://accounts.google.com/o/oauth2/v2/auth")
 				.tokenUri("https://oauth2.googleapis.com/token")
 				.build();
-		return new OAuth2AuthorizedClient(registration, PROVIDER_USER_ID, new OAuth2AccessToken(
-			OAuth2AccessToken.TokenType.BEARER, PROVIDER_ACCESS_TOKEN,
-			Instant.now(), Instant.now().plusSeconds(3600)));
+		return new OAuth2AuthorizedClient(registration, PROVIDER_USER_ID,
+			new OAuth2AccessToken(OAuth2AccessToken.TokenType.BEARER, PROVIDER_ACCESS_TOKEN,
+				Instant.now(), Instant.now().plusSeconds(3600)),
+			new OAuth2RefreshToken(PROVIDER_REFRESH_TOKEN, Instant.now()));
 	}
 }

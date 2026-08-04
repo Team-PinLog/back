@@ -41,6 +41,7 @@ import com.pinlog.pinlogback.domain.member.entity.SocialProvider;
 class SocialUnlinkClientTest {
 
 	private static final String ACCESS_TOKEN = "provider-access-token";
+	private static final String REFRESH_TOKEN = "provider-refresh-token";
 
 	private final RestClient.Builder builder = RestClient.builder();
 	private final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
@@ -54,14 +55,16 @@ class SocialUnlinkClientTest {
 
 		server.expect(requestTo("https://oauth2.googleapis.com/revoke"))
 			.andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
-		assertThat(catchThrowableOfType(SocialUnlinkException.class, () -> client.unlink(ACCESS_TOKEN)))
+		assertThat(catchThrowableOfType(SocialUnlinkException.class,
+			() -> client.unlink(ProviderTokens.of(ACCESS_TOKEN))))
 			.as("RFC 7009이 503에 재시도를 규범으로 둔다")
 			.returns(true, SocialUnlinkException::isRetryable);
 
 		server.reset();
 		server.expect(requestTo("https://oauth2.googleapis.com/revoke"))
 			.andRespond(withStatus(HttpStatus.BAD_REQUEST));
-		assertThat(catchThrowableOfType(SocialUnlinkException.class, () -> client.unlink(ACCESS_TOKEN)))
+		assertThat(catchThrowableOfType(SocialUnlinkException.class,
+			() -> client.unlink(ProviderTokens.of(ACCESS_TOKEN))))
 			.as("요청이 잘못됐거나 자격증명이 틀린 것은 되풀이해도 같다")
 			.returns(false, SocialUnlinkException::isRetryable);
 	}
@@ -78,7 +81,8 @@ class SocialUnlinkClientTest {
 				throw new IOException("연결이 끊겼다");
 			});
 
-		assertThat(catchThrowableOfType(SocialUnlinkException.class, () -> client.unlink(ACCESS_TOKEN)))
+		assertThat(catchThrowableOfType(SocialUnlinkException.class,
+			() -> client.unlink(ProviderTokens.of(ACCESS_TOKEN))))
 			.returns(true, SocialUnlinkException::isRetryable);
 	}
 
@@ -106,7 +110,7 @@ class SocialUnlinkClientTest {
 				.andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer " + ACCESS_TOKEN))
 				.andRespond(withSuccess("{\"id\":123456789}", MediaType.APPLICATION_JSON));
 
-			client.unlink(ACCESS_TOKEN);
+			client.unlink(ProviderTokens.of(ACCESS_TOKEN));
 
 			server.verify();
 		}
@@ -118,7 +122,7 @@ class SocialUnlinkClientTest {
 			server.expect(requestTo("https://kapi.kakao.com/v1/user/unlink"))
 				.andRespond(withServerError());
 
-			assertThatThrownBy(() -> client.unlink(ACCESS_TOKEN))
+			assertThatThrownBy(() -> client.unlink(ProviderTokens.of(ACCESS_TOKEN)))
 				.isInstanceOf(SocialUnlinkException.class);
 		}
 	}
@@ -139,7 +143,7 @@ class SocialUnlinkClientTest {
 				.andExpect(content().string("token=" + ACCESS_TOKEN))
 				.andRespond(withSuccess());
 
-			client.unlink(ACCESS_TOKEN);
+			client.unlink(ProviderTokens.of(ACCESS_TOKEN));
 
 			server.verify();
 		}
@@ -150,8 +154,22 @@ class SocialUnlinkClientTest {
 			server.expect(requestTo("https://oauth2.googleapis.com/revoke"))
 				.andRespond(withStatus(HttpStatus.BAD_REQUEST));
 
-			assertThatThrownBy(() -> client.unlink(ACCESS_TOKEN))
+			assertThatThrownBy(() -> client.unlink(ProviderTokens.of(ACCESS_TOKEN)))
 				.isInstanceOf(SocialUnlinkException.class);
+		}
+
+		@Test
+		@DisplayName("refresh token이 있으면 그것을 폐기한다 — 승인이 거기 달려 있다")
+		void revokesTheRefreshTokenWhenPresent() {
+			// access token을 보내면 200이 오지만 토큰만 죽고 승인은 남는다(실측). 폐기 연쇄가
+			// access → refresh 방향이라, 승인을 지우려면 refresh token을 보내야 한다.
+			server.expect(requestTo("https://oauth2.googleapis.com/revoke"))
+				.andExpect(content().string("token=" + REFRESH_TOKEN))
+				.andRespond(withSuccess());
+
+			client.unlink(new ProviderTokens(ACCESS_TOKEN, REFRESH_TOKEN));
+
+			server.verify();
 		}
 	}
 
@@ -173,7 +191,7 @@ class SocialUnlinkClientTest {
 						+ "&token=" + ACCESS_TOKEN + "&token_type_hint=access_token"))
 				.andRespond(withSuccess());
 
-			client.unlink(ACCESS_TOKEN);
+			client.unlink(ProviderTokens.of(ACCESS_TOKEN));
 
 			server.verify();
 		}
@@ -184,7 +202,7 @@ class SocialUnlinkClientTest {
 			server.expect(requestTo("https://nid.naver.com/oauth2.0/revoke"))
 				.andRespond(withStatus(HttpStatus.UNAUTHORIZED));
 
-			assertThatThrownBy(() -> client.unlink(ACCESS_TOKEN))
+			assertThatThrownBy(() -> client.unlink(ProviderTokens.of(ACCESS_TOKEN)))
 				.isInstanceOf(SocialUnlinkException.class);
 		}
 
