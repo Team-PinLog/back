@@ -24,16 +24,29 @@ import com.pinlog.pinlogback.domain.feed.service.FeedCandidate;
  * 한 단계만 빠져도 삭제되었거나 비공개인 데이터가 타인에게 노출된다. 이 조건을 자바 코드가 아니라
  * <b>WHERE 절에</b> 두는 것이 규약이다(feed-recommendation 3.3).
  *
- * <p>정렬키를 {@code COALESCE(published_at, created_at)}으로 두는 것은 값이 비어 있는 행을 최신성
- * 계산에서 떨어뜨리지 않기 위해서다. 컬럼 자체의 불변식은 back#75가 따로 다루므로 여기서는 읽기만 한다.
+ * <p>최신성 기준 시각은 {@code published_at}을 그대로 쓴다. 발행된 행은 그 값을 반드시 가지므로
+ * ({@code is_published = true} 필터 + V5 {@code ck_collection_published_at} CHECK, BD-33)
+ * {@code COALESCE}로 감쌀 대상이 없다. 감싸면 정렬키가 표현식이 되어 {@code ix_collection_feed}의
+ * 순서를 쓸 수 없게 되므로 <b>막는 것 없이 전체 정렬만 유발한다</b> — 실측 근거는 BI-38이고,
+ * 회귀는 {@code FeedChannelPlanTests}가 계획으로 잡는다.
  */
 @Repository
 public class FeedCandidateRepository {
 
-	/** {@code ix_collection_feed}({@code is_published, published_at DESC})가 이 채널의 전제다. */
-	private static final String RECENT_SQL = """
+	/**
+	 * {@code ix_collection_feed}({@code is_published, published_at DESC})가 이 채널의 전제다.
+	 *
+	 * <p><b>정렬키를 표현식으로 감싸지 말 것.</b> 인덱스는 {@code published_at} 순서만 저장하므로
+	 * {@code ORDER BY}에 함수·연산이 끼면 플래너가 그 순서를 쓸 수 없고, 상위 {@code :limit}건만
+	 * 필요한데도 조건에 맞는 행 전부를 정렬한다. 천만 건 실측에서 664,689행 Seq Scan · 241ms 대
+	 * 105행 Index Scan · 1.66ms로 145배 차이였다(BI-38).
+	 *
+	 * <p>가시성이 package-private인 이유는 {@code FeedChannelPlanTests}가 이 상수를 그대로
+	 * EXPLAIN해 계획을 검증하기 때문이다. 테스트가 SQL 사본을 들면 본체만 바뀌었을 때 통과한다.
+	 */
+	static final String RECENT_SQL = """
 		SELECT c.id AS collection_id, c.member_id AS owner_id,
-			COALESCE(c.published_at, c.created_at) AS published_at
+			c.published_at AS published_at
 		FROM core.collection c
 		JOIN core.member m ON m.id = c.member_id
 		WHERE c.deleted_at IS NULL
@@ -41,13 +54,14 @@ public class FeedCandidateRepository {
 			AND c.record_count > 0
 			AND c.member_id <> :me
 			AND m.deleted_at IS NULL
-		ORDER BY published_at DESC, c.id DESC
+		ORDER BY c.published_at DESC, c.id DESC
 		LIMIT :limit
 		""";
 
-	private static final String FOLLOWED_SQL = """
+	/** 같은 인덱스에 의존한다. 정렬키 주의사항도 {@link #RECENT_SQL}과 같다. */
+	static final String FOLLOWED_SQL = """
 		SELECT c.id AS collection_id, c.member_id AS owner_id,
-			COALESCE(c.published_at, c.created_at) AS published_at
+			c.published_at AS published_at
 		FROM core.follow f
 		JOIN core.collection c ON c.member_id = f.followee_member_id
 		JOIN core.member m ON m.id = c.member_id
@@ -58,13 +72,13 @@ public class FeedCandidateRepository {
 			AND c.record_count > 0
 			AND c.member_id <> :me
 			AND m.deleted_at IS NULL
-		ORDER BY published_at DESC, c.id DESC
+		ORDER BY c.published_at DESC, c.id DESC
 		LIMIT :limit
 		""";
 
 	private static final String SAMPLE_FROM_PIVOT_SQL = """
 		SELECT c.id AS collection_id, c.member_id AS owner_id,
-			COALESCE(c.published_at, c.created_at) AS published_at
+			c.published_at AS published_at
 		FROM core.collection c
 		JOIN core.member m ON m.id = c.member_id
 		WHERE c.id >= :pivot
@@ -79,7 +93,7 @@ public class FeedCandidateRepository {
 
 	private static final String SAMPLE_WRAPPED_SQL = """
 		SELECT c.id AS collection_id, c.member_id AS owner_id,
-			COALESCE(c.published_at, c.created_at) AS published_at
+			c.published_at AS published_at
 		FROM core.collection c
 		JOIN core.member m ON m.id = c.member_id
 		WHERE c.id < :pivot
