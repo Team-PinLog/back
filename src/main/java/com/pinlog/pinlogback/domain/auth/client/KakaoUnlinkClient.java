@@ -44,7 +44,7 @@ public class KakaoUnlinkClient implements SocialUnlinkClient {
 		} catch (RestClientException e) {
 			// 응답 본문의 id는 검사하지 않는다. 2xx가 곧 해제 완료이고, 본문을 더 보는 것은
 			// 계약에 없는 것을 계약으로 만드는 일이다.
-			throw new SocialUnlinkException("kakao unlink failed", e);
+			throw SocialUnlinkException.from("kakao unlink failed", e);
 		}
 	}
 }

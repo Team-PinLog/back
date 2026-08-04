@@ -45,7 +45,7 @@ public class GoogleUnlinkClient implements SocialUnlinkClient {
 				.retrieve()
 				.toBodilessEntity();
 		} catch (RestClientException e) {
-			throw new SocialUnlinkException("google revoke failed", e);
+			throw SocialUnlinkException.from("google revoke failed", e);
 		}
 	}
 }

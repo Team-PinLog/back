@@ -84,6 +84,39 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 	}
 
 	@Test
+	@DisplayName("순간적 장애는 재시도가 흡수하고 탈퇴는 확정된다")
+	void transientFailureIsAbsorbedByRetry() {
+		// 이 재시도가 없으면 공급자의 503 한 번이 탈퇴를 영구히 막는다. 214를 뒤집으면서
+		// "실제 거절은 드물어진다"고 한 근거가 이것이다.
+		long memberId = newMemberId();
+		givenSocialAccount(memberId, SocialProvider.GOOGLE, "google-retry-1", "f@example.com");
+		google.transientFailuresLeft = 2;
+
+		completionService.complete(memberId, SocialProvider.GOOGLE, "google-retry-1", ACCESS_TOKEN);
+
+		assertThat(google.attempts).isEqualTo(3);
+		assertThat(deletedAtOf("core.member", memberId)).isNotNull();
+	}
+
+	@Test
+	@DisplayName("재시도해도 소용없는 실패는 되풀이하지 않는다")
+	void permanentFailureIsNotRetried() {
+		// 자격증명이 틀렸거나 요청 형식이 어긋난 것은 몇 번을 보내도 같다. 되풀이하면 사용자를
+		// 기다리게 할 뿐이다.
+		long memberId = newMemberId();
+		givenSocialAccount(memberId, SocialProvider.GOOGLE, "google-retry-2", "g@example.com");
+		google.failing = true;
+		google.retryable = false;
+
+		assertThatThrownBy(() -> completionService.complete(
+			memberId, SocialProvider.GOOGLE, "google-retry-2", ACCESS_TOKEN))
+			.isInstanceOf(SocialUnlinkException.class);
+
+		assertThat(google.attempts).isEqualTo(1);
+		assertThat(deletedAtOf("core.member", memberId)).isNull();
+	}
+
+	@Test
 	@DisplayName("해제가 실패하면 아무것도 지우지 않는다")
 	void keepsEverythingWhenUnlinkFails() {
 		long memberId = newMemberId();
@@ -141,12 +174,16 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 		assertThat(deletedAtOf("core.member", memberId)).isNull();
 	}
 
-	/** 호출 사실과 순서를 관찰하려고 손으로 만든 스텁. */
+	/** 호출 사실과 횟수를 관찰하려고 손으로 만든 스텁. */
 	private static final class RecordingUnlinkClient implements SocialUnlinkClient {
 
 		private final SocialProvider provider;
 		private final List<String> tokens = new ArrayList<>();
+		private int attempts;
 		private boolean failing;
+		private boolean retryable = true;
+		/** 이 횟수만큼 일시적 장애를 내고 그 뒤엔 성공한다. */
+		private int transientFailuresLeft;
 
 		private RecordingUnlinkClient(SocialProvider provider) {
 			this.provider = provider;
@@ -159,8 +196,13 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 
 		@Override
 		public void unlink(String accessToken) {
+			attempts++;
+			if (transientFailuresLeft > 0) {
+				transientFailuresLeft--;
+				throw new SocialUnlinkException("stubbed transient failure", null, true);
+			}
 			if (failing) {
-				throw new SocialUnlinkException("stubbed failure", new IllegalStateException());
+				throw new SocialUnlinkException("stubbed failure", null, retryable);
 			}
 			tokens.add(accessToken);
 		}

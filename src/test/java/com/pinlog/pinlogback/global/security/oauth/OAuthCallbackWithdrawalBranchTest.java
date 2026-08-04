@@ -109,7 +109,7 @@ class OAuthCallbackWithdrawalBranchTest {
 		MockHttpServletRequest request = callbackOf(withdrawalAuthorizationRequest());
 		MockHttpServletResponse response = new MockHttpServletResponse();
 		authorizedClients.saveAuthorizedClient(authorizedClient(), null, request, response);
-		doThrow(new SocialUnlinkException("boom", new IllegalStateException()))
+		doThrow(new SocialUnlinkException("boom", new IllegalStateException(), false))
 			.when(completionService).complete(any(), any(), any(), any());
 
 		successHandler.onAuthenticationSuccess(request, response, authentication());

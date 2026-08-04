@@ -2,6 +2,7 @@ package com.pinlog.pinlogback.domain.auth.client;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.catchThrowableOfType;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
@@ -9,6 +10,8 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+
+import java.io.IOException;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -41,6 +44,42 @@ class SocialUnlinkClientTest {
 
 	private final RestClient.Builder builder = RestClient.builder();
 	private final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+
+	@Test
+	@DisplayName("일시적 장애와 영구 실패를 구분해 올린다")
+	void distinguishesTransientFailureFromPermanentOne() {
+		// 구분하지 않으면 재시도가 무의미한 실패까지 되풀이해 사용자를 기다리게 하고, 반대로
+		// 뭉뚱그려 포기하면 순간적 장애 하나가 탈퇴를 영구히 막는다.
+		GoogleUnlinkClient client = new GoogleUnlinkClient(builder.build());
+
+		server.expect(requestTo("https://oauth2.googleapis.com/revoke"))
+			.andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+		assertThat(catchThrowableOfType(SocialUnlinkException.class, () -> client.unlink(ACCESS_TOKEN)))
+			.as("RFC 7009이 503에 재시도를 규범으로 둔다")
+			.returns(true, SocialUnlinkException::isRetryable);
+
+		server.reset();
+		server.expect(requestTo("https://oauth2.googleapis.com/revoke"))
+			.andRespond(withStatus(HttpStatus.BAD_REQUEST));
+		assertThat(catchThrowableOfType(SocialUnlinkException.class, () -> client.unlink(ACCESS_TOKEN)))
+			.as("요청이 잘못됐거나 자격증명이 틀린 것은 되풀이해도 같다")
+			.returns(false, SocialUnlinkException::isRetryable);
+	}
+
+	@Test
+	@DisplayName("응답이 오지 않는 것도 일시적 장애로 본다")
+	void ioFailureIsTransient() {
+		// 타임아웃·연결 끊김은 공급자가 상태를 알려 주지 못한 것이라 해제 여부를 알 수 없다.
+		// 재시도가 안전한 근거는 멱등성이다 — 이미 끊긴 대상에 다시 요청해도 200이다(RFC 7009).
+		GoogleUnlinkClient client = new GoogleUnlinkClient(builder.build());
+		server.expect(requestTo("https://oauth2.googleapis.com/revoke"))
+			.andRespond(request -> {
+				throw new IOException("연결이 끊겼다");
+			});
+
+		assertThat(catchThrowableOfType(SocialUnlinkException.class, () -> client.unlink(ACCESS_TOKEN)))
+			.returns(true, SocialUnlinkException::isRetryable);
+	}
 
 	@Test
 	@DisplayName("클라이언트마다 담당 공급자를 밝힌다 — 호출부가 이것으로 고른다")

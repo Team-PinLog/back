@@ -65,7 +65,7 @@ public class NaverUnlinkClient implements SocialUnlinkClient {
 				.toBodilessEntity();
 		} catch (RestClientException e) {
 			// 본문의 error가 아니라 상태 코드로 판단한다 — 공급자 문서가 그렇게 요구한다.
-			throw new SocialUnlinkException("naver revoke failed", e);
+			throw SocialUnlinkException.from("naver revoke failed", e);
 		}
 	}
 }
