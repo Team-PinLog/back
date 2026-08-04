@@ -164,6 +164,34 @@ class RecordApiTests extends IntegrationContainerSupport {
 			.andExpect(jsonPath("$.data.keywords").isEmpty());
 	}
 
+	/**
+	 * place 썸네일은 시연용 목업 단계라 SQL로만 채워진다(S15P11A705-305). 생성 경로는 값을 넣지 않으므로
+	 * 기본은 null이고, null이어도 필드를 생략하지 않는다 — 프론트 폴백 분기가 명시적이도록(명세 11.1).
+	 */
+	@Test
+	void recordDetailIncludesPlaceThumbnailUrlWhenFilled() throws Exception {
+		long memberId = newMemberId();
+		long recordId = createRecord(memberId, "api-thumb-1", "저장 이유");
+		jdbcTemplate.update(
+			"UPDATE core.place SET thumbnail_url = '/api/core/images/places/cafe-1.jpg' "
+				+ "WHERE kakao_place_id = 'api-thumb-1'");
+
+		mockMvc.perform(get("/v1/records/{recordId}", recordId).with(loginAs(memberId)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.place.thumbnailUrl").value("/api/core/images/places/cafe-1.jpg"));
+	}
+
+	@Test
+	void recordDetailReturnsNullThumbnailUrlByDefault() throws Exception {
+		long memberId = newMemberId();
+		long recordId = createRecord(memberId, "api-thumb-2", "저장 이유");
+
+		mockMvc.perform(get("/v1/records/{recordId}", recordId).with(loginAs(memberId)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.place").hasJsonPath())
+			.andExpect(jsonPath("$.data.place.thumbnailUrl").value(org.hamcrest.Matchers.nullValue()));
+	}
+
 	/** contextSort=CREATED_AT_DESC로 최신순을 지원한다(명세 5.2, S15P11A705-265). 기준은 최초 작성 시각이다(BD-25). */
 	@Test
 	void recordDetailSupportsNewestFirstContexts() throws Exception {
