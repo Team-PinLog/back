@@ -38,6 +38,8 @@ class PlaceSuggestionApiTests extends IntegrationContainerSupport {
 	static void aiServerPointsAtTheStub(DynamicPropertyRegistry registry) {
 		registry.add("pinlog.ai.base-url", STUB::baseUrl);
 		registry.add("pinlog.ai.place-suggestion.read-timeout", () -> "200ms");
+		registry.add("spring.datasource.hikari.maximum-pool-size", () -> "2");
+		registry.add("spring.datasource.hikari.minimum-idle", () -> "0");
 	}
 
 	@Autowired
