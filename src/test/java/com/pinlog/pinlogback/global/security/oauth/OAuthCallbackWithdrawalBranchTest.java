@@ -203,7 +203,7 @@ class OAuthCallbackWithdrawalBranchTest {
 	private OAuth2AuthorizationRequest withdrawalAuthorizationRequest() {
 		return OAuth2AuthorizationRequest.from(loginAuthorizationRequest())
 			.attributes(attributes -> attributes.put(
-				WithdrawalAwareAuthorizationRequestResolver.WITHDRAWAL_MEMBER_ID, MEMBER_ID))
+				WithdrawalAwareAuthorizationRequestResolver.WITHDRAWAL_MEMBER_ID, String.valueOf(MEMBER_ID)))
 			.build();
 	}
 

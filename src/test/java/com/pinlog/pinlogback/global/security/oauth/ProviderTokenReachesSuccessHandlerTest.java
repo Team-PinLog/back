@@ -115,7 +115,7 @@ class ProviderTokenReachesSuccessHandlerTest {
 			.state(STATE)
 			.attributes(attributes -> {
 				attributes.put("registration_id", REGISTRATION_ID);
-				attributes.put(WithdrawalAwareAuthorizationRequestResolver.WITHDRAWAL_MEMBER_ID, 77L);
+				attributes.put(WithdrawalAwareAuthorizationRequestResolver.WITHDRAWAL_MEMBER_ID, "77");
 			})
 			.build();
 	}
