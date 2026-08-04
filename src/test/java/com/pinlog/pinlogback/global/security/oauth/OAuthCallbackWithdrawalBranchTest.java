@@ -90,7 +90,7 @@ class OAuthCallbackWithdrawalBranchTest {
 	}
 
 	@Test
-	@DisplayName("탈퇴가 끝나면 쿠키를 지우고 완료 표시와 함께 돌려보낸다")
+	@DisplayName("탈퇴가 끝나면 쿠키를 지우고 표시 없이 복귀 경로로 보낸다")
 	void withdrawalClearsCookiesAndRedirects() throws Exception {
 		MockHttpServletRequest request = callbackOf(withdrawalAuthorizationRequest());
 		MockHttpServletResponse response = new MockHttpServletResponse();
@@ -100,7 +100,9 @@ class OAuthCallbackWithdrawalBranchTest {
 
 		assertThat(expiredCookieNames(response)).contains(
 			AuthCookies.ACCESS_TOKEN, AuthCookies.REFRESH_TOKEN, AuthCookies.LOGGED_IN);
-		assertThat(response.getRedirectedUrl()).isEqualTo(CLIENT_REDIRECT_URI + "?withdrawal=completed");
+		// 08 §3.6.2가 성공에 표시를 두지 않기로 정했다. 쿠키가 만료된 채 착지하는 것이 신호다.
+		// 프론트의 콜백 스키마도 error 외의 쿼리를 버리므로 표시를 붙여도 도달하지 않는다.
+		assertThat(response.getRedirectedUrl()).isEqualTo(CLIENT_REDIRECT_URI);
 	}
 
 	@Test

@@ -140,12 +140,9 @@ public class OAuthLoginSuccessHandler implements AuthenticationSuccessHandler {
 		log.info("withdrawal completed: memberId={}, provider={}", memberId, registrationId);
 		// 리다이렉트는 응답을 커밋하므로 쿠키를 먼저 실어야 한다.
 		authCookies.clear(response);
-		response.sendRedirect(UriComponentsBuilder.fromUriString(clientRedirectUri)
-			.queryParam(ClientRedirectCodes.WITHDRAWAL_COMPLETED_PARAMETER,
-				ClientRedirectCodes.WITHDRAWAL_COMPLETED)
-			.encode(StandardCharsets.UTF_8)
-			.build()
-			.toUriString());
+		// 성공에는 표시를 붙이지 않는다(08 §3.6.2). 쿠키가 만료된 채로 착지하므로 클라이언트의
+		// 기존 앱 시작 흐름이 그대로 로그인 화면으로 보낸다 — 별도 신호가 필요 없다.
+		response.sendRedirect(clientRedirectUri);
 	}
 
 	/** 공급자 토큰은 {@code OAuth2AuthenticationToken}에 실리지 않는다 — 저장소에서 꺼낸다. */

@@ -27,9 +27,9 @@ public final class ClientRedirectCodes {
 	/** 인증된 공급자 계정이 탈퇴를 요청한 회원의 것이 아니다(BD-48 §⑤). */
 	public static final String WITHDRAWAL_ACCOUNT_MISMATCH = "WITHDRAWAL_ACCOUNT_MISMATCH";
 
-	/** 탈퇴가 확정됐다. 오류가 아니므로 {@code ?error=}가 아닌 자기 파라미터로 나간다. */
-	public static final String WITHDRAWAL_COMPLETED_PARAMETER = "withdrawal";
-	public static final String WITHDRAWAL_COMPLETED = "completed";
+	// 성공에 해당하는 값은 없다. 08 §3.6.2가 "연결 해제 성공 → 삭제 완료 | 없음"으로 정했고,
+	// 근거는 쿠키가 만료된 채 착지하면 클라이언트의 기존 앱 시작 흐름이 알아서 로그인으로
+	// 보낸다는 것이다. 표시를 더하면 계약에 없는 값이 하나 늘 뿐이다.
 
 	private ClientRedirectCodes() {
 	}

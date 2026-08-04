@@ -142,16 +142,18 @@ DB 트랜잭션과 외부 HTTP는 원자적일 수 없으므로 실현 형태는
 
 사용자가 공급자 화면에서 취소하면 `access_denied`로 온다 — *"The resource owner or authorization server denied the request."*
 
-| 상황 | 프론트향 쿼리 |
+| 상황 | 프론트향 `?error=` |
 |---|---|
-| **탈퇴 확정** | `?withdrawal=completed` |
-| 사용자 취소 (`access_denied`) | `?error=WITHDRAWAL_CANCELLED` |
-| 해제 호출 실패 · 해제 성공 후 삭제 실패 | `?error=WITHDRAWAL_FAILED` |
-| 진입에서 티켓이 위조·만료 | `?error=WITHDRAWAL_FAILED` |
-| 해제 대상 판정 실패 | `?error=WITHDRAWAL_UNLINK_FAILED` |
-| 인증된 공급자 계정이 탈퇴 요청 회원의 것과 다름 | `?error=WITHDRAWAL_ACCOUNT_MISMATCH` |
+| **탈퇴 확정** | **없음** |
+| 사용자 취소 (`access_denied`) | `WITHDRAWAL_CANCELLED` |
+| 해제 호출 실패 · 해제 성공 후 삭제 실패 | `WITHDRAWAL_FAILED` |
+| 진입에서 티켓이 위조·만료 | `WITHDRAWAL_FAILED` |
+| 해제 대상 판정 실패 | `WITHDRAWAL_UNLINK_FAILED` |
+| 인증된 공급자 계정이 탈퇴 요청 회원의 것과 다름 | `WITHDRAWAL_ACCOUNT_MISMATCH` |
 
-성공이 `?error=`가 아닌 자기 파라미터로 나가는 이유는 복귀 경로가 로그인과 같기 때문이다. 프론트는 `withdrawal=completed`면 탈퇴 완료, `error=`면 그 문구, 둘 다 없으면 로그인으로 읽는다.
+**성공에는 표시를 붙이지 않는다.** 08 §3.6.2가 그렇게 정했고 근거는 쿠키다 — 만료된 채 착지하므로 클라이언트의 기존 앱 시작 흐름이 그대로 로그인 화면으로 보낸다. 별도 신호가 필요 없다.
+
+한때 `?withdrawal=completed`를 붙였다가 걷어냈다. 명세를 확인하지 않고 만든 값이었고, 프론트의 콜백 검증 스키마가 `error` 외의 쿼리를 버려 **도달하지도 않는다.**
 
 **취소는 `access_denied`일 때만이다.** 탈퇴 왕복의 실패를 전부 취소로 부르면 사실이 아니다 — 토큰 교환 실패나 공급자 장애도 같은 핸들러로 오므로 그쪽은 `WITHDRAWAL_FAILED`다.
 
