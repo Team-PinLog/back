@@ -2,12 +2,14 @@ package com.pinlog.pinlogback.domain.ai;
 
 import java.util.concurrent.Executor;
 
+import org.apache.kafka.clients.admin.NewTopic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.kafka.config.TopicBuilder;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -15,6 +17,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.client.RestClient;
 
+import com.pinlog.pinlogback.domain.ai.queue.AiQueueProperties;
 import com.pinlog.pinlogback.domain.ai.service.AiRescanProperties;
 
 /**
@@ -29,10 +32,21 @@ import com.pinlog.pinlogback.domain.ai.service.AiRescanProperties;
 @Configuration
 @EnableAsync
 @EnableScheduling
-@EnableConfigurationProperties({AiProperties.class, AiRescanProperties.class})
+@EnableConfigurationProperties({AiProperties.class, AiRescanProperties.class, AiQueueProperties.class})
 public class AiIntegrationConfig {
 
 	private static final Logger log = LoggerFactory.getLogger(AiIntegrationConfig.class);
+
+	/**
+	 * Context→AI 요청의 본 토픽(BD-48). 재시도 토픽과 DLT는 {@code @RetryableTopic}이 여기서
+	 * 파생해 만들므로 본 토픽만 선언한다. 파티션 1인 이유: 처리량이 Record 저장 빈도(초당 수 건)를
+	 * 넘지 않고, 컨슈머도 단일 인스턴스라 병렬화로 얻을 것이 없다. 복제 1은 단일 브로커 전제다 —
+	 * 브로커 구성이 커지면 INFRA와 함께 올린다.
+	 */
+	@Bean
+	public NewTopic contextAiProcessTopic(AiQueueProperties queueProperties) {
+		return TopicBuilder.name(queueProperties.topic()).partitions(1).replicas(1).build();
+	}
 
 	/** {@code process}용 전용 인스턴스(AI 파트 소유 명세 {@code docs/ai/spec/ai-integration.md} 2·3장). */
 	@Bean
