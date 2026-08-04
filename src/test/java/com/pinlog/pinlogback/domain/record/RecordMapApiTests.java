@@ -14,6 +14,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.pinlog.pinlogback.domain.collection.entity.Collection;
+import com.pinlog.pinlogback.domain.collection.entity.CollectionRecord;
+import com.pinlog.pinlogback.domain.collection.repository.CollectionRecordRepository;
+import com.pinlog.pinlogback.domain.collection.repository.CollectionRepository;
 import com.pinlog.pinlogback.domain.member.entity.Member;
 import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
 import com.pinlog.pinlogback.domain.place.entity.Place;
@@ -37,6 +41,12 @@ class RecordMapApiTests extends IntegrationContainerSupport {
 
 	@Autowired
 	private RecordRepository recordRepository;
+
+	@Autowired
+	private CollectionRepository collectionRepository;
+
+	@Autowired
+	private CollectionRecordRepository collectionRecordRepository;
 
 	@Test
 	void mapWithoutBboxReturnsAllMyMarkersWithEnclosingBounds() throws Exception {
@@ -228,6 +238,60 @@ class RecordMapApiTests extends IntegrationContainerSupport {
 	}
 
 	@Test
+	void markerCarriesLatestCollectionId() throws Exception {
+		long memberId = newMemberId();
+		long recordId = saveMarker(memberId, "map-col-latest-1", "코엑스", "37.5118242", "127.0591586");
+		long earlier = newCollectionId(memberId, "먼저 담음");
+		long later = newCollectionId(memberId, "나중 담음");
+		collectionRecordRepository.save(CollectionRecord.create(earlier, recordId));
+		collectionRecordRepository.save(CollectionRecord.create(later, recordId));
+
+		mockMvc.perform(get("/v1/records/map").with(loginAs(memberId)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items[0].latestCollectionId").value(later));
+	}
+
+	@Test
+	void markerWithoutCollectionHasNullLatestCollectionId() throws Exception {
+		long memberId = newMemberId();
+		saveMarker(memberId, "map-col-none-1", "코엑스", "37.5118242", "127.0591586");
+
+		mockMvc.perform(get("/v1/records/map").with(loginAs(memberId)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items[0]").exists())
+			.andExpect(jsonPath("$.data.items[0].latestCollectionId").value(Matchers.nullValue()));
+	}
+
+	@Test
+	void removedCollectionLinkIsExcludedFromLatest() throws Exception {
+		long memberId = newMemberId();
+		long recordId = saveMarker(memberId, "map-col-removed-1", "코엑스", "37.5118242", "127.0591586");
+		long kept = newCollectionId(memberId, "남는 쪽");
+		long removed = newCollectionId(memberId, "빠지는 쪽");
+		collectionRecordRepository.save(CollectionRecord.create(kept, recordId));
+		CollectionRecord removedLink = collectionRecordRepository.save(CollectionRecord.create(removed, recordId));
+		collectionRecordRepository.delete(removedLink);
+
+		mockMvc.perform(get("/v1/records/map").with(loginAs(memberId)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items[0].latestCollectionId").value(kept));
+	}
+
+	@Test
+	void bboxPathAlsoCarriesLatestCollectionId() throws Exception {
+		long memberId = newMemberId();
+		long recordId = saveMarker(memberId, "map-col-bbox-1", "코엑스", "37.5118242", "127.0591586");
+		long collectionId = newCollectionId(memberId, "유일");
+		collectionRecordRepository.save(CollectionRecord.create(collectionId, recordId));
+
+		mockMvc.perform(get("/v1/records/map").with(loginAs(memberId))
+				.param("swLat", "37.4").param("swLng", "126.9")
+				.param("neLat", "37.6").param("neLng", "127.1"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items[0].latestCollectionId").value(collectionId));
+	}
+
+	@Test
 	void partialBboxIs400() throws Exception {
 		long memberId = newMemberId();
 
@@ -241,13 +305,17 @@ class RecordMapApiTests extends IntegrationContainerSupport {
 		return memberRepository.save(Member.create()).getId();
 	}
 
-	private void saveMarker(long memberId, String kakaoPlaceId, String name, String lat, String lng) {
-		saveMarker(memberId, kakaoPlaceId, name, "주소", lat, lng);
+	private long newCollectionId(long memberId, String title) {
+		return collectionRepository.save(Collection.create(memberId, title)).getId();
 	}
 
-	private void saveMarker(long memberId, String kakaoPlaceId, String name, String address, String lat, String lng) {
+	private long saveMarker(long memberId, String kakaoPlaceId, String name, String lat, String lng) {
+		return saveMarker(memberId, kakaoPlaceId, name, "주소", lat, lng);
+	}
+
+	private long saveMarker(long memberId, String kakaoPlaceId, String name, String address, String lat, String lng) {
 		Place place = placeRepository.save(Place.create(
 			kakaoPlaceId, name, address, null, null, null, new BigDecimal(lat), new BigDecimal(lng)));
-		recordRepository.save(Record.create(memberId, place.getId()));
+		return recordRepository.save(Record.create(memberId, place.getId())).getId();
 	}
 }
