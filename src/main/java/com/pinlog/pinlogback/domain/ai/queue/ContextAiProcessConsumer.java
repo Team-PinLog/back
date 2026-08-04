@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 
 import com.pinlog.pinlogback.domain.ai.client.AiProcessClient;
 import com.pinlog.pinlogback.domain.ai.exception.AiProcessFatalException;
+import com.pinlog.pinlogback.domain.ai.service.AiRescanCandidateService;
 import com.pinlog.pinlogback.domain.ai.service.ContextProcessRequestAssembler;
 
 /**
@@ -33,12 +34,17 @@ public class ContextAiProcessConsumer {
 
 	private static final Logger log = LoggerFactory.getLogger(ContextAiProcessConsumer.class);
 
+	private static final String PENDING = "PENDING";
+
 	private final ContextProcessRequestAssembler assembler;
 	private final AiProcessClient client;
+	private final AiRescanCandidateService candidates;
 
-	public ContextAiProcessConsumer(ContextProcessRequestAssembler assembler, AiProcessClient client) {
+	public ContextAiProcessConsumer(ContextProcessRequestAssembler assembler, AiProcessClient client,
+		AiRescanCandidateService candidates) {
 		this.assembler = assembler;
 		this.client = client;
+		this.candidates = candidates;
 	}
 
 	/**
@@ -59,9 +65,28 @@ public class ContextAiProcessConsumer {
 	@KafkaListener(topics = "${pinlog.ai.queue.topic}", groupId = "${pinlog.ai.queue.group}")
 	public void consume(String payload) {
 		ContextAiProcessMessage message = parse(payload);
+		if (!stillWaiting(message.contextId())) {
+			return;
+		}
 		assembler.assemble(message.contextId()).ifPresentOrElse(
 			client::processOrThrow,
 			() -> log.debug("이미 삭제된 Context라 소비를 생략한다: contextId={}", message.contextId()));
+	}
+
+	/**
+	 * 멱등 가드. at-least-once 전달에서 중복은 전제이고, 걸러 내는 근거는 브로커가 아니라 진실의
+	 * 원본인 {@code ai.context_ai_state}다 — 어느 한쪽 상태라도 {@code PENDING}이면 힌트가 아직
+	 * 유효하고, 둘 다 지났으면(PROCESSING·DONE·FAILED·CANCELLED) 보낼 이유가 사라진 것이다.
+	 * 상태 행이 없으면 보내지 않는다 — 행 없이 도착한 메시지는 이미 정리된 Context다.
+	 */
+	private boolean stillWaiting(long contextId) {
+		boolean waiting = candidates.findCurrentState(contextId)
+			.map(state -> PENDING.equals(state.embeddingStatus()) || PENDING.equals(state.keywordStatus()))
+			.orElse(false);
+		if (!waiting) {
+			log.debug("이미 처리 단계를 지났거나 상태 행이 없는 Context라 소비를 생략한다: contextId={}", contextId);
+		}
+		return waiting;
 	}
 
 	/**

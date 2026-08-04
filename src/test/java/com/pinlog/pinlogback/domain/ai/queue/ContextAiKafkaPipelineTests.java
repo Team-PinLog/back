@@ -17,6 +17,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
@@ -25,6 +27,7 @@ import com.pinlog.pinlogback.domain.member.entity.Member;
 import com.pinlog.pinlogback.domain.member.repository.MemberRepository;
 import com.pinlog.pinlogback.domain.record.dto.PlacePayload;
 import com.pinlog.pinlogback.domain.record.dto.RecordCreateRequest;
+import com.pinlog.pinlogback.domain.record.dto.RecordCreateResponse;
 import com.pinlog.pinlogback.domain.record.entity.Context;
 import com.pinlog.pinlogback.domain.record.repository.ContextRepository;
 import com.pinlog.pinlogback.domain.record.service.RecordService;
@@ -56,6 +59,12 @@ class ContextAiKafkaPipelineTests extends IntegrationContainerSupport {
 
 	@Autowired
 	private MemberRepository memberRepository;
+
+	@Autowired
+	private JdbcTemplate jdbcTemplate;
+
+	@Autowired
+	private KafkaTemplate<String, String> kafkaTemplate;
 
 	@BeforeEach
 	void resetStub() {
@@ -111,6 +120,52 @@ class ContextAiKafkaPipelineTests extends IntegrationContainerSupport {
 		assertThat(STUB.awaitCall()).as("한 번은 호출된다").isNotNull();
 		assertThat(dltReceivesMessageFor(onlyContextId(recordId), Duration.ofSeconds(15))).isTrue();
 		assertThat(STUB.noCallWithin(1000)).as("4xx는 재시도하지 않는다").isTrue();
+	}
+
+	/**
+	 * 같은 메시지가 두 번 와도 처리 단계를 이미 지난 Context에는 힌트를 또 보내지 않는다.
+	 * at-least-once 전달에서 중복은 결함이 아니라 전제다 — 걸러 내는 근거는 브로커가 아니라
+	 * 진실의 원본인 {@code ai.context_ai_state}다.
+	 */
+	@Test
+	void duplicateDeliveryForAnAlreadyHandledContextIsSkipped() throws Exception {
+		long memberId = newMemberId();
+		RecordCreateResponse created = recordService.create(memberId, createRequest("kafka-dup-1", "중복은 걸러진다"));
+		assertThat(STUB.awaitCall()).isNotNull();
+		long contextId = onlyContextId(created.recordId());
+		jdbcTemplate.update(
+			"UPDATE ai.context_ai_state SET embedding_status = 'COMPLETED', keyword_status = 'COMPLETED' "
+				+ "WHERE context_id = ?",
+			contextId);
+		STUB.reset(FastApiProcessStub.Mode.ACCEPTED);
+
+		kafkaTemplate.send("context-ai.process", Long.toString(contextId),
+			new ContextAiProcessMessage(contextId, memberId, created.recordId()).toJson()).get();
+
+		assertThat(STUB.noCallWithin(2000))
+			.as("이미 처리 단계를 지난 Context에 힌트를 또 보내지 않는다")
+			.isTrue();
+	}
+
+	/** 삭제된 Context의 메시지는 실패가 아니라 정상 생략이다 — 재시도도 DLT 격리도 일어나지 않는다. */
+	@Test
+	void messageForADeletedContextCompletesWithoutCallOrDlt() throws Exception {
+		long memberId = newMemberId();
+		RecordCreateResponse created = recordService.create(memberId, createRequest("kafka-del-1", "교체 전"));
+		assertThat(STUB.awaitCall()).isNotNull();
+		long recordId = created.recordId();
+		long oldContextId = onlyContextId(recordId);
+		recordService.replaceContext(memberId, recordId, oldContextId, "교체 후");
+		assertThat(STUB.awaitCall()).isNotNull();
+		STUB.reset(FastApiProcessStub.Mode.ACCEPTED);
+
+		kafkaTemplate.send("context-ai.process", Long.toString(oldContextId),
+			new ContextAiProcessMessage(oldContextId, memberId, recordId).toJson()).get();
+
+		assertThat(STUB.noCallWithin(2000)).as("삭제된 Context는 호출을 생략한다").isTrue();
+		assertThat(dltReceivesMessageFor(oldContextId, Duration.ofSeconds(3)))
+			.as("정상 생략이지 실패가 아니므로 DLT로 가지 않는다")
+			.isFalse();
 	}
 
 	/**
