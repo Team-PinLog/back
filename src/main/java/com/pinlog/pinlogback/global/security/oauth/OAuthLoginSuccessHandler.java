@@ -1,20 +1,28 @@
 package com.pinlog.pinlogback.global.security.oauth;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import com.pinlog.pinlogback.domain.auth.dto.OAuthUserInfo;
+import com.pinlog.pinlogback.domain.auth.exception.UnsupportedSocialProviderException;
 import com.pinlog.pinlogback.domain.auth.service.AuthTokenService;
 import com.pinlog.pinlogback.domain.auth.service.AuthTokenService.TokenPair;
 import com.pinlog.pinlogback.domain.auth.service.SocialLoginService;
+import com.pinlog.pinlogback.domain.member.exception.WithdrawalAccountMismatchException;
+import com.pinlog.pinlogback.domain.member.service.WithdrawalCompletionService;
 import com.pinlog.pinlogback.global.security.token.AuthCookies;
 
 import jakarta.servlet.ServletException;
@@ -24,6 +32,11 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * 공급자 인증이 끝난 뒤 회원을 확정하고 클라이언트로 돌려보낸다(API 명세 3.2).
+ *
+ * <p><b>같은 콜백이 두 흐름을 받는다.</b> 로그인이면 세션을 발급하고, 탈퇴 왕복이면 연결 해제와
+ * 소프트 삭제로 간다(BD-48). 어느 쪽인지는 인가 요청 {@code attributes}가 정하며, 그 값을 넣는 것은
+ * {@link WithdrawalAwareAuthorizationRequestResolver}다 — 콜백 경로를 나누지 않은 이유는
+ * {@code redirect-uri}를 공급자 콘솔 양쪽에서 바꿔야 하기 때문이다.
  *
  * <p>정규화와 회원 생성을 사용자 정보 서비스가 아니라 여기서 하는 이유: openid scope를 쓰면
  * Spring이 {@code OidcUserService}를, 쓰지 않으면 {@code DefaultOAuth2UserService}를 태운다.
@@ -40,6 +53,8 @@ public class OAuthLoginSuccessHandler implements AuthenticationSuccessHandler {
 
 	private final SocialLoginService socialLoginService;
 	private final AuthTokenService authTokenService;
+	private final WithdrawalCompletionService withdrawalCompletionService;
+	private final OAuth2AuthorizedClientRepository authorizedClients;
 	private final AuthCookies authCookies;
 	private final OAuthLoginFailureHandler failureHandler;
 	private final String clientRedirectUri;
@@ -47,12 +62,16 @@ public class OAuthLoginSuccessHandler implements AuthenticationSuccessHandler {
 	public OAuthLoginSuccessHandler(
 		SocialLoginService socialLoginService,
 		AuthTokenService authTokenService,
+		WithdrawalCompletionService withdrawalCompletionService,
+		OAuth2AuthorizedClientRepository authorizedClients,
 		AuthCookies authCookies,
 		OAuthLoginFailureHandler failureHandler,
 		@Value("${pinlog.auth.client-redirect-uri}") String clientRedirectUri
 	) {
 		this.socialLoginService = socialLoginService;
 		this.authTokenService = authTokenService;
+		this.withdrawalCompletionService = withdrawalCompletionService;
+		this.authorizedClients = authorizedClients;
 		this.authCookies = authCookies;
 		this.failureHandler = failureHandler;
 		this.clientRedirectUri = clientRedirectUri;
@@ -64,8 +83,17 @@ public class OAuthLoginSuccessHandler implements AuthenticationSuccessHandler {
 		HttpServletResponse response,
 		Authentication authentication
 	) throws IOException, ServletException {
+		OAuth2AuthenticationToken token = (OAuth2AuthenticationToken)authentication;
+
+		Optional<Long> withdrawing =
+			WithdrawalAwareAuthorizationRequestResolver.withdrawalMemberId(request);
+		if (withdrawing.isPresent()) {
+			completeWithdrawal(request, response, token, withdrawing.get());
+			return;
+		}
+
 		try {
-			issueSession(response, (OAuth2AuthenticationToken)authentication);
+			issueSession(response, token);
 		} catch (RuntimeException e) {
 			// 지원하지 않는 provider, 공급자 응답에 sub 없음, 토큰 발급 실패(Redis 장애 포함)가
 			// 모두 여기로 온다. 실패 핸들러에 넘겨 로그와 복귀 경로를 한 곳에서 처리한다.
@@ -77,6 +105,70 @@ public class OAuthLoginSuccessHandler implements AuthenticationSuccessHandler {
 			failureHandler.onAuthenticationFailure(
 				request, response, new InternalAuthenticationServiceException(e.getMessage(), e));
 		}
+	}
+
+	/**
+	 * 탈퇴 왕복의 나머지 절반(BD-48). 세션을 발급하지 않는다 — 이 인증은 <b>공급자 토큰을 받기
+	 * 위한 것</b>이고, 끝나면 회원이 사라진다.
+	 *
+	 * <p>회원 식별자는 인가 요청 {@code attributes}에서 온다. 쿠키로 다시 식별하면 왕복 중
+	 * Access(30분)가 만료됐을 때 탈퇴를 완료할 수 없다.
+	 *
+	 * <p>실패는 예외 종류에 따라 다른 코드로 돌려보내고 <b>쿠키를 지우지 않는다</b> — 탈퇴가
+	 * 확정되지 않았으므로 사용자가 다시 시도할 수 있어야 한다.
+	 */
+	private void completeWithdrawal(
+		HttpServletRequest request,
+		HttpServletResponse response,
+		OAuth2AuthenticationToken token,
+		Long memberId
+	) throws IOException {
+		String registrationId = token.getAuthorizedClientRegistrationId();
+		try {
+			OAuthUserInfo userInfo =
+				OAuthUserInfo.from(registrationId, token.getPrincipal().getAttributes());
+			withdrawalCompletionService.complete(
+				memberId, userInfo.provider(), userInfo.providerUserId(),
+				accessTokenOf(request, token, registrationId));
+		} catch (RuntimeException e) {
+			log.warn("withdrawal failed after provider authorization: memberId={}, provider={}, [{}] {}",
+				memberId, registrationId, e.getClass().getSimpleName(), e.getMessage(), e);
+			response.sendRedirect(failureHandler.redirectWith(errorCodeOf(e)));
+			return;
+		}
+
+		log.info("withdrawal completed: memberId={}, provider={}", memberId, registrationId);
+		// 리다이렉트는 응답을 커밋하므로 쿠키를 먼저 실어야 한다.
+		authCookies.clear(response);
+		response.sendRedirect(UriComponentsBuilder.fromUriString(clientRedirectUri)
+			.queryParam(ClientRedirectCodes.WITHDRAWAL_COMPLETED_PARAMETER,
+				ClientRedirectCodes.WITHDRAWAL_COMPLETED)
+			.encode(StandardCharsets.UTF_8)
+			.build()
+			.toUriString());
+	}
+
+	/** 공급자 토큰은 {@code OAuth2AuthenticationToken}에 실리지 않는다 — 저장소에서 꺼낸다. */
+	private String accessTokenOf(
+		HttpServletRequest request, OAuth2AuthenticationToken token, String registrationId) {
+		OAuth2AuthorizedClient client =
+			authorizedClients.loadAuthorizedClient(registrationId, token, request);
+		if (client == null) {
+			throw new IllegalStateException("인가된 클라이언트가 없어 공급자 토큰을 꺼낼 수 없다");
+		}
+		return client.getAccessToken().getTokenValue();
+	}
+
+	private String errorCodeOf(RuntimeException failure) {
+		if (failure instanceof WithdrawalAccountMismatchException) {
+			return ClientRedirectCodes.WITHDRAWAL_ACCOUNT_MISMATCH;
+		}
+		if (failure instanceof UnsupportedSocialProviderException) {
+			return ClientRedirectCodes.WITHDRAWAL_UNLINK_FAILED;
+		}
+		// 해제 호출 실패와 "해제는 됐는데 삭제가 실패"를 같은 코드로 둔다. 사용자가 할 일이
+		// 같고(다시 시도), 어느 쪽이었는지는 위 로그가 traceId와 함께 남긴다.
+		return ClientRedirectCodes.WITHDRAWAL_FAILED;
 	}
 
 	private void issueSession(HttpServletResponse response, OAuth2AuthenticationToken token)

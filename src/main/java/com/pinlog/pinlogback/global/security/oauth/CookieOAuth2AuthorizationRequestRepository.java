@@ -38,6 +38,17 @@ public class CookieOAuth2AuthorizationRequestRepository
 	static final String COOKIE_NAME = "oauth2_auth_request";
 
 	/**
+	 * 소비한 인가 요청을 콜백 요청 안에 남겨 두는 자리.
+	 *
+	 * <p>콜백이 로그인인지 탈퇴인지는 인가 요청 {@code attributes}만 안다(BD-48 §③). 그런데
+	 * {@code OAuth2LoginAuthenticationFilter}가 그것을 <b>필터 안에서 소비</b>하고, 성공 핸들러에
+	 * 넘기는 {@code OAuth2AuthenticationToken}에는 담지 않는다. 소비하는 지점이 여기이므로 여기서
+	 * 남긴다 — 쿠키를 다시 읽어 역직렬화를 두 번 하는 것보다 낫다.
+	 */
+	private static final String CONSUMED_ATTRIBUTE =
+		CookieOAuth2AuthorizationRequestRepository.class.getName() + ".consumed";
+
+	/**
 	 * 로그인 왕복에 필요한 시간. 사용자가 공급자 화면에 머무는 시간을 감안한다.
 	 *
 	 * <p>처음엔 180초였는데 실사용에 빠듯하다. 계정 선택 + 비밀번호 재입력 + 2단계 인증을 거치면
@@ -97,7 +108,21 @@ public class CookieOAuth2AuthorizationRequestRepository
 	) {
 		OAuth2AuthorizationRequest authorizationRequest = loadAuthorizationRequest(request);
 		expire(request, response);
+		if (authorizationRequest != null) {
+			request.setAttribute(CONSUMED_ATTRIBUTE, authorizationRequest);
+		}
 		return authorizationRequest;
+	}
+
+	/**
+	 * 이 요청에서 소비된 인가 요청. 콜백 성공·실패 처리가 왕복의 의도를 읽는 통로다.
+	 *
+	 * @return 아직 소비되지 않았거나 쿠키가 없었으면 빈 값
+	 */
+	public static Optional<OAuth2AuthorizationRequest> consumedAuthorizationRequest(
+		HttpServletRequest request) {
+		return Optional.ofNullable(
+			(OAuth2AuthorizationRequest)request.getAttribute(CONSUMED_ATTRIBUTE));
 	}
 
 	private void expire(HttpServletRequest request, HttpServletResponse response) {
