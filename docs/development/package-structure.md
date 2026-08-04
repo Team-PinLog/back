@@ -21,7 +21,8 @@ com.pinlog.pinlogback
 │     ├─ service               # 도메인 로직·트랜잭션 경계
 │     ├─ repository            # 영속성 (Spring Data JPA)
 │     ├─ entity                # JPA Entity (@Entity)
-│     └─ dto                   # 요청·응답 DTO
+│     ├─ dto                   # 요청·응답 DTO
+│     └─ exception             # 그 도메인의 규칙 위반·상태 예외 (global/exception과 구분)
 └─ global/                      # 도메인을 가로지르는 공통 관심사
    ├─ common                   # 공용 상수·enum·유틸·기반 타입 (BaseEntity 등)
    ├─ config                   # Spring 설정 클래스 (@Configuration)
@@ -35,7 +36,7 @@ com.pinlog.pinlogback
 
 ## 도메인 목록
 
-각 도메인은 하나의 애그리거트를 담당하고, 위 5개 하위 계층(`controller`·`service`·`repository`·`entity`·`dto`)을 **필요한 것만** 만듭니다.
+각 도메인은 하나의 애그리거트를 담당하고, 위 하위 계층(`controller`·`service`·`repository`·`entity`·`dto`·`exception`)을 **필요한 것만** 만듭니다. `exception`은 그 도메인에서만 의미가 있는 규칙 위반·상태 예외를 담습니다 — 여러 도메인이 함께 쓰는 것과 전역 핸들러는 `global/exception`입니다.
 
 | 도메인 | 책임 | 비고 |
 | --- | --- | --- |

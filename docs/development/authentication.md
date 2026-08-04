@@ -79,6 +79,8 @@ testImplementation 'org.springframework.security:spring-security-test'
   - `/api/core/actuator/health`, `/api/core/actuator/prometheus` — 헬스체크·모니터링이 깨지면 배포가 실패합니다.
   - `/api/core/v1/auth/{provider}/login`, `/api/core/v1/auth/{provider}/callback` — 로그인 진입점 자체가 인증을 요구하면 로그인이 불가능합니다.
 - OAuth 콜백 URL은 context path와 `/v1`을 **모두** 포함합니다(`/api/core/v1/auth/{provider}/callback`). 어느 한쪽을 떼면 리다이렉트·OAuth 콜백·Swagger가 깨지고, 공급자 콘솔에 등록한 URL과도 어긋납니다.
+- **같은 콜백이 로그인과 탈퇴를 함께 받습니다.** 탈퇴는 공급자 연결 해제에 쓸 access token을 얻으려고 인가를 한 번 더 받는데, 그때 돌아오는 곳이 이 경로입니다. 어느 쪽인지는 인가 요청 `attributes`가 정하고, 그 값을 넣는 것은 진입에서 서명 티켓을 검증한 `WithdrawalAwareAuthorizationRequestResolver`입니다([BD-48](../backend/decisions/BD-48-unlink-before-withdrawal.md)). 콜백 경로를 나누지 않은 이유는 `redirect-uri`를 **공급자 콘솔 양쪽에서** 바꿔야 하기 때문입니다.
+- 그래서 **공급자 토큰 저장소도 요청 범위**입니다(`RequestScopedOAuth2AuthorizedClientRepository`). Spring 기본값은 `HttpSession`을 만들어 아래 `STATELESS` 선언과 어긋나고, 이 토큰이 필요한 곳은 콜백 한 요청뿐입니다.
 - Refresh 쿠키의 `Path=/api/core/v1/auth` 범위를 지킵니다. 재발급과 로그아웃이 이 범위 안에 있어야 쿠키가 전송되고, 탈퇴(`DELETE /api/core/v1/me`)는 범위 밖이라 **Access 쿠키로 식별**합니다.
 
 ### 공통 응답 envelope의 예외
