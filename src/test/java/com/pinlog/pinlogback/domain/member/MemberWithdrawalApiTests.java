@@ -9,6 +9,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.List;
@@ -30,12 +31,15 @@ import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MvcResult;
 
+import com.pinlog.pinlogback.domain.auth.client.SocialUnlinkClient;
 import com.pinlog.pinlogback.domain.auth.service.RefreshTokenStore;
 import com.pinlog.pinlogback.domain.collection.entity.Collection;
 import com.pinlog.pinlogback.domain.collection.repository.CollectionRepository;
 import com.pinlog.pinlogback.domain.member.entity.Member;
 import com.pinlog.pinlogback.domain.member.entity.SocialAccount;
 import com.pinlog.pinlogback.domain.member.entity.SocialProvider;
+import com.pinlog.pinlogback.domain.member.service.MemberWithdrawalService;
+import com.pinlog.pinlogback.domain.member.service.WithdrawalCompletionService;
 import com.pinlog.pinlogback.global.security.authentication.MemberPrincipal;
 import com.pinlog.pinlogback.global.security.token.AuthCookies;
 import com.pinlog.pinlogback.global.security.token.JwtTokenProvider;
@@ -70,21 +74,31 @@ class MemberWithdrawalApiTests extends CoreApiFixtures {
 	@Autowired
 	private JwtTokenProvider tokenProvider;
 
+	@Autowired
+	private MemberWithdrawalService memberWithdrawalService;
+
 	/** 폐기 실패 경로만 스텁한다. 다른 테스트에서는 스텁하지 않아 실제 빈에 위임한다. */
 	@MockitoSpyBean
 	private RefreshTokenStore refreshTokenStore;
 
 	@Test
-	@DisplayName("204를 반환하고 member와 social_account를 소프트 삭제한다")
-	void withdrawSoftDeletesMemberAndSocialAccount() throws Exception {
+	@DisplayName("탈퇴 요청은 아무것도 지우지 않고 공급자 인가 URL을 돌려준다")
+	void withdrawStartsProviderAuthorizationInsteadOfDeleting() throws Exception {
+		// 연결 해제가 선행이므로 이 요청은 왕복을 시작만 한다(BD-48). 먼저 지우면 마스킹으로
+		// provider_user_id가 사라져 공급자에서 그 사용자를 지목할 수단이 영구히 없어진다 —
+		// 실패를 나중에 재시도할 수도 없다.
 		long memberId = newMemberId();
 		long accountId = givenSocialAccount(memberId, "google-withdraw-1", "user@example.com");
 
 		mockMvc.perform(delete(PATH).with(loginAs(memberId)))
-			.andExpect(status().isNoContent());
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.authorizationUrl").isNotEmpty());
 
-		assertThat(deletedAtOf("core.member", memberId)).isNotNull();
-		assertThat(deletedAtOf("core.social_account", accountId)).isNotNull();
+		assertThat(deletedAtOf("core.member", memberId))
+			.as("해제 전에는 아무것도 지우지 않는다")
+			.isNull();
+		assertThat(deletedAtOf("core.social_account", accountId)).isNull();
 	}
 
 	@Test
@@ -93,8 +107,7 @@ class MemberWithdrawalApiTests extends CoreApiFixtures {
 		long memberId = newMemberId();
 		long accountId = givenSocialAccount(memberId, "google-withdraw-2", "victim@example.com");
 
-		mockMvc.perform(delete(PATH).with(loginAs(memberId)))
-			.andExpect(status().isNoContent());
+		completeWithdrawal(memberId, "google-withdraw-2");
 
 		// 치환값을 그대로 고정한다. "원본과 다르다"로는 부족하다 — 접두만 붙이는 구현
 		// (MASK + email)도 그 단언을 통과하면서 개인정보를 그대로 남긴다. 복구 경로가 없는
@@ -113,8 +126,7 @@ class MemberWithdrawalApiTests extends CoreApiFixtures {
 		long memberId = newMemberId();
 		long accountId = givenSocialAccount(memberId, "google-withdraw-3", "atomic@example.com");
 
-		mockMvc.perform(delete(PATH).with(loginAs(memberId)))
-			.andExpect(status().isNoContent());
+		completeWithdrawal(memberId, "google-withdraw-3");
 
 		// 둘 중 하나만 적용된 상태가 없다는 것이 계약이다. @SQLDelete + @SQLRestriction 조합에서는
 		// 마스킹이 조용히 유실되는 경로가 있어(#34) 같은 행에서 둘을 함께 본다.
@@ -138,8 +150,7 @@ class MemberWithdrawalApiTests extends CoreApiFixtures {
 			.save(Collection.create(newMemberId(), "남의 책장")).getId();
 		long myFollowId = follow(memberId, followeeCollectionId);
 
-		mockMvc.perform(delete(PATH).with(loginAs(memberId)))
-			.andExpect(status().isNoContent());
+		completeWithdrawal(memberId, "google-withdraw-4");
 
 		assertThat(deletedAtOf("core.record", recordId)).isNotNull();
 		assertThat(deletedAtOf("core.context", contextId)).isNotNull();
@@ -166,8 +177,7 @@ class MemberWithdrawalApiTests extends CoreApiFixtures {
 		long otherRecordId = createRecord(otherId, "wd-other-1", "남의 맥락");
 		long otherCollectionId = createCollection(otherId, "남의 책장", List.of(otherRecordId));
 
-		mockMvc.perform(delete(PATH).with(loginAs(memberId)))
-			.andExpect(status().isNoContent());
+		completeWithdrawal(memberId, "google-withdraw-5");
 
 		assertThat(deletedAtOf("core.member", otherId)).isNull();
 		assertThat(deletedAtOf("core.record", otherRecordId)).isNull();
@@ -183,8 +193,7 @@ class MemberWithdrawalApiTests extends CoreApiFixtures {
 		long contextId = firstContextId(memberId, recordId);
 		givenDerivedData(memberId, recordId, contextId, "COMPLETED", "COMPLETED");
 
-		mockMvc.perform(delete(PATH).with(loginAs(memberId)))
-			.andExpect(status().isNoContent());
+		completeWithdrawal(memberId, "google-withdraw-6");
 
 		// COMPLETED도 덮는다. context_keyword에는 is_deleted가 없어 keyword_status가 단독으로
 		// 조회 제외를 담당하므로, 남기면 탈퇴한 사용자의 키워드가 계속 노출된다(08 §3.6).
@@ -202,8 +211,7 @@ class MemberWithdrawalApiTests extends CoreApiFixtures {
 
 		// Record·Collection이 없으면 무효화 대상 contextIds가 빈 목록이다. invalidate(List.of())가
 		// no-op이어야 하고, 여기서 깨지면 "가입만 하고 아무것도 안 한 회원"이 탈퇴하지 못한다.
-		mockMvc.perform(delete(PATH).with(loginAs(memberId)))
-			.andExpect(status().isNoContent());
+		completeWithdrawal(memberId, "google-withdraw-7");
 
 		assertThat(deletedAtOf("core.member", memberId)).isNotNull();
 	}
@@ -216,50 +224,31 @@ class MemberWithdrawalApiTests extends CoreApiFixtures {
 		givenRefreshToken(memberId, "jti-a");
 		givenRefreshToken(memberId, "jti-b");
 
-		mockMvc.perform(delete(PATH).with(loginAs(memberId)))
-			.andExpect(status().isNoContent());
+		completeWithdrawal(memberId, "google-withdraw-8");
 
 		assertThat(refreshKeysOf(memberId)).isEmpty();
 	}
 
 	/**
 	 * 폐기를 트랜잭션 밖(커밋 이후)으로 옮기고 실패를 삼킨 판단의 근거를 고정한다. 삼키지 않으면
-	 * <b>이미 커밋된 탈퇴가 500으로 응답하고 컨트롤러에 도달하지 못해 쿠키도 지워지지 않는다</b> —
-	 * 사용자는 실패로 보는데 계정은 사라진 상태가 된다(BD-41).
+	 * <b>이미 커밋된 탈퇴가 예외로 끝나 콜백이 쿠키도 지우지 못한다</b> — 사용자는 실패로 보는데
+	 * 계정은 사라진 상태가 된다(BD-41).
 	 *
 	 * <p>남은 Refresh는 무해하다. 그것으로 받는 Access는 필터의 탈퇴 판정에 막힌다.
+	 *
+	 * <p>쿠키 만료 자체는 콜백 처리의 몫이라 {@code OAuthCallbackWithdrawalBranchTest}가 본다.
 	 */
 	@Test
-	@DisplayName("Refresh 폐기가 실패해도 탈퇴는 확정되고 쿠키는 지워진다")
-	void withdrawSurvivesRefreshRevocationFailure() throws Exception {
+	@DisplayName("Refresh 폐기가 실패해도 탈퇴는 확정된다")
+	void withdrawSurvivesRefreshRevocationFailure() {
 		long memberId = newMemberId();
 		givenSocialAccount(memberId, "google-withdraw-12", "redis-down@example.com");
 		doThrow(new RedisConnectionFailureException("Redis 순단을 가장한다"))
 			.when(refreshTokenStore).revokeAll(memberId);
 
-		MvcResult result = mockMvc.perform(delete(PATH).with(loginAs(memberId)))
-			.andExpect(status().isNoContent())
-			.andReturn();
+		completeWithdrawal(memberId, "google-withdraw-12");
 
 		assertThat(deletedAtOf("core.member", memberId)).isNotNull();
-		assertThat(expiredCookieNames(result.getResponse().getHeaders(HttpHeaders.SET_COOKIE)))
-			.containsExactlyInAnyOrder(
-				AuthCookies.ACCESS_TOKEN, AuthCookies.REFRESH_TOKEN, AuthCookies.LOGGED_IN);
-	}
-
-	@Test
-	@DisplayName("인증 쿠키와 표시 쿠키를 모두 만료시킨다")
-	void withdrawExpiresAllThreeCookies() throws Exception {
-		long memberId = newMemberId();
-		givenSocialAccount(memberId, "google-withdraw-9", "cookie@example.com");
-
-		MvcResult result = mockMvc.perform(delete(PATH).with(loginAs(memberId)))
-			.andExpect(status().isNoContent())
-			.andReturn();
-
-		List<String> setCookies = result.getResponse().getHeaders(HttpHeaders.SET_COOKIE);
-		assertThat(expiredCookieNames(setCookies)).containsExactlyInAnyOrder(
-			AuthCookies.ACCESS_TOKEN, AuthCookies.REFRESH_TOKEN, AuthCookies.LOGGED_IN);
 	}
 
 	@Test
@@ -297,8 +286,7 @@ class MemberWithdrawalApiTests extends CoreApiFixtures {
 		mockMvc.perform(get("/v1/records/map").cookie(staleAccess))
 			.andExpect(status().isOk());
 
-		mockMvc.perform(delete(PATH).with(loginAs(memberId)))
-			.andExpect(status().isNoContent());
+		completeWithdrawal(memberId, "google-withdraw-10");
 
 		// 같은 쿠키가 이제 401이다. 서명·만료는 그대로이고 탈퇴 여부만 바뀌었다.
 		mockMvc.perform(get("/v1/records/map").cookie(staleAccess))
@@ -311,8 +299,7 @@ class MemberWithdrawalApiTests extends CoreApiFixtures {
 		long memberId = newMemberId();
 		givenSocialAccount(memberId, "google-rejoin-1", "rejoin@example.com");
 
-		mockMvc.perform(delete(PATH).with(loginAs(memberId)))
-			.andExpect(status().isNoContent());
+		completeWithdrawal(memberId, "google-rejoin-1");
 
 		// 활성 행이 사라졌으므로 콜백의 기존 회원 판정이 비어 있는 결과를 받는다(08 §3.6).
 		// 부분 유니크가 활성행만 대상이라 같은 (provider, provider_user_id)로 저장이 된다.
@@ -329,6 +316,35 @@ class MemberWithdrawalApiTests extends CoreApiFixtures {
 	}
 
 	// --- 픽스처 -------------------------------------------------------------
+
+	/**
+	 * 공급자 왕복이 끝난 지점부터 수행한다(BD-48).
+	 *
+	 * <p>{@code DELETE /v1/me}는 이제 왕복을 <b>시작만</b> 하므로 그것으로는 삭제가 일어나지 않는다.
+	 * 여기서 보는 것은 왕복 이후의 연쇄 삭제·마스킹이라 완료 단계를 직접 부른다. 진입과 콜백 분기는
+	 * 각각 위의 첫 테스트와 {@code OAuthCallbackWithdrawalBranchTest}가 본다.
+	 *
+	 * <p>해제 클라이언트만 스텁하고 나머지는 실제 Bean이다. Bean을 덮어쓰지 않는 이유는
+	 * {@code WithdrawalCompletionServiceTest}에 적어 두었다 — 컨텍스트가 하나 더 뜬다.
+	 */
+	private void completeWithdrawal(long memberId, String providerUserId) {
+		new WithdrawalCompletionService(
+			socialAccountRepository, memberWithdrawalService, List.of(new NoopUnlinkClient()))
+			.complete(memberId, SocialProvider.GOOGLE, providerUserId, "provider-access-token");
+	}
+
+	/** 해제 호출은 이 클래스의 관심사가 아니다. 실제 호출은 {@code SocialUnlinkClientTest}가 본다. */
+	private static final class NoopUnlinkClient implements SocialUnlinkClient {
+
+		@Override
+		public SocialProvider provider() {
+			return SocialProvider.GOOGLE;
+		}
+
+		@Override
+		public void unlink(String accessToken) {
+		}
+	}
 
 	/** 이 클래스는 provider를 가리지 않으므로 Google로 고정한다. 공통 픽스처의 4인자 버전에 위임한다. */
 	private long givenSocialAccount(long memberId, String providerUserId, String email) {
