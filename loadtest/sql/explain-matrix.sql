@@ -118,42 +118,42 @@ WHERE r.deleted_at IS NULL AND r.member_id = 2792
 \echo '######## [4] 피드 후보 3채널 — FeedCandidateRepository (member 2792)'
 ------------------------------------------------------------------------------
 
-\echo '--- [4a] 최신 채널 (RECENT_SQL, 현재 코드: COALESCE 정렬키) ---'
+\echo '--- [4a] 최신 채널 (RECENT_SQL, 현재 코드 — S15P11A705-303 이후) ---'
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT c.id AS collection_id, c.member_id AS owner_id,
-       COALESCE(c.published_at, c.created_at) AS published_at
-FROM core.collection c JOIN core.member m ON m.id = c.member_id
-WHERE c.deleted_at IS NULL AND c.is_published = true AND c.record_count > 0
-  AND c.member_id <> 2792 AND m.deleted_at IS NULL
-ORDER BY published_at DESC, c.id DESC
-LIMIT 100;
-
-\echo '--- [4a-대조] 같은 채널, COALESCE 없이 (원인 판정용 — 코드 아님) ---'
-EXPLAIN (ANALYZE, BUFFERS)
-SELECT c.id AS collection_id, c.member_id AS owner_id, c.published_at
+SELECT c.id AS collection_id, c.member_id AS owner_id, c.published_at AS published_at
 FROM core.collection c JOIN core.member m ON m.id = c.member_id
 WHERE c.deleted_at IS NULL AND c.is_published = true AND c.record_count > 0
   AND c.member_id <> 2792 AND m.deleted_at IS NULL
 ORDER BY c.published_at DESC, c.id DESC
 LIMIT 100;
 
-\echo '--- [4b] 팔로우 채널 (FOLLOWED_SQL) ---'
+\echo '--- [4a-개선전] 같은 채널의 옛 형태 (COALESCE 정렬키 — 코드 아님, 비교용) ---'
+-- S15P11A705-303 이전 코드다. 지우지 않고 남긴다 — 정렬키에 표현식이 끼면 무슨 일이
+-- 벌어지는지가 이 파일 안에서 바로 대조되어야 회귀를 알아볼 수 있다.
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT c.id AS collection_id, c.member_id AS owner_id,
        COALESCE(c.published_at, c.created_at) AS published_at
+FROM core.collection c JOIN core.member m ON m.id = c.member_id
+WHERE c.deleted_at IS NULL AND c.is_published = true AND c.record_count > 0
+  AND c.member_id <> 2792 AND m.deleted_at IS NULL
+ORDER BY published_at DESC, c.id DESC
+LIMIT 100;
+
+\echo '--- [4b] 팔로우 채널 (FOLLOWED_SQL, 현재 코드) ---'
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT c.id AS collection_id, c.member_id AS owner_id, c.published_at AS published_at
 FROM core.follow f
 JOIN core.collection c ON c.member_id = f.followee_member_id
 JOIN core.member m ON m.id = c.member_id
 WHERE f.follower_member_id = 2792 AND f.deleted_at IS NULL
   AND c.deleted_at IS NULL AND c.is_published = true AND c.record_count > 0
   AND c.member_id <> 2792 AND m.deleted_at IS NULL
-ORDER BY published_at DESC, c.id DESC
+ORDER BY c.published_at DESC, c.id DESC
 LIMIT 80;
 
 \echo '--- [4c] 무작위 채널 (SAMPLE_FROM_PIVOT_SQL, pivot 고정 42) ---'
 EXPLAIN (ANALYZE, BUFFERS)
-SELECT c.id AS collection_id, c.member_id AS owner_id,
-       COALESCE(c.published_at, c.created_at) AS published_at
+SELECT c.id AS collection_id, c.member_id AS owner_id, c.published_at AS published_at
 FROM core.collection c JOIN core.member m ON m.id = c.member_id
 WHERE c.id >= 42
   AND c.deleted_at IS NULL AND c.is_published = true AND c.record_count > 0
