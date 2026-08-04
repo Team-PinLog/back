@@ -102,6 +102,132 @@ class RecordMapApiTests extends IntegrationContainerSupport {
 	}
 
 	@Test
+	void keywordFiltersByPlaceName() throws Exception {
+		long memberId = newMemberId();
+		saveMarker(memberId, "map-kw-name-1", "롯데월드 어드벤처", "37.5111306", "127.0981198");
+		saveMarker(memberId, "map-kw-name-2", "스타벅스 강남R점", "37.4976745", "127.0284434");
+
+		mockMvc.perform(get("/v1/records/map").with(loginAs(memberId)).param("keyword", "롯데"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(1))
+			.andExpect(jsonPath("$.data.items[0].name").value("롯데월드 어드벤처"));
+	}
+
+	@Test
+	void keywordMatchesAddressToo() throws Exception {
+		long memberId = newMemberId();
+		saveMarker(memberId, "map-kw-addr-1", "석촌호수 서호", "송파구 잠실동 47", "37.5076807", "127.0991128");
+		saveMarker(memberId, "map-kw-addr-2", "양재천", "강남구 대치동 514", "37.4818038", "127.0465952");
+
+		mockMvc.perform(get("/v1/records/map").with(loginAs(memberId)).param("keyword", "잠실"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(1))
+			.andExpect(jsonPath("$.data.items[0].name").value("석촌호수 서호"));
+	}
+
+	@Test
+	void keywordIsCaseInsensitive() throws Exception {
+		long memberId = newMemberId();
+		saveMarker(memberId, "map-kw-case-1", "Apple 가로수길", "37.5208198", "127.0227294");
+		saveMarker(memberId, "map-kw-case-2", "코엑스", "37.5118242", "127.0591586");
+
+		mockMvc.perform(get("/v1/records/map").with(loginAs(memberId)).param("keyword", "apple"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(1))
+			.andExpect(jsonPath("$.data.items[0].name").value("Apple 가로수길"));
+	}
+
+	@Test
+	void blankKeywordReturnsAll() throws Exception {
+		long memberId = newMemberId();
+		saveMarker(memberId, "map-kw-blank-1", "코엑스", "37.5118242", "127.0591586");
+		saveMarker(memberId, "map-kw-blank-2", "예술의전당", "37.4794461", "127.0137536");
+
+		mockMvc.perform(get("/v1/records/map").with(loginAs(memberId)).param("keyword", "   "))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(2));
+	}
+
+	@Test
+	void keywordCombinesWithBboxAsAnd() throws Exception {
+		long memberId = newMemberId();
+		saveMarker(memberId, "map-kw-bbox-1", "롯데월드 어드벤처", "37.5111306", "127.0981198");
+		saveMarker(memberId, "map-kw-bbox-2", "코엑스", "37.5118242", "127.0591586");
+		saveMarker(memberId, "map-kw-bbox-3", "롯데백화점 부산본점", "35.1552490", "129.0595537");
+
+		mockMvc.perform(get("/v1/records/map").with(loginAs(memberId))
+				.param("keyword", "롯데")
+				.param("swLat", "37.4").param("swLng", "126.9")
+				.param("neLat", "37.6").param("neLng", "127.2"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(1))
+			.andExpect(jsonPath("$.data.items[0].name").value("롯데월드 어드벤처"));
+	}
+
+	@Test
+	void boundsShrinkToKeywordMatches() throws Exception {
+		long memberId = newMemberId();
+		saveMarker(memberId, "map-kw-bounds-1", "롯데월드 어드벤처", "37.5111306", "127.0981198");
+		saveMarker(memberId, "map-kw-bounds-2", "예술의전당", "37.4794461", "127.0137536");
+
+		mockMvc.perform(get("/v1/records/map").with(loginAs(memberId)).param("keyword", "롯데"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.bounds.swLat").value(37.5111306))
+			.andExpect(jsonPath("$.data.bounds.neLat").value(37.5111306))
+			.andExpect(jsonPath("$.data.bounds.swLng").value(127.0981198))
+			.andExpect(jsonPath("$.data.bounds.neLng").value(127.0981198));
+	}
+
+	@Test
+	void keywordDoesNotExposeOtherMembersMarkers() throws Exception {
+		long me = newMemberId();
+		long other = newMemberId();
+		saveMarker(other, "map-kw-other-1", "롯데월드 어드벤처", "37.5111306", "127.0981198");
+
+		mockMvc.perform(get("/v1/records/map").with(loginAs(me)).param("keyword", "롯데"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items").isEmpty());
+	}
+
+	@Test
+	void percentInKeywordIsLiteral() throws Exception {
+		long memberId = newMemberId();
+		saveMarker(memberId, "map-kw-pct-1", "100%맛집", "37.5000000", "127.0000000");
+		saveMarker(memberId, "map-kw-pct-2", "100번지식당", "37.5100000", "127.0100000");
+
+		mockMvc.perform(get("/v1/records/map").with(loginAs(memberId)).param("keyword", "100%"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(1))
+			.andExpect(jsonPath("$.data.items[0].name").value("100%맛집"));
+	}
+
+	@Test
+	void underscoreInKeywordIsLiteral() throws Exception {
+		long memberId = newMemberId();
+		saveMarker(memberId, "map-kw-us-1", "cafe_44", "37.5000000", "127.0000000");
+		saveMarker(memberId, "map-kw-us-2", "cafe 44", "37.5100000", "127.0100000");
+
+		mockMvc.perform(get("/v1/records/map").with(loginAs(memberId)).param("keyword", "cafe_"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(1))
+			.andExpect(jsonPath("$.data.items[0].name").value("cafe_44"));
+	}
+
+	@Test
+	void itemsAreSortedByNameAscending() throws Exception {
+		long memberId = newMemberId();
+		saveMarker(memberId, "map-sort-1", "코엑스", "37.5118242", "127.0591586");
+		saveMarker(memberId, "map-sort-2", "가락시장", "37.4938884", "127.1109273");
+		saveMarker(memberId, "map-sort-3", "예술의전당", "37.4794461", "127.0137536");
+
+		mockMvc.perform(get("/v1/records/map").with(loginAs(memberId)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items[0].name").value("가락시장"))
+			.andExpect(jsonPath("$.data.items[1].name").value("예술의전당"))
+			.andExpect(jsonPath("$.data.items[2].name").value("코엑스"));
+	}
+
+	@Test
 	void partialBboxIs400() throws Exception {
 		long memberId = newMemberId();
 
@@ -116,8 +242,12 @@ class RecordMapApiTests extends IntegrationContainerSupport {
 	}
 
 	private void saveMarker(long memberId, String kakaoPlaceId, String name, String lat, String lng) {
+		saveMarker(memberId, kakaoPlaceId, name, "주소", lat, lng);
+	}
+
+	private void saveMarker(long memberId, String kakaoPlaceId, String name, String address, String lat, String lng) {
 		Place place = placeRepository.save(Place.create(
-			kakaoPlaceId, name, "주소", null, null, null, new BigDecimal(lat), new BigDecimal(lng)));
+			kakaoPlaceId, name, address, null, null, null, new BigDecimal(lat), new BigDecimal(lng)));
 		recordRepository.save(Record.create(memberId, place.getId()));
 	}
 }

@@ -1,7 +1,10 @@
 package com.pinlog.pinlogback.domain.record.service;
 
 import java.math.BigDecimal;
+import java.text.Collator;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -149,20 +152,56 @@ public class RecordService {
 	}
 
 	/**
-	 * 지도 마커(API 명세 4.2). bbox 파라미터는 넷 다 주거나 모두 생략해야 한다.
+	 * 지도 마커(API 명세 4.2). bbox 파라미터는 넷 다 주거나 모두 생략해야 한다. keyword는 bbox와
+	 * 무관하게 조합되며, 빈 값은 400이 아니라 "필터 없음"이다 — 검색창을 지운 것이 오류일 수는 없다.
 	 */
 	@Transactional(readOnly = true)
-	public MapResponse map(Long memberId, BigDecimal swLat, BigDecimal swLng, BigDecimal neLat, BigDecimal neLng) {
+	public MapResponse map(Long memberId, BigDecimal swLat, BigDecimal swLng, BigDecimal neLat, BigDecimal neLng,
+		String keyword) {
 		boolean allPresent = swLat != null && swLng != null && neLat != null && neLng != null;
 		boolean nonePresent = swLat == null && swLng == null && neLat == null && neLng == null;
 		if (!allPresent && !nonePresent) {
 			throw new InvalidRequestException("bbox 파라미터(swLat·swLng·neLat·neLng)는 모두 주거나 모두 생략해야 합니다.");
 		}
-		List<MapMarkerResponse> items = allPresent
-			? recordRepository.findMarkersWithinBounds(memberId, swLat, swLng, neLat, neLng)
-			: recordRepository.findMarkers(memberId);
+		String likeKeyword = toLikeKeyword(keyword);
+		List<MapMarkerResponse> found = allPresent
+			? recordRepository.findMarkersWithinBounds(memberId, swLat, swLng, neLat, neLng, likeKeyword)
+			: recordRepository.findMarkers(memberId, likeKeyword);
+		List<MapMarkerResponse> items = sortByName(found);
 		return new MapResponse(
 			BoundsResponse.enclosing(items, MapMarkerResponse::lat, MapMarkerResponse::lng), items);
+	}
+
+	/**
+	 * 이름 오름차순, 동명이면 recordId 오름차순(API 명세 4.2). DB {@code ORDER BY}가 아니라 여기서
+	 * 정렬하는 이유는 collation 의존성 때문이다 — 한글에 동순위 가중치를 주는 collation에서는
+	 * {@code ORDER BY name}이 사실상 무순서라, 같은 코드가 환경(운영 DB·테스트 컨테이너)에 따라
+	 * 다른 순서를 내놓는다. 응답은 회원 단위(수십~수백 행)라 애플리케이션 정렬 비용은 무시할 수준이다.
+	 */
+	private static List<MapMarkerResponse> sortByName(List<MapMarkerResponse> items) {
+		Collator collator = Collator.getInstance(Locale.KOREAN);
+		return items.stream()
+			.sorted(Comparator.comparing(MapMarkerResponse::name, collator::compare)
+				.thenComparing(MapMarkerResponse::recordId))
+			.toList();
+	}
+
+	/**
+	 * 사용자 검색어를 완성된 LIKE 패턴으로 바꾼다. 와일드카드({@code %}·{@code _})는 문자 그대로
+	 * 매칭해야 하므로 이스케이프한다 — 이스케이프 문자로 백슬래시를 쓰면 JPQL 문자열 리터럴 규칙과
+	 * 겹쳐 읽기 어려워서 {@code !}를 쓴다(쿼리의 {@code escape '!'}와 한 쌍).
+	 *
+	 * <p>소문자화를 DB의 {@code lower()}가 아니라 여기서 하는 이유는 {@link
+	 * com.pinlog.pinlogback.domain.record.repository.RecordRepository#findMarkers} 주석 참조.
+	 * {@code Locale.ROOT}는 실행 환경 로케일(예: 터키어 i)에 따라 결과가 달라지는 것을 막는다.
+	 */
+	static String toLikeKeyword(String keyword) {
+		if (keyword == null || keyword.isBlank()) {
+			return null;
+		}
+		String escaped = keyword.strip().toLowerCase(Locale.ROOT)
+			.replace("!", "!!").replace("%", "!%").replace("_", "!_");
+		return "%" + escaped + "%";
 	}
 
 	/**
