@@ -1,0 +1,23 @@
+# 벤치 측정용 자원 한도 override (S15P11A705-283). 평소 개발에서는 쓰지 않는다.
+#
+#   docker compose -f compose.yaml -f compose.bench.yaml up -d postgres
+#
+# 로컬 Docker는 메모리를 15.37GiB까지 열어 두어 천만 행(약 13GB)도 대부분 OS 페이지
+# 캐시에 들어간다 — 캐시 적중률 99.99%에서는 인덱스 깊이도 디스크 I/O도 드러나지 않는다.
+# cgroup 메모리 한도는 페이지 캐시를 함께 계산하므로, 이 한도가 데이터/메모리 비율을
+# 운영과 같은 형태로 만든다. 값은 운영 StatefulSet과 같다
+# (infra/platform/postgres/statefulset.yaml: memory 1Gi · cpu 1).
+#
+# **적재(seed-massive.sql)는 이 override 없이 돌린다.** 인덱스 재생성이
+# maintenance_work_mem 256MB를 쓰므로 1Gi 한도 안에서는 느려진다. 순서는
+# 「기본 compose로 적재 → 이 override를 얹어 재기동 → 측정」이다(loadtest/README.md).
+#
+# 되돌리기: override 없이 다시 올리면 끝이다.
+#   docker compose up -d postgres
+services:
+  postgres:
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+          cpus: "1"
