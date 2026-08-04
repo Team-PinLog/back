@@ -1,0 +1,168 @@
+# BD-48. 공급자 연결 해제를 탈퇴보다 먼저 하고, 해제에 성공한 경우에만 삭제한다
+
+- **상태**: Accepted
+- **날짜**: 2026-08-04
+- **관련**: [S15P11A705-285](https://ssafy.atlassian.net/browse/S15P11A705-285) · [S15P11A705-214](https://ssafy.atlassian.net/browse/S15P11A705-214) ·
+  [back#176](https://github.com/Team-PinLog/back/issues/176) · [back#139](https://github.com/Team-PinLog/back/issues/139) ·
+  [docs#44](https://github.com/Team-PinLog/docs/pull/44) ·
+  [BD-41](BD-41-withdrawn-member-access-token.md)(순서 판단의 대비) · [BD-30](BD-30-authorization-request-in-cookie.md)(인가 요청 쿠키)
+- **공용 계약**: [06 §6.9](https://github.com/Team-PinLog/docs/blob/main/static/06_데이터모델_및_무결성.md) · [08 §3.6](https://github.com/Team-PinLog/docs/blob/main/static/08_API_명세.md)
+
+## 맥락
+
+탈퇴가 우리 DB와 Redis만 정리하고 공급자 연결을 끊지 않는다. 그래서 탈퇴한 계정으로 다시 로그인하면 동의 화면 없이 통과한다 — 로컬에서 **탈퇴 후 8초 만에 재가입**되는 것을 확인했다(back#139).
+
+카카오는 이것을 명문 의무로 규정한다.
+
+> 서비스는 **반드시** 탈퇴 과정에 [연결 해제] 요청을 포함해 앱과 사용자의 연결을 끊어야 합니다.
+
+Naver는 *"끊을 수 있습니다"*(수단 제공), Google은 *"필요 없어지면 폐기하고 시스템에서 영구 삭제"*라는 일반 조항이며 계정 삭제를 언급하지 않는다. **강제력이 셋 다 다르지만 방향은 같다.**
+
+### 제약 둘
+
+**① 06 §6.9가 마스킹을 요구한다.** 탈퇴 절차의 두 번째 단계가 `provider_user_id`·`email` 마스킹이다. `SocialAccount.withdraw()`가 회원번호를 `withdrawn:{id}`로 덮는다.
+
+**② 해제 수단이 없다.** 로그인 시 공급자 토큰을 프로필만 읽고 버린다. `SocialAccount`는 `provider`·`provider_user_id`·`email`만 갖는다. `SessionCreationPolicy.STATELESS`라 Spring의 `OAuth2AuthorizedClientRepository`도 아무것도 보관하지 않는다.
+
+## 선택지
+
+| 안 | 결과 |
+|---|---|
+| (a) 삭제 커밋 후 해제, 실패는 큐에 적재하고 배치가 처리 | 수단이 마스킹으로 사라지므로 **큐에 식별자를 복사해야 한다.** 개인정보를 파기하는 절차 안에서 그 식별자를 복제해 들고 있게 된다. 대기 테이블·배치·리포트·보관 상한이 따라온다 |
+| **(b) 해제에 성공한 경우에만 삭제** | 미이행 상태가 존재하지 않는다. 큐·배치가 필요 없다. **공급자 장애 시 탈퇴가 지연된다** |
+| (c) 삭제 커밋 후 해제, 실패는 집계만 | 가장 단순하지만 **실패가 곧 영구 미이행**이다 |
+
+## 결정
+
+**(b) — 능동적 선택.** 결정적 이유는 순서를 뒤집으면 실패가 회복 불가능해진다는 것이다.
+
+```text
+삭제 커밋 → 마스킹 → 해제 실패
+  → 공급자 쪽 연결은 남음
+  → 지목할 수단이 없음 → 다시는 끊을 수 없음
+  → 재로그인하면 동의 화면 없이 새 회원으로 가입
+```
+
+**"미이행"이 아니라 "이행 불가"다.** 위 8초 재가입이 그 상태다. (a)의 큐는 이 파괴를 피하려고 마스킹 전에 식별자를 복사하는 장치이며, 그 복사본이 다시 관리 대상(보관 상한·모니터링·개인정보)이 된다. 순서를 뒤집으면 그 전체가 사라진다.
+
+### 잔여 위험이 무해한 방향이다
+
+DB 트랜잭션과 외부 HTTP는 원자적일 수 없으므로 실현 형태는 **순서 + 실패 시 미커밋**이다. 해제가 성공하고 삭제가 실패하면 연결만 끊기고 회원은 남는다. 그 사용자는 재로그인 시 동의를 거쳐 **기존 계정으로 들어오고**, 탈퇴를 다시 시도하면 두 번째 해제도 성공으로 응답한다(RFC 7009 멱등).
+
+[BD-41](BD-41-withdrawn-member-access-token.md)이 Refresh 폐기를 커밋 **이후**로 옮긴 것과 방향이 반대인데 논법은 같다 — **잔여 위험이 무해한 쪽으로 순서를 정한다.** BD-41은 폐기 실패를 인증 필터가 막아 주므로 이후가 안전했고, 이번은 재시도가 가능하므로 이전이 안전하다.
+
+## 함께 정한 것
+
+### ① 해제 수단은 탈퇴 시점에 인가 왕복으로 확보한다 — 보관하지 않는다
+
+| 방법 | 대가 |
+|---|---|
+| 로그인 때 공급자 토큰 저장 | 자격증명을 DB에 보관 — 암호화·보관 상한·유출 위험. Google은 refresh token을 받으려면 `prompt=consent`가 필요해 **매 로그인 동의 화면**이 뜬다 |
+| **탈퇴 시점에 인가 왕복** | 리다이렉트 한 번. **보관하지 않는다** |
+| Kakao 어드민 키 | 그 앱의 **어떤 사용자에게든** 연결 해제와 정보 조회가 가능한 고권한 키를 상시 보관 |
+
+**최소권한 원칙**으로 두 번째를 택했다. 어드민 키는 사용자 조작 없이 100% 해제를 보장하므로 이행 보장은 더 강하지만, 상시 보관하는 자격증명의 권한 범위가 목적에 비해 과하다.
+
+**이 왕복은 조건부가 아니다.** 토큰이 "만료됐으면 다시 받는" 것이 아니라 탈퇴 시점에는 언제나 없다. 클라이언트가 들고 있는 것은 우리가 서명한 JWT이고, 그것으로는 공급자에게 해제를 요청할 수 없다.
+
+3사 모두 access token으로 해제할 수 있어 공급자별 분기가 없다.
+
+| 공급자 | 엔드포인트 |
+|---|---|
+| Kakao | `POST /v1/user/unlink` (사용자 토큰 방식) |
+| Google | `POST /revoke` |
+| Naver | `POST /oauth2.0/revoke` + `token_type_hint=access_token` (연결된 refresh까지 cascade) |
+
+### ② 왕복을 시작할 권한은 서명된 일회용 티켓이 보장한다
+
+**시작 권한과 왕복 중 컨텍스트는 다른 층이다.** 후자만 정하면 앞이 뚫린다.
+
+인가 진입은 브라우저 내비게이션이라 `GET`이다. 진입 경로가 의도를 쿼리 파라미터로 받으면 이렇게 된다.
+
+```text
+악성 사이트가 피해자를 /v1/auth/authorize/kakao?intent=withdrawal 로 유도
+  → 브라우저가 우리 쿠키를 실어 보냄
+  → 공급자 세션이 살아 있으면 화면 없이 통과
+  → 콜백 도달 → 연결 해제 → 계정 삭제
+```
+
+`DELETE /v1/me`에 CSRF를 걸어도 **그 뒤 단계가 GET이라 우회된다.**
+
+| 안 | 시작 권한 보호 | 대가 |
+|---|---|---|
+| **(A) 서명된 일회용 티켓을 URL에 실음** | 서명 검증 | URL이 히스토리·리퍼러에 남는다 |
+| (B) `SameSite=Strict` 일회용 쿠키 | 쿠키가 크로스사이트에 안 실림 | **콜백이 깨진다**(아래) |
+| (C) Redis에 티켓 보관, URL엔 난수만 | 서버 조회 | Redis 영속성이 없어 재시작 시 진행 중인 탈퇴가 끊긴다(BT-06) |
+| (D) POST-then-redirect (폼 제출) | 기존 CSRF 토큰 | SPA가 XHR 대신 숨은 폼을 제출해야 하고, 응답 계약(`200` + `authorizationUrl`)이 무의미해진다 |
+
+**(A)를 택한다.** `DELETE /v1/me`(CSRF 보호됨)가 `memberId`·의도·만료·nonce를 담아 서명한 티켓을 만들고, 인가 진입이 그것을 검증한다. 공격자는 서명 키가 없어 만들 수 없고, 쿠키가 늘지 않으며, 저장소도 필요 없다. 서명 인프라(`JwtTokenProvider`)를 이미 갖고 있어 새 의존이 없다.
+
+**(B)를 배제한 이유가 결정적이다.** `SameSite=Strict`는 공급자에서 우리로 돌아오는 **콜백도 크로스 사이트 내비게이션**이라 그때 쿠키를 싣지 않는다 — 티켓을 읽을 수 없다. 실제로 보고된 문제다([oauth2-proxy#1663](https://github.com/oauth2-proxy/oauth2-proxy/issues/1663)). [Curity](https://curity.io/resources/learn/oauth-cookie-best-practices/)도 *"`Strict`는 외부 링크로 들어온 사용자가 로그아웃돼 보이는 UX 문제 때문에 인증 쿠키에는 권장되지 않는다"*고 적는다. 우리가 인증 쿠키에 `Lax`를 고른 이유(11 §7.2, 공유 링크)와 같은 계열이다.
+
+**티켓 수명은 5분으로 둔다.** 민감 작업 전 재인증에 최근성 창을 두는 것이 업계 관행이고, Google Identity Platform이 계정 삭제 등에 **5분**을 쓴다. 우리는 최근성이 아니라 토큰 확보가 목적이지만 값의 근거로 삼을 만하다.
+
+티켓은 진입에서 **일회 소비**한다. 진입이 검증한 뒤 그 내용을 아래 ③의 `attributes`로 옮긴다.
+
+### ③ 왕복의 컨텍스트는 인가 요청 `attributes`에 싣는다
+
+콜백이 로그인과 탈퇴를 구분해야 하고, 탈퇴 대상 회원도 알아야 한다. 세 안을 검토했다.
+
+| 안 | 결과 |
+|---|---|
+| 콜백 경로 분리 | `application.yml`과 **공급자 콘솔 양쪽의 `redirect-uri`를 바꿔야 한다.** 배포 절차가 걸린다 |
+| 별도 쿠키 | 브라우저에 노출되는 쿠키가 하나 는다 |
+| **인가 요청 `attributes`** | `redirect-uri` 불변, 새 쿠키 없음. 커스터마이징 지점이 이미 있다(`withPkce()`를 붙이는 그 자리) |
+
+**규격이 이 용법을 지지한다.** RFC 6749 §4.1.1이 `state`를 *"an opaque value used by the client to **maintain state between the request and callback**"*으로 정의하며, 컨텍스트 운반은 CSRF 방어와 나란한 본래 목적이다.
+
+[RFC 9700](https://www.rfc-editor.org/rfc/rfc9700.html)이 조건을 붙인다.
+
+> Clients that have ensured that the authorization server supports **PKCE MAY rely on the CSRF protection provided by PKCE.**
+>
+> If `state` is used for carrying application state, and the integrity of its contents is a concern, clients **MUST protect `state` against tampering and swapping.**
+
+우리는 `OAuth2AuthorizationRequestCustomizers.withPkce()`로 PKCE를 켜 첫 조건을 충족한다. 그리고 `attributes`는 **클라이언트에 나가지 않는다** — 인가 요청 객체째로 우리 쿠키에 보관되고 콜백에서 꺼내므로, `state` 문자열에 인코딩할 때 생기는 tampering·swapping 문제를 피한다.
+
+`memberId`도 같은 자리에 싣는다. Access 쿠키로 식별하면 **왕복 중 Access(30분)가 만료됐을 때 탈퇴를 완료할 수 없다.**
+
+### ④ 오류 어휘는 두 층이다
+
+| 구간 | 어휘 | 근거 |
+|---|---|---|
+| 공급자 → 우리 콜백 | `access_denied`·`server_error`·`temporarily_unavailable` … | **RFC 6749 §4.1.2.1이 규정**. 우리가 만드는 값이 아니라 받아서 매핑한다 |
+| 우리 → 프론트(`?error=`) | `WITHDRAWAL_*` | 규격 밖. 기존 `OAUTH_FAILED` 선례를 따른다 |
+
+사용자가 공급자 화면에서 취소하면 `access_denied`로 온다 — *"The resource owner or authorization server denied the request."*
+
+| 상황 | 프론트향 `?error=` |
+|---|---|
+| 사용자 취소 (`access_denied`) | `WITHDRAWAL_CANCELLED` |
+| 해제 호출 실패 · 해제 성공 후 삭제 실패 | `WITHDRAWAL_FAILED` |
+| 해제 대상 판정 실패 | `WITHDRAWAL_UNLINK_FAILED` |
+| 인증된 공급자 계정이 탈퇴 요청 회원의 것과 다름 | `WITHDRAWAL_ACCOUNT_MISMATCH` |
+
+### ⑤ 콜백에서 공급자 계정 일치를 확인한다
+
+사용자가 공급자 화면에서 **다른 계정으로 인증**할 수 있다(계정 선택 화면을 띄우는 공급자가 있다). 그대로 두면 **계정 B의 연결을 끊고 회원 A를 삭제**한다. 콜백이 받은 공급자 식별자가 `attributes`의 `memberId`가 가진 `social_account`와 같은지 확인하고 다르면 거절한다.
+
+## 검토했으나 적용하지 않은 것
+
+- **[RFC 9470](https://www.rfc-editor.org/rfc/rfc9470.html) Step Up Authentication Challenge** — 민감 작업 전 재인증이라는 점이 겹친다. 그러나 그 규격은 *"제시된 액세스 토큰의 인증 강도·최신성이 부족하다"*를 `insufficient_user_authentication` + `acr_values`/`max_age`로 알리는 구조다. **우리 문제는 인증 강도가 아니라 제3자에게 보낼 토큰이 없다는 것**이라 어휘를 빌리면 의미가 어긋난다.
+- **[RFC 9207](https://www.rfc-editor.org/rfc/rfc9207.html) Issuer Identification** — 공급자가 셋이라 mix-up 방어와 관련은 있으나 로그인 흐름 전체에 걸리는 별건이다.
+- **공급자 연결 해제 페이지로 리다이렉트** — 확인 수단이 함께 사라진다. 토큰 없이 "끊겼는가"를 물을 수 있는 곳은 Kakao(어드민 키)뿐이고, 그건 서버가 끊을 수도 있다는 뜻이다. 완료 신호도 오지 않고 떠나는 사용자에게 추가 조작을 기대해야 한다.
+- **별도 확인 API 호출** — RFC 7009 규격상 이미 폐기된 대상도 200이므로 **200을 받는 것이 곧 확인이고 종료 조건**이다. 시점 스냅샷보다 종료 조건이 강한 보장이다.
+- **Redis·메시징 큐** — 우리 Redis에 영속성이 없다([BT-06](../troubleshooting/BT-06-refresh-revocation-leak-under-concurrent-rotation.md)). 큐를 잃으면 의무를 잃는다.
+- **`social_account`에 해제 상태 보관** — 마스킹이 공용 계약(06 §6.9)이라 미룰 수 없다.
+
+## 결과
+
+- **이 결정으로 감수하는 것**
+  - **공급자 장애 시 탈퇴가 거절된다.** 214가 *"공급자 장애가 사용자의 탈퇴를 막아서는 안 된다"*고 정한 것을 뒤집는다. 근거는 비대칭이다 — 이 대가는 일시적이고 재시도로 해소되는 반면, 반대 순서의 대가는 회복 불가능하다. 순간적 장애는 짧은 재시도로 흡수한다.
+  - **개인정보 파기가 인가 왕복만큼 늦어진다.** "지체 없이" 파기 의무와 이 지연이 어떻게 맞물리는지는 백엔드가 판단할 사안이 아니다. 법적 판단이 있으면 그쪽이 우선한다.
+  - **탈퇴 UX에 리다이렉트 왕복이 생긴다.** 공급자 세션이 살아 있고 이전에 동의한 사용자는 화면이 스쳐 지나가지만, 세션이 없으면 로그인 절차를 밟는다. 실제로 무엇이 보이는지는 공급자·설정에 달렸고 실측이 필요하다.
+  - **인가 요청 쿠키에 `memberId`가 실린다.** 그 쿠키는 서명·암호화가 없고 Java 직렬화 허용목록으로만 보호된다(BD-30). 조작 시 실질 방어선은 위 ④의 계정 일치 확인이다. **BD-30이 감수한 범위가 넓어졌다.**
+  - **이미 탈퇴한 회원은 소급 해제가 불가능하다.** `provider_user_id`가 이미 마스킹돼 지목할 수단이 없다.
+- **재검토 트리거**
+  - 인가 왕복 이탈률이 높아 해제되지 않는 탈퇴가 유의미하게 쌓일 때 — Kakao에 한해 어드민 키 폴백을 검토한다.
+  - [S15P11A705-132](https://ssafy.atlassian.net/browse/S15P11A705-132)에서 인가 요청 쿠키를 JSON으로 전환할 때 — `memberId`가 실리는 지금, 서명을 붙일지 함께 판단한다.
+  - 공급자가 연결 해제 API의 인증 방식을 바꿀 때.

@@ -45,7 +45,7 @@ com.pinlog.pinlogback
 | `collection` | 컬렉션·큐레이션 | |
 | `follow` | 팔로우 관계와 공개 책장 탐색 | 공개 책장 탐색(`ShelfController`)은 경로가 `/v1/feed/collections/{collectionId}/shelf`지만 이 도메인에 둡니다 — 추천 계산을 하나도 거치지 않고, 응답에 요청자 기준 팔로우 상태가 실리며, 재사용하는 조회·판정이 `FollowService`가 쓰는 것과 같습니다. **경로 접두어와 도메인이 어긋난 유일한 사례이며 의도된 것입니다**([BD-43](../backend/decisions/BD-43-shelf-in-follow-domain-under-collections-path.md)) |
 | `feed` | 피드 조회·서빙 API | 관측 로그 `core.feed_event` 테이블은 **AI 소유(V102)** — 재정의 금지, 조회만 |
-| `auth` | 인증·인가 | **별도 인증 PR에서 생성.** 그 전에는 만들지 않음 |
+| `auth` | 인증·인가 | S15P11A705-63의 [인증 PR](authentication.md)에서 생성됐습니다. 하위 계층은 `controller`(로그인 진입·재발급·로그아웃) · `service`(세션 토큰 발급·회전·폐기) · `dto` · `exception` · `client`(공급자 연결 해제 호출)이며, `repository`·`entity`는 없습니다 — 회원·소셜 계정은 `member`가 소유합니다. `client`를 `global/security/oauth`에 두지 않은 이유는 아래 "인증·보안 경계"에 있습니다 |
 | `search` | 개인 자연어 검색 조회 API | Record를 돌려주지만 `record`에 두지 않습니다 — 진입 경로(`/v1/search/records`)와 조립 규칙(FastAPI 응답의 Core 재검증)이 Record CRUD와 다릅니다. FastAPI 호출 자체는 `ai`가 맡고 이 도메인은 그 결과를 검증·조립만 합니다 |
 | `ai` | FastAPI AI Server 연동과 `ai` 스키마 접근 | 애그리거트가 아니라 **파트 경계**입니다. 하위 계층은 `repository`(백엔드가 `ai`에 쓰는 SQL과 응답 조립용 읽기) · `client`(내부 API 호출) · `event`(커밋 이후 훅) · `scheduler`(시간이 촉발하는 훅) · `service`(요청 조립·트랜잭션 경계) · `exception`(호출 실패를 도메인 오류로 옮김)이며, `controller`·`entity`는 없습니다 — 외부 진입점이 아니고 남의 스키마를 엔티티로 고정하지 않습니다. `event`와 `scheduler`를 가른 기준은 **무엇이 호출을 촉발하는가**이고, 그에 따라 트랜잭션 경계도 다릅니다 — `event`는 남의 트랜잭션이 커밋된 뒤에 얹히고, `scheduler`는 자기 트랜잭션을 열고 닫습니다(S15P11A705-159) |
 
@@ -82,6 +82,7 @@ com.pinlog.pinlogback
   - `security/token/JwtProperties` — 소비자(`JwtKeyProvider`·`JwtTokenProvider`·`AuthCookies`)와 같은 패키지입니다.
   - `security/authentication/LoginMemberArgumentResolverConfig` — `@LoginMember` 리졸버를 MVC에 등록합니다. `WebMvcConfigurer`는 여러 개가 공존할 수 있으므로, 일반 MVC 설정이 필요해지면 `global/config`에 따로 만들면 됩니다. 하나의 거대한 configurer로 모으지 않습니다.
 - 어느 하위 패키지에도 속하지 않는 것은 `security` 루트에 둡니다(현재 `CsrfCookieFilter` 하나). **억지로 끼워 넣지 않습니다** — 이름이 거짓말이 되는 쪽이 더 비쌉니다.
+- **공급자 연결 해제 호출은 `security/oauth`가 아니라 `domain/auth/client`에 둡니다.** 위 표의 기준이 "언제 도는가"인데 `security/oauth`는 전부 **필터 체인이 로그인 진입·콜백에서 돌리는 것**입니다. 연결 해제는 탈퇴 흐름이 능동적으로 부르는 외부 API 호출이라 그 기준에 들어맞지 않습니다. `ai/client`(내부 API 호출)와 같은 성격으로 보고 도메인 쪽에 둡니다([BD-48](../backend/decisions/BD-48-unlink-before-withdrawal.md)).
 
 > **하위 패키지에 클래스를 추가할 때**: `@NullMarked`는 **하위 패키지로 상속되지 않습니다.** 새 하위 패키지를 만들면 `package-info.java`에 직접 선언해야 하고, 빠뜨리면 컴파일은 통과하지만 `@Nullable` 표기가 조용히 무의미해집니다([BD-29](../backend/decisions/BD-29-nullmarked-security-package.md)).
 
