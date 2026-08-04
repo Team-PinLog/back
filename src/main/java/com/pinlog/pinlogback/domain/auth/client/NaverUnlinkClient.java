@@ -48,8 +48,14 @@ public class NaverUnlinkClient implements SocialUnlinkClient {
 
 	@Override
 	public void unlink(String accessToken) {
+		// 등록정보가 없으면 설정이 빠진 것이다. 그대로 역참조하면 NPE가 WITHDRAWAL_FAILED로
+		// 뭉개져 "공급자 장애"와 구분되지 않는다. 되풀이해도 같으므로 재시도 대상도 아니다.
 		ClientRegistration registration =
 			clientRegistrations.findByRegistrationId(SocialProvider.NAVER.registrationId());
+		if (registration == null) {
+			throw new SocialUnlinkException(
+				"naver client registration is missing", null, false);
+		}
 
 		MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
 		form.add("client_id", registration.getClientId());

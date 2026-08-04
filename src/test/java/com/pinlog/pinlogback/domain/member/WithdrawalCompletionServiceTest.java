@@ -18,6 +18,7 @@ import com.pinlog.pinlogback.domain.auth.client.SocialUnlinkClient;
 import com.pinlog.pinlogback.domain.auth.exception.SocialUnlinkException;
 import com.pinlog.pinlogback.domain.auth.exception.UnsupportedSocialProviderException;
 import com.pinlog.pinlogback.domain.member.entity.SocialProvider;
+import com.pinlog.pinlogback.domain.member.exception.MultipleSocialAccountsNotSupportedException;
 import com.pinlog.pinlogback.domain.member.exception.WithdrawalAccountMismatchException;
 import com.pinlog.pinlogback.domain.member.repository.SocialAccountRepository;
 import com.pinlog.pinlogback.domain.member.service.MemberWithdrawalService;
@@ -91,12 +92,36 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 		// "실제 거절은 드물어진다"고 한 근거가 이것이다.
 		long memberId = newMemberId();
 		givenSocialAccount(memberId, SocialProvider.GOOGLE, "google-retry-1", "f@example.com");
-		google.transientFailuresLeft = 2;
+		google.transientFailuresLeft = 1;
 
 		completionService.complete(memberId, SocialProvider.GOOGLE, "google-retry-1", ACCESS_TOKEN);
 
-		assertThat(google.attempts).isEqualTo(3);
+		assertThat(google.attempts).isEqualTo(2);
 		assertThat(deletedAtOf("core.member", memberId)).isNotNull();
+	}
+
+	@Test
+	@DisplayName("응답이 유실된 뒤의 확정 실패는 성공으로 간주하지 않는다")
+	void definiteFailureAfterALostResponseIsNotTreatedAsSuccess() {
+		// 실제로 일어나는 순서다 — 시도1이 타임아웃(공급자에서는 해제 성공), 시도2가 400.
+		// RFC 7009 §2.2는 무효 토큰에도 200을 요구하지만 Google은 400을 준다(실제 호출로 확인).
+		//
+		// 이 400을 "이미 해제된 것"으로 읽고 삭제로 넘어가면, 정말로 해제되지 않은 경우까지
+		// 회원을 지운다. 마스킹 때문에 되돌릴 수 없는 방향이라 실패로 끝내는 쪽을 고른다.
+		long memberId = newMemberId();
+		givenSocialAccount(memberId, SocialProvider.GOOGLE, "google-lost-1", "j@example.com");
+		google.transientFailuresLeft = 1;
+		google.failing = true;
+		google.retryable = false;
+
+		assertThatThrownBy(() -> completionService.complete(
+			memberId, SocialProvider.GOOGLE, "google-lost-1", ACCESS_TOKEN))
+			.isInstanceOf(SocialUnlinkException.class);
+
+		assertThat(google.attempts).as("무응답 1회 + 확정 실패 1회").isEqualTo(2);
+		assertThat(deletedAtOf("core.member", memberId))
+			.as("해제를 확인하지 못했으므로 지우지 않는다")
+			.isNull();
 	}
 
 	@Test
@@ -174,7 +199,7 @@ class WithdrawalCompletionServiceTest extends CoreApiFixtures {
 
 		assertThatThrownBy(() -> completionService.complete(
 			memberId, SocialProvider.GOOGLE, "google-multi-1", ACCESS_TOKEN))
-			.isInstanceOf(IllegalStateException.class);
+			.isInstanceOf(MultipleSocialAccountsNotSupportedException.class);
 
 		assertThat(google.attempts).as("끊을 수 없는 계정이 남으므로 시작도 하지 않는다").isZero();
 		assertThat(deletedAtOf("core.member", memberId)).isNull();

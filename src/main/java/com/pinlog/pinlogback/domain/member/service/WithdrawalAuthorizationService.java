@@ -9,11 +9,14 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 import com.pinlog.pinlogback.domain.member.dto.WithdrawalStartResponse;
 import com.pinlog.pinlogback.domain.member.entity.SocialAccount;
+import com.pinlog.pinlogback.domain.member.exception.MultipleSocialAccountsNotSupportedException;
 import com.pinlog.pinlogback.domain.member.repository.SocialAccountRepository;
 import com.pinlog.pinlogback.global.exception.UnauthorizedException;
 import com.pinlog.pinlogback.global.security.oauth.OAuthEndpointPaths;
 import com.pinlog.pinlogback.global.security.oauth.WithdrawalAwareAuthorizationRequestResolver;
 import com.pinlog.pinlogback.global.security.token.JwtTokenProvider;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 탈퇴 인가 왕복의 시작(BD-48 §②).
@@ -25,6 +28,7 @@ import com.pinlog.pinlogback.global.security.token.JwtTokenProvider;
  * <p>이 시점에는 <b>아무것도 지우지 않는다.</b> 마스킹이 공급자 식별자를 파기하므로 먼저 지우면
  * 해제할 대상을 잃는다.
  */
+@Slf4j
 @Service
 public class WithdrawalAuthorizationService {
 
@@ -50,7 +54,8 @@ public class WithdrawalAuthorizationService {
 	 *
 	 * @throws UnauthorizedException 활성 소셜 계정이 없을 때. 해제할 대상이 없으면 탈퇴를 시작할
 	 *     수 없다 — 인증을 통과했는데 계정이 없다는 것은 이미 탈퇴했거나 데이터가 깨진 상태다
-	 * @throws IllegalStateException 계정이 둘 이상일 때. 근거는 {@link #requireSingleAccount}에 있다
+	 * @throws MultipleSocialAccountsNotSupportedException 계정이 둘 이상일 때. 근거는
+	 *     {@link #requireSingleAccount}에 있다
 	 */
 	@Transactional(readOnly = true)
 	public WithdrawalStartResponse start(Long memberId) {
@@ -84,8 +89,9 @@ public class WithdrawalAuthorizationService {
 			throw new UnauthorizedException();
 		}
 		if (accounts.size() > 1) {
-			throw new IllegalStateException(
-				"한 번의 인가 왕복으로는 계정 " + accounts.size() + "개를 해제할 수 없다: memberId=" + memberId);
+			log.error("withdrawal refused, member has {} social accounts: memberId={}",
+				accounts.size(), memberId);
+			throw new MultipleSocialAccountsNotSupportedException();
 		}
 		return accounts.getFirst();
 	}

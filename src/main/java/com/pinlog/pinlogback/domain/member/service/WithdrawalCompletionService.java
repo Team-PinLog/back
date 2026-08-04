@@ -12,6 +12,7 @@ import com.pinlog.pinlogback.domain.auth.exception.SocialUnlinkException;
 import com.pinlog.pinlogback.domain.auth.exception.UnsupportedSocialProviderException;
 import com.pinlog.pinlogback.domain.member.entity.SocialAccount;
 import com.pinlog.pinlogback.domain.member.entity.SocialProvider;
+import com.pinlog.pinlogback.domain.member.exception.MultipleSocialAccountsNotSupportedException;
 import com.pinlog.pinlogback.domain.member.exception.WithdrawalAccountMismatchException;
 import com.pinlog.pinlogback.domain.member.repository.SocialAccountRepository;
 
@@ -37,7 +38,7 @@ import lombok.extern.slf4j.Slf4j;
 public class WithdrawalCompletionService {
 
 	/** 첫 시도를 포함한 횟수. 근거는 {@link #unlinkAbsorbingTransientFailure}에 있다. */
-	private static final int MAX_UNLINK_ATTEMPTS = 3;
+	private static final int MAX_UNLINK_ATTEMPTS = 2;
 	private static final Duration RETRY_BACKOFF = Duration.ofMillis(200);
 
 	private final SocialAccountRepository socialAccountRepository;
@@ -99,13 +100,17 @@ public class WithdrawalCompletionService {
 	 * "공급자 장애가 탈퇴를 막아서는 안 된다"던 결정을 뒤집었는데(BD-48), 그 판단이 성립하는 조건이
 	 * <b>실제 거절이 드물다</b>는 것이다. 순간적 장애를 흡수하지 않으면 그 조건이 깨진다.
 	 *
-	 * <p>되풀이가 안전한 근거는 멱등성이다 — 이미 폐기된 토큰에도 세 공급자 모두 성공을 준다
-	 * (RFC 7009). 그래서 첫 요청이 실제로는 성공했는데 응답만 못 받은 경우에도 두 번째가 깨지지
-	 * 않는다.
+	 * <p><b>흡수하는 것은 요청이 닿지 못한 실패다</b> — 연결 거부와 5xx. 요청이 닿아 해제까지 됐는데
+	 * 응답만 유실된 경우는 다음 시도가 확정적 4xx를 받아 실패로 끝난다. RFC 7009 §2.2는 무효 토큰에도
+	 * 200을 요구하지만 <b>Google은 400을 준다</b>(실제 호출로 확인). 그 4xx를 "이미 해제된 것"으로
+	 * 간주하지 않는 이유는 {@link SocialUnlinkException#from}에 적었다 — 되돌릴 수 없는 방향이다.
 	 *
-	 * <p><b>사용자가 리다이렉트 뒤에서 기다리는 구간이라 짧게 잡는다.</b> 3회·0.2초·0.4초이고,
-	 * 공급자가 응답을 주는 한 대기는 0.6초를 넘지 않는다. 최악은 타임아웃이 세 번 나는 경우로
-	 * 읽기 5초 × 3 + 0.6초다. 그보다 길게 잡으면 흡수하는 장애의 폭보다 기다리는 시간이 먼저 커진다.
+	 * <p><b>사용자가 리다이렉트 뒤에서 기다리는 구간이라 짧게 잡는다.</b> 2회·0.2초다. 공급자가
+	 * 응답을 주는 한 대기는 0.2초를 넘지 않고, 최악은 읽기 타임아웃 두 번으로 5초 × 2 + 0.2초다.
+	 *
+	 * <p>3회에서 2회로 줄였다. 시도를 늘려도 <b>비싼 케이스를 못 고치기 때문</b>이다 — 위에서 보듯
+	 * 무응답 뒤의 재시도는 Google에서 4xx로 끝난다. 실제로 흡수되는 5xx·연결 거부는 빨리 돌아오므로
+	 * 한 번의 재시도로 충분하고, 회차를 늘리는 것은 흰 화면 대기 시간만 늘린다.
 	 *
 	 * <p>재시도가 의미 없는 실패는 즉시 올린다. 자격증명 오류나 요청 형식 오류는 몇 번을 보내도
 	 * 같아서, 되풀이하면 사용자를 기다리게 할 뿐이다.
@@ -147,12 +152,23 @@ public class WithdrawalCompletionService {
 	 */
 	private void requireSingleAccount(Long memberId, List<SocialAccount> accounts) {
 		if (accounts.size() > 1) {
-			throw new IllegalStateException(
-				"한 번의 인가 왕복으로는 계정 " + accounts.size() + "개를 해제할 수 없다: memberId=" + memberId);
+			log.error("withdrawal refused at callback, member has {} social accounts: memberId={}",
+				accounts.size(), memberId);
+			throw new MultipleSocialAccountsNotSupportedException();
 		}
 	}
 
-	/** 공급자 화면에서 다른 계정을 고를 수 있다. 확인하지 않으면 남의 연결을 끊는다(BD-48 §⑤). */
+	/**
+	 * 공급자 화면에서 다른 계정을 고를 수 있다. 확인하지 않으면 남의 연결을 끊는다(BD-48 §⑤).
+	 *
+	 * <p><b>완화하기 전에 BD-48 §③을 읽을 것.</b> 이 검사는 편의가 아니라 <b>콜백에서 유일하게
+	 * 서명으로 뒷받침되지 않는 지점을 지탱한다.</b> 탈퇴 대상 {@code memberId}는 인가 요청
+	 * {@code attributes}에 실려 오는데, 그것을 나르는 쿠키에는 MAC이 없다. 티켓 서명은 진입에서만
+	 * 검증되므로, 이 검사가 사라지면 위조된 쿠키가 <b>임의 회원 삭제</b>가 된다.
+	 *
+	 * <p>계정 연결 기능이 붙으면 "여러 계정 중 하나만 맞아도 통과"로 느슨하게 하고 싶어진다.
+	 * 그때가 이 주석이 필요한 시점이다.
+	 */
 	private void requireOwnAccount(
 		Long memberId, SocialProvider provider, String providerUserId, List<SocialAccount> accounts) {
 		boolean owned = accounts.stream().anyMatch(account -> matches(account, provider, providerUserId));

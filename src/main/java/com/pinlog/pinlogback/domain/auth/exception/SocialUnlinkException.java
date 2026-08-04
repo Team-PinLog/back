@@ -36,8 +36,24 @@ public class SocialUnlinkException extends RuntimeException {
 	 * <i>"토큰이 아직 존재한다고 가정하고 적절한 지연 후 재시도"</i>를 규범으로 둔다.
 	 *
 	 * <p><b>응답이 아예 오지 않은 경우도 일시적으로 본다.</b> 타임아웃·연결 끊김은 공급자가 상태를
-	 * 알려 주지 못한 것이라 해제 여부를 알 수 없다. 다시 보내는 것이 안전한 근거는 멱등성이다 —
-	 * 이미 폐기된 토큰에도 공급자는 성공을 준다.
+	 * 알려 주지 못한 것이라 해제 여부를 알 수 없다.
+	 *
+	 * <p><b>다시 보내는 것이 안전하되, 성공으로 수렴한다는 보장은 없다.</b> RFC 7009 §2.2는 무효
+	 * 토큰에도 200을 요구하지만 <b>3사가 그것을 따르지는 않는다.</b>
+	 *
+	 * <table>
+	 *   <tr><th>공급자</th><th>이미 폐기된 토큰</th></tr>
+	 *   <tr><td>Naver</td><td>{@code 200} — 문서가 "이미 폐기되었거나 존재하지 않는 경우"를 명시</td></tr>
+	 *   <tr><td>Google</td><td>{@code 400} — 실제 호출로 확인했다</td></tr>
+	 *   <tr><td>Kakao</td><td>미확인. 무효 토큰에 오류를 준다고 보는 편이 안전하다</td></tr>
+	 * </table>
+	 *
+	 * <p>따라서 재시도가 흡수하는 것은 <b>요청이 닿지 못한 실패</b>(연결 거부·5xx)다. 요청이 닿아
+	 * 해제까지 됐는데 <b>응답만 유실된</b> 경우는 다음 시도가 확정적 4xx를 받아 실패로 끝난다.
+	 *
+	 * <p>그 4xx를 "이미 해제된 것"으로 간주하지 않는다. 그렇게 하면 <b>실제로 해제되지 않았는데
+	 * 회원을 지우는</b> 경로가 열리고, 그 방향은 마스킹 때문에 되돌릴 수 없다. 반대 방향(실패로
+	 * 보고 사용자가 다시 시도)은 회복 가능하다 — BD-48이 순서를 정한 것과 같은 기준이다.
 	 */
 	public static SocialUnlinkException from(String message, RestClientException cause) {
 		return new SocialUnlinkException(message, cause, isRetryable(cause));

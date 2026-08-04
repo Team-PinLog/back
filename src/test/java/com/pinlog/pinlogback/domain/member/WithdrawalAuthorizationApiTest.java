@@ -79,7 +79,7 @@ class WithdrawalAuthorizationApiTest extends CoreApiFixtures {
 		givenSocialAccount(memberId, SocialProvider.KAKAO, "kakao-entry-2", "b@example.com");
 
 		mockMvc.perform(delete(WITHDRAWAL_PATH).with(loginAs(memberId)))
-			.andExpect(status().is5xxServerError());
+			.andExpect(status().isConflict());
 
 		assertThat(deletedAtOf("core.member", memberId)).isNull();
 	}

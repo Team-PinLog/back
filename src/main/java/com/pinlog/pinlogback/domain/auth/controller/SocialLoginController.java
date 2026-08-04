@@ -57,6 +57,10 @@ public class SocialLoginController {
 	 * <p>탈퇴 티켓이 실려 있었다면 위조이거나 만료다. 그대로 두면 404라 사용자는 이유를 모르므로,
 	 * 복귀 경로에 코드를 실어 돌려보낸다(BD-48 §④). 티켓이 없었다면 지원하지 않는 registrationId로
 	 * 내부 경로를 직접 두드린 것이라 404가 맞다.
+	 *
+	 * <p>{@code {registrationId}}를 {@code @PathVariable}로 받지 않는다. 필터가 매칭하는 경로 형태를
+	 * 그대로 덮어야 여기까지 흘러오므로 <b>템플릿에는 필요하지만</b>, 이 메서드가 하는 일(티켓 유무로
+	 * 갈라 돌려보내기)은 공급자와 무관하다. 값을 받아 두면 쓰지 않는 파라미터가 는다.
 	 */
 	@GetMapping("/authorize/{registrationId}")
 	public ResponseEntity<Void> authorizationRequestNotResolved(
