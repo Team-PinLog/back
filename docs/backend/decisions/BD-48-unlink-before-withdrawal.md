@@ -65,13 +65,17 @@ DB 트랜잭션과 외부 HTTP는 원자적일 수 없으므로 실현 형태는
 
 **이 왕복은 조건부가 아니다.** 토큰이 "만료됐으면 다시 받는" 것이 아니라 탈퇴 시점에는 언제나 없다. 클라이언트가 들고 있는 것은 우리가 서명한 JWT이고, 그것으로는 공급자에게 해제를 요청할 수 없다.
 
-3사 모두 access token으로 해제할 수 있어 공급자별 분기가 없다.
+> **정정(2026-08-05).** 아래 *"3사 모두 access token으로 해제할 수 있어 공급자별 분기가 없다"*는 **Google에 대해 틀렸다.** Kakao·Naver는 **연결 단위** API라 access token으로 승인이 사라지지만, Google `/revoke`는 **토큰 단위**다. access token을 보내면 `200`이 오고 우리 로그도 `unlinked`를 남기지만, 계정의 「서드파티 앱 및 서비스」에는 앱이 그대로 남는다 — 탈퇴 뒤 실제로 확인했다.
+>
+> **`200`이 무엇의 성공인지 확인하지 않은 것이 이 문서의 오류다.** 폐기의 연쇄는 access → refresh 방향이고 승인은 refresh token 쪽에 달려 있는데, 우리는 `access_type=offline`을 붙이지 않아 refresh token 자체를 받지 않았다. 연쇄할 대상이 없으니 토큰만 죽었다.
+>
+> S15P11A705-309가 **탈퇴 왕복의 Google 인가 요청에만** `access_type=offline`·`prompt=consent`를 붙여 refresh token을 받고 그것을 폐기하도록 고쳤다. 로그인 진입은 그대로다 — 붙이면 매 로그인마다 동의 화면이 뜬다. 보관 원칙도 그대로다: refresh token은 토큰 교환 응답으로 와서 같은 요청 안에서 `/revoke`로 나가고 사라진다.
 
-| 공급자 | 엔드포인트 | 이미 폐기된 토큰 |
-|---|---|---|
-| Kakao | `POST /v1/user/unlink` (사용자 토큰 방식) | 미확인 |
-| Google | `POST /revoke` | **`400`** — 실제 호출로 확인 |
-| Naver | `POST /oauth2.0/revoke` + `token_type_hint=access_token` (연결된 refresh까지 cascade) | `200` — 문서가 명시 |
+| 공급자 | 엔드포인트 | 해제 단위 | 폐기 대상 | 이미 폐기된 토큰 |
+|---|---|---|---|---|
+| Kakao | `POST /v1/user/unlink` (사용자 토큰 방식) | **연결** | access token | 미확인 |
+| Google | `POST /revoke` | **토큰** | **refresh token** — access token으로는 승인이 남는다 | **`400`** — 실제 호출로 확인 |
+| Naver | `POST /oauth2.0/revoke` + `token_type_hint=access_token` (연결된 refresh까지 cascade) | **연결** | access token | `200` — 문서가 명시 |
 
 **멱등성을 전제로 삼지 않는다.** [RFC 7009](https://www.rfc-editor.org/rfc/rfc7009) §2.2는 무효 토큰에도 200을 요구하지만 **3사가 그것을 따르지는 않는다.** 그래서 재시도가 흡수하는 것은 *요청이 닿지 못한 실패*(연결 거부·5xx)이고, 요청이 닿아 해제까지 됐는데 **응답만 유실된** 경우는 다음 시도가 확정적 4xx를 받아 실패로 끝난다.
 
