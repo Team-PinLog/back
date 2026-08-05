@@ -29,7 +29,7 @@ import com.pinlog.pinlogback.domain.ai.service.AiRescanProperties;
 @Configuration
 @EnableAsync
 @EnableScheduling
-@EnableConfigurationProperties({AiProperties.class, AiRescanProperties.class})
+@EnableConfigurationProperties({AiProperties.class, AiPlaceSuggestionProperties.class, AiRescanProperties.class})
 public class AiIntegrationConfig {
 
 	private static final Logger log = LoggerFactory.getLogger(AiIntegrationConfig.class);
@@ -55,6 +55,13 @@ public class AiIntegrationConfig {
 		return restClient(properties.baseUrl(), properties.search());
 	}
 
+	@Bean
+	public RestClient aiPlaceSuggestionRestClient(AiProperties properties,
+		AiPlaceSuggestionProperties placeSuggestionProperties) {
+		return restClient(properties.baseUrl(), placeSuggestionProperties.connectTimeout(),
+			placeSuggestionProperties.readTimeout());
+	}
+
 	/**
 	 * 커넥션 풀이 있는 factory를 쓰지 않는 이유: 두 호출 모두 작은 본문을 주고받고 끝나는 짧은
 	 * 요청이고 빈도도 Context 생성·사용자 검색 빈도를 넘지 않는다. 풀링 클라이언트를 붙이면 의존성만
@@ -65,9 +72,14 @@ public class AiIntegrationConfig {
 	 * 붙은 빈 builder 하나뿐이라 <b>연동 하나 때문에 의존성을 늘릴 이유가 없다.</b>
 	 */
 	private RestClient restClient(String baseUrl, AiProperties.Timeouts timeouts) {
+		return restClient(baseUrl, timeouts.connectTimeout(), timeouts.readTimeout());
+	}
+
+	private RestClient restClient(String baseUrl, java.time.Duration connectTimeout,
+		java.time.Duration readTimeout) {
 		SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
-		requestFactory.setConnectTimeout(timeouts.connectTimeout());
-		requestFactory.setReadTimeout(timeouts.readTimeout());
+		requestFactory.setConnectTimeout(connectTimeout);
+		requestFactory.setReadTimeout(readTimeout);
 		return RestClient.builder()
 			.baseUrl(baseUrl)
 			.requestFactory(requestFactory)

@@ -91,27 +91,58 @@ ORDER BY ctx.origin_created_at ASC, ctx.id ASC;
 \echo ''
 \echo '######## [3] 지도 — RecordRepository (member 2792)'
 ------------------------------------------------------------------------------
--- 두 갈래를 **둘 다** 잰다. 컨트롤러가 bbox를 required=false로 받으므로 파라미터가 없으면
--- findMarkers(전량), 있으면 findMarkersWithinBounds로 갈린다. 부하 시나리오(load-read.js)는
--- bbox 없이 부르고 실제 프론트는 뷰포트를 보내므로, 한쪽만 재면 부하 결과와 계획 관측이
--- 서로 다른 쿼리를 보게 된다(BI-38 개선 후보 3에서 발견).
+-- **세 갈래를 다 잰다.** 컨트롤러가 bbox와 keyword를 모두 required=false로 받으므로
+-- 조합에 따라 다른 쿼리가 나간다(S15P11A705-301, dev #180):
+--
+--   bbox 없음 + keyword 없음  → findMarkers(전량)            ← 부하 시나리오(load-read.js)가 부르는 쪽
+--   bbox 있음 + keyword 없음  → findMarkersWithinBounds      ← 프론트 지도 화면의 기본 경로
+--   bbox 있음 + keyword 있음  → findMarkersWithinBounds      ← 지도 검색 경로
+--
+-- keyword 조건은 세 쿼리 모두의 WHERE에 **항상** 들어 있다. null일 때도 `:keyword is null`
+-- 단락 평가가 계획에 남으므로, 조건을 빼고 재면 실제 코드와 다른 쿼리를 재는 셈이다.
+--
+-- keyword 패턴은 서비스가 만든다(RecordService.toLikeKeyword): 양끝 와일드카드 `%...%`,
+-- 소문자화, `!` `%` `_`를 `!`로 이스케이프. 아래 리터럴이 그 형태다.
+--
+-- **ORDER BY가 없는 것이 맞다.** 이름 정렬은 SQL이 아니라 자바에서 한다 — 한글에 동순위
+-- 가중치를 주는 collation에서는 `ORDER BY name`이 사실상 무순서여서 환경마다 순서가
+-- 달라지기 때문이다(RecordService.sortByName 주석). 그래서 계획에 정렬 노드가 없어야 정상이다.
 
-\echo '--- [3a] bbox 없음 — findMarkers (부하 시나리오가 부르는 쪽) ---'
+\echo '--- [3a] bbox 없음 · keyword 없음 — findMarkers (부하 시나리오가 부르는 쪽) ---'
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT r.id, p.id, p.name, p.lat, p.lng
 FROM core.record r JOIN core.place p ON p.id = r.place_id
-WHERE r.deleted_at IS NULL AND r.member_id = 2792;
+WHERE r.deleted_at IS NULL AND r.member_id = 2792
+  AND (NULL IS NULL
+       OR lower(p.name) LIKE NULL ESCAPE '!'
+       OR lower(p.address) LIKE NULL ESCAPE '!');
 
 -- bbox는 **도시 단위**로 준다. 전국 범위(위도 33~39)를 주면 아무 행도 걸러지지 않아
 -- bbox 없는 경우와 결과가 같아지고, 필터의 효과를 재는 의미가 사라진다.
 -- 값은 functional.js가 쓰는 서울 뷰포트와 맞춘다.
-\echo '--- [3b] bbox 있음(서울) — findMarkersWithinBounds (프론트 지도 화면 경로) ---'
+\echo '--- [3b] bbox 있음(서울) · keyword 없음 — 프론트 지도 화면 기본 경로 ---'
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT r.id, p.id, p.name, p.lat, p.lng
 FROM core.record r JOIN core.place p ON p.id = r.place_id
 WHERE r.deleted_at IS NULL AND r.member_id = 2792
   AND p.lat BETWEEN 37.4 AND 37.7
-  AND p.lng BETWEEN 126.8 AND 127.1;
+  AND p.lng BETWEEN 126.8 AND 127.1
+  AND (NULL IS NULL
+       OR lower(p.name) LIKE NULL ESCAPE '!'
+       OR lower(p.address) LIKE NULL ESCAPE '!');
+
+-- keyword가 실제로 들어오는 경로. 양끝 와일드카드라 어떤 인덱스도 이 LIKE를 덮지 못하고
+-- 후보 행마다 lower()를 두 번 계산한다. 회원 record를 먼저 좁힌 뒤 걸러지는지가 관측 지점이다.
+\echo '--- [3c] bbox 있음(서울) · keyword 있음 — 지도 검색 경로 ---'
+EXPLAIN (ANALYZE, BUFFERS)
+SELECT r.id, p.id, p.name, p.lat, p.lng
+FROM core.record r JOIN core.place p ON p.id = r.place_id
+WHERE r.deleted_at IS NULL AND r.member_id = 2792
+  AND p.lat BETWEEN 37.4 AND 37.7
+  AND p.lng BETWEEN 126.8 AND 127.1
+  AND ('%카페%' IS NULL
+       OR lower(p.name) LIKE '%카페%' ESCAPE '!'
+       OR lower(p.address) LIKE '%카페%' ESCAPE '!');
 
 ------------------------------------------------------------------------------
 \echo ''
