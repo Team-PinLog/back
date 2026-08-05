@@ -69,7 +69,7 @@ class OAuthCallbackCancellationTest extends CoreApiFixtures {
 			.attributes(attributes -> attributes.put("registration_id", "google"));
 		if (withdrawal) {
 			builder.attributes(attributes -> attributes.put(
-				WithdrawalAwareAuthorizationRequestResolver.WITHDRAWAL_MEMBER_ID, 77L));
+				WithdrawalAwareAuthorizationRequestResolver.WITHDRAWAL_MEMBER_ID, "77"));
 		}
 
 		MockHttpServletResponse saved = new MockHttpServletResponse();

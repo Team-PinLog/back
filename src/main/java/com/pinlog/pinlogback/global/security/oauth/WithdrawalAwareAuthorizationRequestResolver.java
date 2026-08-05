@@ -37,7 +37,14 @@ public class WithdrawalAwareAuthorizationRequestResolver implements OAuth2Author
 	/** 진입 URL이 티켓을 싣는 파라미터. {@code WithdrawalAuthorizationService}가 같은 이름을 쓴다. */
 	public static final String TICKET_PARAMETER = "ticket";
 
-	/** 탈퇴 대상 회원을 담는 {@code attributes} 키. 이 키가 있으면 콜백은 로그인이 아니라 탈퇴다. */
+	/**
+	 * 탈퇴 대상 회원을 담는 {@code attributes} 키. 이 키가 있으면 콜백은 로그인이 아니라 탈퇴다.
+	 *
+	 * <p><b>값은 문자열이다.</b> 인가 요청은 JSON으로 쿠키에 담기는데, 그 경로의
+	 * {@code PolymorphicTypeValidator}가 {@code java.lang.Long} 같은 임의 타입의 복원을 거부한다.
+	 * Spring 자신이 {@code attributes}에 넣는 값들({@code registration_id}·PKCE
+	 * {@code code_verifier})도 모두 문자열이다. 검증기를 느슨하게 푸는 대신 값을 맞춘다.
+	 */
 	public static final String WITHDRAWAL_MEMBER_ID = "withdrawal_member_id";
 
 	/**
@@ -51,8 +58,18 @@ public class WithdrawalAwareAuthorizationRequestResolver implements OAuth2Author
 	public static Optional<Long> withdrawalMemberId(HttpServletRequest request) {
 		return CookieOAuth2AuthorizationRequestRepository.consumedAuthorizationRequest(request)
 			.map(authorizationRequest -> authorizationRequest.getAttributes().get(WITHDRAWAL_MEMBER_ID))
-			.filter(Long.class::isInstance)
-			.map(Long.class::cast);
+			.filter(String.class::isInstance)
+			.map(String.class::cast)
+			.flatMap(WithdrawalAwareAuthorizationRequestResolver::parseMemberId);
+	}
+
+	/** 값을 우리가 넣지만 담기는 곳이 쿠키라, 숫자가 아닌 값이 돌아오면 탈퇴가 아닌 것으로 본다. */
+	private static Optional<Long> parseMemberId(String value) {
+		try {
+			return Optional.of(Long.valueOf(value));
+		} catch (NumberFormatException e) {
+			return Optional.empty();
+		}
 	}
 
 	private final OAuth2AuthorizationRequestResolver delegate;
@@ -92,7 +109,8 @@ public class WithdrawalAwareAuthorizationRequestResolver implements OAuth2Author
 		}
 
 		return OAuth2AuthorizationRequest.from(resolved)
-			.attributes(attributes -> attributes.put(WITHDRAWAL_MEMBER_ID, memberId.get()))
+			.attributes(attributes ->
+				attributes.put(WITHDRAWAL_MEMBER_ID, String.valueOf(memberId.get())))
 			.build();
 	}
 }

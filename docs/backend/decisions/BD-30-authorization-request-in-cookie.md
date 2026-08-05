@@ -1,10 +1,18 @@
 # BD-30. 인가 요청(state·PKCE verifier)을 세션이 아니라 쿠키에 담는다
 
-- **상태**: Accepted
+- **상태**: Accepted — **직렬화 형식은 2026-08-04 [BD-49](BD-49-authorization-request-cookie-json.md)로 대체됨**(쿠키에 담는다는 결정 자체는 유효)
 - **날짜**: 2026-07-28 (`7f1e8ed`·`1ed1dbe` 구현 시점)
 - **작성 시점**: 2026-07-28 — 결정 이후에 정리(같은 날, 미푸시 커밋 점검 중 기록 누락 발견)
 - **관련**: S15P11A705-63 · `7f1e8ed`(Security 도입) · `1ed1dbe`(로그인 진입) · `CookieOAuth2AuthorizationRequestRepository`
 - **공용 계약**: [11_인증_설계 §2](https://github.com/Team-PinLog/docs/blob/main/static/11_인증_설계.md) (인증 상태를 쿠키에 둔다 — 수용 기록은 [BD-21](BD-21-auth-token-model.md))
+
+> **정정(2026-08-04).** 아래 (b)의 **직렬화 형식** 부분이 [BD-49](BD-49-authorization-request-cookie-json.md)로 뒤집혔다. 쿠키에 담는다는 결정과 (a)·(d) 기각 근거는 그대로 유효하다.
+>
+> (c) JSON을 기각한 이유였던 *"재구성 코드를 직접 유지해야 하고 필드 누락이 조용한 버그가 된다"*가 **성립하지 않게 됐다.** Spring Security 7.1.0이 `OAuth2ClientJacksonModule`로 `OAuth2AuthorizationRequest`의 mixin과 deserializer를 제공한다. 이 문서를 쓸 때 그 모듈의 존재를 확인하지 않았다 — 선택지 표에 있어야 했던 **"쿠키 + 공식 Jackson 모듈"** 행이 통째로 빠져 있었고, (b)와 (c)의 장점을 함께 갖는 안이었다.
+>
+> 아래 "재검토 트리거"의 첫 항목(*Spring Security 메이저 업그레이드*)이 7.x에서 실제로 발동했다.
+
+> **정정(2026-08-04).** 아래 감수 항목의 *"역직렬화 필터에 `maxdepth`·`maxbytes`를 두지 않았다"*는 **현행과 다르다.** 나중에 SerialDOS 대비로 추가됐는데 이 문서가 갱신되지 않았다. 실제 코드는 `maxdepth=20;maxrefs=1000;maxbytes=8192;maxarray=1000`을 걸고 있었다. BD-49로 Java 역직렬화 자체가 사라져 이 필터는 이제 존재하지 않는다.
 
 ## 맥락
 

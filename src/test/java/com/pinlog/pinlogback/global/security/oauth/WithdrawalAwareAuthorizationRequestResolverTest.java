@@ -65,7 +65,7 @@ class WithdrawalAwareAuthorizationRequestResolverTest {
 			.doesNotContainKey(WithdrawalAwareAuthorizationRequestResolver.TICKET_PARAMETER);
 		// 그러면서 의도는 우리 쪽에 남아 있어야 한다.
 		assertThat(resolved.getAttributes())
-			.containsEntry(WithdrawalAwareAuthorizationRequestResolver.WITHDRAWAL_MEMBER_ID, MEMBER_ID);
+			.containsEntry(WithdrawalAwareAuthorizationRequestResolver.WITHDRAWAL_MEMBER_ID, String.valueOf(MEMBER_ID));
 	}
 
 	@Test
@@ -135,7 +135,7 @@ class WithdrawalAwareAuthorizationRequestResolverTest {
 
 		assertThat(resolved).isNotNull();
 		assertThat(resolved.getAttributes())
-			.containsEntry(WithdrawalAwareAuthorizationRequestResolver.WITHDRAWAL_MEMBER_ID, MEMBER_ID);
+			.containsEntry(WithdrawalAwareAuthorizationRequestResolver.WITHDRAWAL_MEMBER_ID, String.valueOf(MEMBER_ID));
 		// 위임이 만든 PKCE·state가 살아 있어야 한다 — 새로 만들면 콜백이 깨진다.
 		assertThat(resolved.getState()).isEqualTo("delegated-state");
 	}
