@@ -41,6 +41,9 @@ import tools.jackson.databind.json.JsonMapper;
 @AutoConfigureMockMvc
 class CollectionApiTests extends IntegrationContainerSupport {
 
+	private static final String COVER_URL =
+		"/image/files/3f2a9c1e-8d4b-4f6a-9c0e-5b7d2e8a1c44_image_0.webp";
+
 	private final JsonMapper jsonMapper = JsonMapper.builder().build();
 
 	@Autowired
@@ -352,6 +355,171 @@ class CollectionApiTests extends IntegrationContainerSupport {
 			.andExpect(status().isNotFound());
 	}
 
+	/**
+	 * 생성 직후 표지는 없다(명세 7.1). 필드가 아예 빠지면 프론트가 "키 부재"와 "null"을 구분해야
+	 * 하므로, null <b>값으로 존재</b>해야 한다(명세 7.7).
+	 */
+	@Test
+	void createExposesCoverImageUrlAsNullField() throws Exception {
+		long memberId = newMemberId();
+		long recordId = newRecord(memberId, "col-cover-null-1");
+
+		JsonNode data = parse(mockMvc.perform(post("/v1/collections").with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(createBody("표지 없음", List.of(recordId))))
+			.andExpect(status().isCreated())
+			.andReturn().getResponse().getContentAsString()).at("/data");
+
+		assertThat(data.has("coverImageUrl")).isTrue();
+		assertThat(data.get("coverImageUrl").isNull()).isTrue();
+	}
+
+	/** 표지 등록(명세 7.4) — coverImageUrl만 보내면 제목은 그대로고, 상세(7.3)에도 실린다. */
+	@Test
+	void ownerCanSetCoverImageUrlAloneAndDetailShowsIt() throws Exception {
+		long memberId = newMemberId();
+		long collectionId = createCollection(memberId, "표지 등록", List.of(newRecord(memberId, "col-cover-set-1")));
+
+		mockMvc.perform(patch("/v1/collections/{id}", collectionId).with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"coverImageUrl\": \"" + COVER_URL + "\"}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.title").value("표지 등록"))
+			.andExpect(jsonPath("$.data.coverImageUrl").value(COVER_URL));
+
+		mockMvc.perform(get("/v1/collections/{id}", collectionId).with(loginAs(memberId)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.coverImageUrl").value(COVER_URL));
+	}
+
+	/**
+	 * 보내지 않았거나 null인 필드는 기존 값을 유지한다(명세 7.4). 이 계약이 깨지면 제목만 고쳤는데
+	 * 표지가 지워진다. 표지 제거는 MVP에서 제공하지 않는다 — null은 제거가 아니라 무시다.
+	 */
+	@Test
+	void titleOnlyOrNullCoverPatchKeepsExistingCover() throws Exception {
+		long memberId = newMemberId();
+		long collectionId = createCollection(memberId, "표지 유지", List.of(newRecord(memberId, "col-cover-keep-1")));
+		setCover(memberId, collectionId);
+
+		mockMvc.perform(patch("/v1/collections/{id}", collectionId).with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"title\": \"제목만 수정\"}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.title").value("제목만 수정"))
+			.andExpect(jsonPath("$.data.coverImageUrl").value(COVER_URL));
+
+		mockMvc.perform(patch("/v1/collections/{id}", collectionId).with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"title\": \"null도 유지\", \"coverImageUrl\": null}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.title").value("null도 유지"))
+			.andExpect(jsonPath("$.data.coverImageUrl").value(COVER_URL));
+	}
+
+	/** 두 필드를 함께 보내면 둘 다 반영된다(명세 7.4). */
+	@Test
+	void patchWithBothFieldsUpdatesBoth() throws Exception {
+		long memberId = newMemberId();
+		long collectionId = createCollection(memberId, "수정 전", List.of(newRecord(memberId, "col-cover-both-1")));
+
+		mockMvc.perform(patch("/v1/collections/{id}", collectionId).with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"title\": \"수정 후\", \"coverImageUrl\": \"" + COVER_URL + "\"}"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.title").value("수정 후"))
+			.andExpect(jsonPath("$.data.coverImageUrl").value(COVER_URL));
+	}
+
+	/** 두 필드 다 없으면(빈 바디·null뿐) 적용할 것이 없다 — 400이다(명세 7.4). */
+	@ParameterizedTest
+	@ValueSource(strings = {"{}", "{\"coverImageUrl\": null}", "{\"title\": null, \"coverImageUrl\": null}"})
+	void patchWithNothingToApplyIs400(String body) throws Exception {
+		long memberId = newMemberId();
+		// place의 kakaoPlaceId는 전역 유니크라 파라미터화 실행마다 키가 달라야 한다.
+		long collectionId = createCollection(memberId, "빈 수정",
+			List.of(newRecord(memberId, "col-cover-empty-" + Integer.toHexString(body.hashCode()))));
+
+		mockMvc.perform(patch("/v1/collections/{id}", collectionId).with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(body))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+	}
+
+	/**
+	 * 표지는 이미지 서비스 최종본의 같은 origin 상대 경로만 받는다(명세 7.4). 프론트가 보낸 값을
+	 * 그대로 믿으면 임의 문자열이 표지로 저장된다.
+	 */
+	@ParameterizedTest
+	@ValueSource(strings = {
+		"https://pin-log.com/image/files/a.webp",
+		"/image/jobs/a.webp",
+		"/image/files/a.png",
+		"/image/files/",
+		"/image/files/a b.webp"
+	})
+	void patchWithInvalidCoverImageUrlIs400(String coverImageUrl) throws Exception {
+		long memberId = newMemberId();
+		// place의 kakaoPlaceId는 전역 유니크라 파라미터화 실행마다 키가 달라야 한다.
+		long collectionId = createCollection(memberId, "표지 검증",
+			List.of(newRecord(memberId, "col-cover-bad-" + Integer.toHexString(coverImageUrl.hashCode()))));
+
+		mockMvc.perform(patch("/v1/collections/{id}", collectionId).with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"coverImageUrl\": \"" + coverImageUrl + "\"}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"))
+			.andExpect(jsonPath("$.error.fieldErrors[0].field").value("coverImageUrl"));
+	}
+
+	/** 컬럼 길이(300)를 넘는 값은 패턴이 맞아도 400이다. */
+	@Test
+	void patchWithTooLongCoverImageUrlIs400() throws Exception {
+		long memberId = newMemberId();
+		long collectionId = createCollection(memberId, "표지 길이", List.of(newRecord(memberId, "col-cover-long-1")));
+		String tooLong = "/image/files/" + "a".repeat(283) + ".webp"; // 301자
+
+		mockMvc.perform(patch("/v1/collections/{id}", collectionId).with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"coverImageUrl\": \"" + tooLong + "\"}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+	}
+
+	/** title 필드가 왔으면 빈 값일 수 없다 — 생성(7.1)과 같은 규칙이 수정에도 적용된다. */
+	@Test
+	void patchWithBlankTitleIs400() throws Exception {
+		long memberId = newMemberId();
+		long collectionId = createCollection(memberId, "공백 제목", List.of(newRecord(memberId, "col-cover-blank-1")));
+
+		mockMvc.perform(patch("/v1/collections/{id}", collectionId).with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"title\": \"   \"}"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+	}
+
+	/** 내 목록(7.2)에도 표지가 실린다 — 없는 컬렉션은 null 값으로 필드가 존재한다. */
+	@Test
+	void myCollectionsListExposesCoverImageUrl() throws Exception {
+		long memberId = newMemberId();
+		long withCover = createCollection(memberId, "표지 있음", List.of(newRecord(memberId, "col-cover-list-1")));
+		long withoutCover = createCollection(memberId, "표지 없음", List.of(newRecord(memberId, "col-cover-list-2")));
+		setCover(memberId, withCover);
+
+		JsonNode items = parse(mockMvc.perform(get("/v1/collections").with(loginAs(memberId))
+				.param("size", "10"))
+			.andExpect(status().isOk())
+			.andReturn().getResponse().getContentAsString()).at("/data/items");
+
+		JsonNode first = itemOf(items, withCover);
+		JsonNode second = itemOf(items, withoutCover);
+		assertThat(first.get("coverImageUrl").asText()).isEqualTo(COVER_URL);
+		assertThat(second.has("coverImageUrl")).isTrue();
+		assertThat(second.get("coverImageUrl").isNull()).isTrue();
+	}
+
 	@Test
 	void addRecordsSkipsDuplicatesIdempotentlyAndUpdatesCount() throws Exception {
 		long memberId = newMemberId();
@@ -445,6 +613,22 @@ class CollectionApiTests extends IntegrationContainerSupport {
 			.andExpect(status().isCreated())
 			.andReturn().getResponse().getContentAsString());
 		return response.at("/data/collectionId").asLong();
+	}
+
+	private void setCover(long memberId, long collectionId) throws Exception {
+		mockMvc.perform(patch("/v1/collections/{id}", collectionId).with(loginAs(memberId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"coverImageUrl\": \"" + COVER_URL + "\"}"))
+			.andExpect(status().isOk());
+	}
+
+	private JsonNode itemOf(JsonNode items, long collectionId) {
+		for (JsonNode item : items) {
+			if (item.get("collectionId").asLong() == collectionId) {
+				return item;
+			}
+		}
+		throw new AssertionError("목록에 collectionId=" + collectionId + " 항목이 없다");
 	}
 
 	private void addRecords(long memberId, long collectionId, List<Long> recordIds) throws Exception {

@@ -118,7 +118,7 @@ public class FeedCandidateRepository {
 
 	private static final String VERIFY_SQL = """
 		SELECT c.id AS collection_id, c.title AS title, c.record_count AS record_count,
-			c.created_at AS created_at
+			c.cover_image_url AS cover_image_url, c.created_at AS created_at
 		FROM core.collection c
 		JOIN core.member m ON m.id = c.member_id
 		WHERE c.id IN (:ids)
@@ -201,6 +201,7 @@ public class FeedCandidateRepository {
 					rs.getLong("collection_id"),
 					rs.getString("title"),
 					rs.getInt("record_count"),
+					rs.getString("cover_image_url"),
 					rs.getTimestamp("created_at").toInstant()))
 			.stream()
 			.collect(Collectors.toMap(FeedCollectionCard::collectionId, card -> card));

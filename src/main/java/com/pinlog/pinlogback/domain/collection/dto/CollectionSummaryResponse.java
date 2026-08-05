@@ -11,6 +11,7 @@ public record CollectionSummaryResponse(
 	Long collectionId,
 	String title,
 	int recordCount,
+	String coverImageUrl,
 	Instant publishedAt,
 	Instant createdAt
 ) {
@@ -20,6 +21,7 @@ public record CollectionSummaryResponse(
 			collection.getId(),
 			collection.getTitle(),
 			collection.getRecordCount(),
+			collection.getCoverImageUrl(),
 			collection.getPublishedAt(),
 			collection.getCreatedAt()
 		);

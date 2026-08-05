@@ -72,6 +72,21 @@ class PublicCollectionApiTests extends IntegrationContainerSupport {
 		assertThat(payload).doesNotContain(SECRET_CONTEXT_BODY);
 	}
 
+	/** 타인 공개 상세(명세 7.3)에도 표지 URL이 실린다 — 표지는 공개 정보다(명세 7.7). */
+	@Test
+	void strangerSeesCoverImageUrl() throws Exception {
+		long owner = newMemberId();
+		long stranger = newMemberId();
+		long collectionId = publicCollectionOf(owner, "pub-cover-1");
+		String coverUrl = "/image/files/3f2a9c1e-8d4b-4f6a-9c0e-5b7d2e8a1c44_image_0.webp";
+		jdbcTemplate.update("UPDATE core.collection SET cover_image_url = ? WHERE id = ?",
+			coverUrl, collectionId);
+
+		mockMvc.perform(get("/v1/collections/{id}", collectionId).with(loginAs(stranger)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.coverImageUrl").value(coverUrl));
+	}
+
 	@Test
 	void publicResponseNeverContainsIdentityFields() throws Exception {
 		long owner = newMemberId();

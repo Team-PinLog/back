@@ -169,7 +169,7 @@ public class FollowService {
 		List<PublishedCollectionRow> page = hasNext ? probeRows.subList(0, pageSize) : probeRows;
 		List<FollowedCollectionResponse> items = page.stream()
 			.map(row -> new FollowedCollectionResponse(row.collectionId(), row.title(), row.recordCount(),
-				keywords.getOrDefault(row.collectionId(), List.of()), row.createdAt()))
+				keywords.getOrDefault(row.collectionId(), List.of()), row.coverImageUrl(), row.createdAt()))
 			.toList();
 		if (!hasNext) {
 			return CursorPage.last(items);

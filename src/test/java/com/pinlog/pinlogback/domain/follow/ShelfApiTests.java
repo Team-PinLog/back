@@ -80,7 +80,7 @@ class ShelfApiTests extends CoreApiFixtures {
 		assertThat(fieldNames(data.at("/collections"))).containsExactlyInAnyOrder(
 			"items", "nextCursor", "hasNext");
 		assertThat(fieldNames(data.at("/collections/items/0"))).containsExactlyInAnyOrder(
-			"collectionId", "title", "recordCount", "keywords", "createdAt");
+			"collectionId", "title", "recordCount", "keywords", "coverImageUrl", "createdAt");
 	}
 
 	@Test
@@ -256,6 +256,21 @@ class ShelfApiTests extends CoreApiFixtures {
 		assertThat(collectionIds(second)).hasSize(1);
 		assertThat(second.at("/collections/hasNext").asBoolean()).isFalse();
 		assertThat(collectionIds(second)).doesNotContainAnyElementsOf(collectionIds(first));
+	}
+
+	/** 책장 항목(9.3과 같은 형태)에 표지 URL이 실린다(명세 7.7·8.1). */
+	@Test
+	@DisplayName("책장 항목에 표지 URL이 실린다")
+	void shelfItemsCarryCoverImageUrl() throws Exception {
+		long author = newMemberId();
+		long stranger = newMemberId();
+		long entry = publishedCollection(author, "shelf-cover", "표지 있는 책");
+		String coverUrl = "/image/files/3f2a9c1e-8d4b-4f6a-9c0e-5b7d2e8a1c44_image_0.webp";
+		jdbcTemplate.update("UPDATE core.collection SET cover_image_url = ? WHERE id = ?", coverUrl, entry);
+
+		JsonNode data = shelfOf(stranger, entry);
+
+		assertThat(data.at("/collections/items/0/coverImageUrl").asText()).isEqualTo(coverUrl);
 	}
 
 	/** 첫 페이지 응답의 {@code data} 노드. */

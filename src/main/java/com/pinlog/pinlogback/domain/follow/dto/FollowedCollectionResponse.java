@@ -16,6 +16,7 @@ public record FollowedCollectionResponse(
 	String title,
 	int recordCount,
 	List<String> keywords,
+	String coverImageUrl,
 	Instant createdAt
 ) {
 
@@ -25,6 +26,7 @@ public record FollowedCollectionResponse(
 			collection.getTitle(),
 			collection.getRecordCount(),
 			keywords,
+			collection.getCoverImageUrl(),
 			collection.getCreatedAt()
 		);
 	}
