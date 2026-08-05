@@ -5,6 +5,7 @@ import java.text.Collator;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,7 @@ import com.pinlog.pinlogback.domain.ai.event.ContextAiRequested;
 import com.pinlog.pinlogback.domain.ai.repository.AiDerivedDataRepository;
 import com.pinlog.pinlogback.domain.ai.repository.ContextAiStateRepository;
 import com.pinlog.pinlogback.domain.ai.repository.ContextKeywordRepository;
+import com.pinlog.pinlogback.domain.collection.repository.RecordLatestCollectionRepository;
 import com.pinlog.pinlogback.domain.place.entity.Place;
 import com.pinlog.pinlogback.domain.place.repository.PlaceRepository;
 import com.pinlog.pinlogback.domain.record.dto.ContextMutationResponse;
@@ -50,18 +52,20 @@ public class RecordService {
 	private final ContextAiStateRepository contextAiStateRepository;
 	private final AiDerivedDataRepository aiDerivedDataRepository;
 	private final ContextKeywordRepository contextKeywordRepository;
+	private final RecordLatestCollectionRepository recordLatestCollectionRepository;
 	private final ApplicationEventPublisher events;
 
 	public RecordService(PlaceRepository placeRepository, RecordRepository recordRepository,
 		ContextRepository contextRepository, ContextAiStateRepository contextAiStateRepository,
 		AiDerivedDataRepository aiDerivedDataRepository, ContextKeywordRepository contextKeywordRepository,
-		ApplicationEventPublisher events) {
+		RecordLatestCollectionRepository recordLatestCollectionRepository, ApplicationEventPublisher events) {
 		this.placeRepository = placeRepository;
 		this.recordRepository = recordRepository;
 		this.contextRepository = contextRepository;
 		this.contextAiStateRepository = contextAiStateRepository;
 		this.aiDerivedDataRepository = aiDerivedDataRepository;
 		this.contextKeywordRepository = contextKeywordRepository;
+		this.recordLatestCollectionRepository = recordLatestCollectionRepository;
 		this.events = events;
 	}
 
@@ -167,9 +171,24 @@ public class RecordService {
 		List<MapMarkerResponse> found = allPresent
 			? recordRepository.findMarkersWithinBounds(memberId, swLat, swLng, neLat, neLng, likeKeyword)
 			: recordRepository.findMarkers(memberId, likeKeyword);
-		List<MapMarkerResponse> items = sortByName(found);
+		List<MapMarkerResponse> items = sortByName(withLatestCollectionIds(found));
 		return new MapResponse(
 			BoundsResponse.enclosing(items, MapMarkerResponse::lat, MapMarkerResponse::lng), items);
+	}
+
+	/**
+	 * 마커마다 가장 최근에 담긴 Collection id를 붙인다(API 명세 4.2 — 프론트 마커 색상 구분용).
+	 * 담기지 않은 Record는 {@code null}로 남는다.
+	 */
+	private List<MapMarkerResponse> withLatestCollectionIds(List<MapMarkerResponse> markers) {
+		if (markers.isEmpty()) {
+			return markers;
+		}
+		Map<Long, Long> latestByRecord = recordLatestCollectionRepository.findLatestCollectionIds(
+			markers.stream().map(MapMarkerResponse::recordId).toList());
+		return markers.stream()
+			.map(marker -> marker.withLatestCollectionId(latestByRecord.get(marker.recordId())))
+			.toList();
 	}
 
 	/**
