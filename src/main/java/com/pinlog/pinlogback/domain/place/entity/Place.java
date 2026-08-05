@@ -49,6 +49,11 @@ public class Place {
 	@Column(name = "place_url", length = 300)
 	private String placeUrl;
 
+	// 카카오 로컬 응답에 없는 값이라 생성 경로가 채우지 않는다. 시연용 목업 단계에서는
+	// SQL로 수동 연결하며, 이후 카카오 이미지 검색 API 전환 시 외부 URL이 들어간다(2.3).
+	@Column(name = "thumbnail_url", length = 300)
+	private String thumbnailUrl;
+
 	@Column(name = "lat", nullable = false, precision = 10, scale = 7)
 	private BigDecimal lat;
 
@@ -109,6 +114,10 @@ public class Place {
 
 	public String getPlaceUrl() {
 		return placeUrl;
+	}
+
+	public String getThumbnailUrl() {
+		return thumbnailUrl;
 	}
 
 	public BigDecimal getLat() {

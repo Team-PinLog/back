@@ -16,6 +16,7 @@ public record PlaceSummaryResponse(
 	String roadAddress,
 	String phone,
 	String placeUrl,
+	String thumbnailUrl,
 	BigDecimal lat,
 	BigDecimal lng
 ) {
@@ -29,6 +30,7 @@ public record PlaceSummaryResponse(
 			place.getRoadAddress(),
 			place.getPhone(),
 			place.getPlaceUrl(),
+			place.getThumbnailUrl(),
 			place.getLat(),
 			place.getLng()
 		);

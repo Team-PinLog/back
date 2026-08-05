@@ -11,6 +11,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 import com.pinlog.pinlogback.global.response.ApiResponse;
@@ -100,12 +101,13 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 		} else {
 			log.warn("framework error: status={}, type={}", statusCode.value(), ex.getClass().getSimpleName());
 		}
-		Object envelope = body instanceof ApiResponse<?> ? body : ApiResponse.fail(errorOf(statusCode));
+		Object envelope = body instanceof ApiResponse<?> ? body : ApiResponse.fail(errorOf(ex, statusCode));
 		return super.handleExceptionInternal(ex, envelope, headers, statusCode, request);
 	}
 
-	private ErrorResponse errorOf(HttpStatusCode statusCode) {
-		ErrorCode errorCode = errorCodeOf(statusCode);
+	private ErrorResponse errorOf(Exception ex, HttpStatusCode statusCode) {
+		ErrorCode errorCode = ex instanceof MaxUploadSizeExceededException
+			? ErrorCode.IMAGE_TOO_LARGE : errorCodeOf(statusCode);
 		return ErrorResponse.of(errorCode.getCode(), errorCode.getMessage(), traceId());
 	}
 
