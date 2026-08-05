@@ -2,7 +2,7 @@
 제목: <type>(<JIRA-KEY>): <간결한 설명>
 예) feat(S15P11A705-14): 개인 검색 API 추가
 type: feat | fix | docs | refactor | chore | test | perf
-Jira 키는 필수입니다. 관련 GitHub Issue 링크는 선택입니다.
+Jira 키는 필수입니다. 관련 GitHub Issue는 있을 때만 적되, 적을 때는 `Closes #N` 형식을 씁니다.
 -->
 
 ## 요약
@@ -12,7 +12,8 @@ Jira 키는 필수입니다. 관련 GitHub Issue 링크는 선택입니다.
 - 키 또는 URL:
 
 ## 관련 GitHub Issue (선택)
--
+<!-- 링크만 걸면 머지해도 이슈가 닫히지 않습니다. 여러 개면 줄을 나눠 각각 씁니다. -->
+- Closes #
 
 ## 변경 사항
 -
