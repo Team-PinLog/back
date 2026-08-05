@@ -58,7 +58,17 @@ public class FeedCandidateRepository {
 		LIMIT :limit
 		""";
 
-	/** 같은 인덱스에 의존한다. 정렬키 주의사항도 {@link #RECENT_SQL}과 같다. */
+	/**
+	 * 이 채널은 {@code ix_collection_feed}를 쓰지 않는다 — 그것이 맞다.
+	 *
+	 * <p>{@code follow}에서 출발해 {@code followee_member_id}로 Collection을 찾으므로 발행 전체를
+	 * 훑지 않고, 올바른 인덱스는 {@code ix_collection_member}다. 마지막 정렬은 팔로우한 사람의
+	 * Collection 수만큼이라 싸다(천만 건 실측 0.99ms, BI-38).
+	 *
+	 * <p>정렬키에서 {@code COALESCE}를 뺀 것은 {@link #RECENT_SQL}과 일관성을 위한 정리이며
+	 * 이 채널의 성능 때문이 아니다. 값이 바뀌지 않는 근거는 같다 — {@code is_published = true}
+	 * 필터 아래에서는 V5 CHECK가 NOT NULL을 보장한다(BD-33).
+	 */
 	static final String FOLLOWED_SQL = """
 		SELECT c.id AS collection_id, c.member_id AS owner_id,
 			c.published_at AS published_at
