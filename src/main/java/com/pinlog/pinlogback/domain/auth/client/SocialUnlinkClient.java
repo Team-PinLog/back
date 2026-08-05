@@ -18,8 +18,8 @@ public interface SocialUnlinkClient {
 	SocialProvider provider();
 
 	/**
-	 * @param accessToken 공급자가 방금 발급한 access token
+	 * @param tokens 공급자가 방금 발급한 토큰들
 	 * @throws SocialUnlinkException 해제가 확인되지 않았을 때. 삼키면 해제 없이 회원이 지워진다
 	 */
-	void unlink(String accessToken);
+	void unlink(ProviderTokens tokens);
 }

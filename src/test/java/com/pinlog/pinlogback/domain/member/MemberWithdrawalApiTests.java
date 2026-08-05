@@ -31,6 +31,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MvcResult;
 
+import com.pinlog.pinlogback.domain.auth.client.ProviderTokens;
 import com.pinlog.pinlogback.domain.auth.client.SocialUnlinkClient;
 import com.pinlog.pinlogback.domain.auth.service.RefreshTokenStore;
 import com.pinlog.pinlogback.domain.collection.entity.Collection;
@@ -330,7 +331,7 @@ class MemberWithdrawalApiTests extends CoreApiFixtures {
 	private void completeWithdrawal(long memberId, String providerUserId) {
 		new WithdrawalCompletionService(
 			socialAccountRepository, memberWithdrawalService, List.of(new NoopUnlinkClient()))
-			.complete(memberId, SocialProvider.GOOGLE, providerUserId, "provider-access-token");
+			.complete(memberId, SocialProvider.GOOGLE, providerUserId, ProviderTokens.of("provider-access-token"));
 	}
 
 	/** 해제 호출은 이 클래스의 관심사가 아니다. 실제 호출은 {@code SocialUnlinkClientTest}가 본다. */
@@ -342,7 +343,7 @@ class MemberWithdrawalApiTests extends CoreApiFixtures {
 		}
 
 		@Override
-		public void unlink(String accessToken) {
+		public void unlink(ProviderTokens tokens) {
 		}
 	}
 

@@ -11,11 +11,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
+import org.springframework.security.oauth2.core.OAuth2RefreshToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.pinlog.pinlogback.domain.auth.client.ProviderTokens;
 import com.pinlog.pinlogback.domain.auth.dto.OAuthUserInfo;
 import com.pinlog.pinlogback.domain.auth.exception.UnsupportedSocialProviderException;
 import com.pinlog.pinlogback.domain.auth.service.AuthTokenService;
@@ -129,7 +131,7 @@ public class OAuthLoginSuccessHandler implements AuthenticationSuccessHandler {
 				OAuthUserInfo.from(registrationId, token.getPrincipal().getAttributes());
 			withdrawalCompletionService.complete(
 				memberId, userInfo.provider(), userInfo.providerUserId(),
-				accessTokenOf(request, token, registrationId));
+				providerTokensOf(request, token, registrationId));
 		} catch (RuntimeException e) {
 			log.warn("withdrawal failed after provider authorization: memberId={}, provider={}, [{}] {}",
 				memberId, registrationId, e.getClass().getSimpleName(), e.getMessage(), e);
@@ -145,15 +147,24 @@ public class OAuthLoginSuccessHandler implements AuthenticationSuccessHandler {
 		response.sendRedirect(clientRedirectUri);
 	}
 
-	/** 공급자 토큰은 {@code OAuth2AuthenticationToken}에 실리지 않는다 — 저장소에서 꺼낸다. */
-	private String accessTokenOf(
+	/**
+	 * 공급자 토큰은 {@code OAuth2AuthenticationToken}에 실리지 않는다 — 저장소에서 꺼낸다.
+	 *
+	 * <p><b>refresh token도 함께 꺼낸다.</b> Google은 승인이 그쪽에 달려 있어 access token만으로는
+	 * 지워지지 않는다. 없을 수 있으므로(공급자와 인가 요청에 따라 다르다) 그 판단은 클라이언트에
+	 * 맡긴다.
+	 */
+	private ProviderTokens providerTokensOf(
 		HttpServletRequest request, OAuth2AuthenticationToken token, String registrationId) {
 		OAuth2AuthorizedClient client =
 			authorizedClients.loadAuthorizedClient(registrationId, token, request);
 		if (client == null) {
 			throw new IllegalStateException("인가된 클라이언트가 없어 공급자 토큰을 꺼낼 수 없다");
 		}
-		return client.getAccessToken().getTokenValue();
+		OAuth2RefreshToken refreshToken = client.getRefreshToken();
+		return new ProviderTokens(
+			client.getAccessToken().getTokenValue(),
+			refreshToken == null ? null : refreshToken.getTokenValue());
 	}
 
 	private String errorCodeOf(RuntimeException failure) {

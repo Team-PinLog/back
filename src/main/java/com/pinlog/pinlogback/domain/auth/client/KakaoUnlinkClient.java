@@ -34,7 +34,8 @@ public class KakaoUnlinkClient implements SocialUnlinkClient {
 	}
 
 	@Override
-	public void unlink(String accessToken) {
+	public void unlink(ProviderTokens tokens) {
+		String accessToken = tokens.accessToken();
 		try {
 			restClient.post()
 				.uri(UNLINK_URI)
