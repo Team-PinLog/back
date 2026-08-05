@@ -222,6 +222,22 @@ class FollowListCollectionsApiTests extends CoreApiFixtures {
 			.andExpect(jsonPath("$.data.items[0].collections.items").isArray());
 	}
 
+	/** 동봉 항목은 9.3과 같은 형태다 — 표지 URL도 함께 실린다(명세 7.7·9.2). */
+	@Test
+	void embeddedCollectionsCarryCoverImageUrl() throws Exception {
+		long me = newMemberId();
+		long owner = newMemberId();
+		long collectionId = shelfCollection(owner, "표지 실림");
+		String coverUrl = "/image/files/3f2a9c1e-8d4b-4f6a-9c0e-5b7d2e8a1c44_image_0.webp";
+		jdbcTemplate.update("UPDATE core.collection SET cover_image_url = ? WHERE id = ?",
+			coverUrl, collectionId);
+		follow(me, collectionId);
+
+		JsonNode data = listWithCollections(me, "5");
+
+		assertThat(data.at("/items/0/collections/items/0/coverImageUrl").asText()).isEqualTo(coverUrl);
+	}
+
 	// ── fixtures ────────────────────────────────────────────────────────────
 
 	private long shelfCollection(long ownerId, String title) {

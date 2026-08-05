@@ -29,6 +29,7 @@ public record FeedCollectionItemResponse(
 	String title,
 	int recordCount,
 	List<String> keywords,
+	String coverImageUrl,
 	Instant createdAt
 ) {
 
@@ -52,6 +53,7 @@ public record FeedCollectionItemResponse(
 	public static FeedCollectionItemResponse of(int position, FeedCollectionCard card,
 		List<String> keywords) {
 		return new FeedCollectionItemResponse(
-			position, card.collectionId(), card.title(), card.recordCount(), keywords, card.createdAt());
+			position, card.collectionId(), card.title(), card.recordCount(), keywords,
+			card.coverImageUrl(), card.createdAt());
 	}
 }

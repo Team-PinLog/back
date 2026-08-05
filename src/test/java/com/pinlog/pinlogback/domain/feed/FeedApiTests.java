@@ -134,6 +134,25 @@ class FeedApiTests extends FeedFixtures {
 		assertThat(target.at("/recordCount").asInt()).isPositive();
 	}
 
+	/** 카드에 표지 URL이 실린다(명세 10.1·7.7). 표지 없는 컬렉션은 null 값으로 필드가 존재한다. */
+	@Test
+	void itemsCarryCoverImageUrl() throws Exception {
+		long viewer = newMemberId();
+		long owner = newMemberId();
+		long collectionId = publishedCollection(owner, uniqueSeed("cover"));
+		String coverUrl = "/image/files/3f2a9c1e-8d4b-4f6a-9c0e-5b7d2e8a1c44_image_0.webp";
+		jdbcTemplate.update("UPDATE core.collection SET cover_image_url = ? WHERE id = ?",
+			coverUrl, collectionId);
+
+		JsonNode response = feed(viewer, "?size=" + CursorPage.MAX_SIZE);
+
+		JsonNode target = itemOf(response, collectionId);
+		assertThat(target).isNotNull();
+		assertThat(target.at("/coverImageUrl").asString()).isEqualTo(coverUrl);
+		response.at("/data/items").forEach(item ->
+			assertThat(item.has("coverImageUrl")).isTrue());
+	}
+
 	/** Q6 — 위조된 커서는 400이다. 500이 아니다. */
 	@Test
 	void tamperedCursorIsBadRequestNotServerError() throws Exception {

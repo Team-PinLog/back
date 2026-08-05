@@ -47,6 +47,9 @@ public class Collection extends BaseEntity {
 	@Column(name = "record_count", nullable = false)
 	private int recordCount;
 
+	@Column(name = "cover_image_url", length = 300)
+	private String coverImageUrl;
+
 	@LastModifiedDate
 	@Column(name = "updated_at", nullable = false)
 	private Instant updatedAt;
@@ -99,6 +102,10 @@ public class Collection extends BaseEntity {
 		return recordCount;
 	}
 
+	public String getCoverImageUrl() {
+		return coverImageUrl;
+	}
+
 	public Instant getUpdatedAt() {
 		return updatedAt;
 	}
@@ -109,6 +116,11 @@ public class Collection extends BaseEntity {
 
 	public void rename(String newTitle) {
 		this.title = newTitle;
+	}
+
+	/** 표지 등록·교체(API 명세 7.4). 제거(null 대입)는 MVP에서 제공하지 않는다. */
+	public void changeCover(String coverImageUrl) {
+		this.coverImageUrl = coverImageUrl;
 	}
 
 	public void increaseRecordCount(int delta) {

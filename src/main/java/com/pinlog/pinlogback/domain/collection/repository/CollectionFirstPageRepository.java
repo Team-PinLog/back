@@ -37,9 +37,9 @@ public class CollectionFirstPageRepository {
 
 	private static String publishedFirstPagesSql(String direction) {
 		return """
-			SELECT t.member_id, t.id, t.title, t.record_count, t.created_at
+			SELECT t.member_id, t.id, t.title, t.record_count, t.cover_image_url, t.created_at
 			FROM (
-				SELECT c.member_id, c.id, c.title, c.record_count, c.created_at,
+				SELECT c.member_id, c.id, c.title, c.record_count, c.cover_image_url, c.created_at,
 					row_number() OVER (PARTITION BY c.member_id ORDER BY c.created_at %1$s, c.id %1$s) AS rn
 				FROM core.collection c
 				WHERE c.member_id IN (:memberIds)
@@ -52,7 +52,8 @@ public class CollectionFirstPageRepository {
 	}
 
 	/** 9.3 항목 조립에 필요한 컬럼만 담는 행. {@code keywords}는 호출부가 별도 집계로 붙인다. */
-	public record PublishedCollectionRow(Long collectionId, String title, int recordCount, Instant createdAt) {
+	public record PublishedCollectionRow(Long collectionId, String title, int recordCount,
+		String coverImageUrl, Instant createdAt) {
 	}
 
 	private final NamedParameterJdbcTemplate jdbc;
@@ -83,6 +84,7 @@ public class CollectionFirstPageRepository {
 					rows.getLong("id"),
 					rows.getString("title"),
 					rows.getInt("record_count"),
+					rows.getString("cover_image_url"),
 					rows.getObject("created_at", OffsetDateTime.class).toInstant()));
 		});
 		return byMember;

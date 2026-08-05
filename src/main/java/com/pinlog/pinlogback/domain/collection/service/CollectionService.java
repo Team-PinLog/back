@@ -17,6 +17,7 @@ import com.pinlog.pinlogback.domain.collection.dto.CollectionCreateRequest;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionDetailResponse;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionSort;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionSummaryResponse;
+import com.pinlog.pinlogback.domain.collection.dto.CollectionUpdateRequest;
 import com.pinlog.pinlogback.domain.collection.dto.FollowStatusResponse;
 import com.pinlog.pinlogback.domain.collection.dto.PublicCollectionDetailResponse;
 import com.pinlog.pinlogback.domain.collection.dto.PublicRecordCardResponse;
@@ -161,10 +162,20 @@ public class CollectionService {
 			collection, follow, recordPagePublic(collection.getId(), recordCursor, recordSize, recordSort));
 	}
 
+	/**
+	 * 제목·표지 수정(API 명세 7.4). null 필드는 기존 값을 유지한다 — 최소 하나는 왔다는 것을
+	 * 요청 DTO 검증이 보장한다. 표지 제거는 MVP에서 제공하지 않는다.
+	 */
 	@Transactional
-	public CollectionSummaryResponse rename(Long memberId, Long collectionId, String title) {
+	public CollectionSummaryResponse update(Long memberId, Long collectionId,
+		CollectionUpdateRequest request) {
 		Collection collection = ownedCollection(memberId, collectionId);
-		collection.rename(title);
+		if (request.title() != null) {
+			collection.rename(request.title());
+		}
+		if (request.coverImageUrl() != null) {
+			collection.changeCover(request.coverImageUrl());
+		}
 		return CollectionSummaryResponse.from(collection);
 	}
 

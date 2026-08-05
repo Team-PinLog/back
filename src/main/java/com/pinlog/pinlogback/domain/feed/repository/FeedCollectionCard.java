@@ -9,5 +9,6 @@ import java.time.Instant;
  * <p>다양성 조정에 필요한 소유자 id는 {@code FeedCandidate}가 들고 있고, 그 타입은 응답 DTO로
  * 변환되지 않는다.
  */
-public record FeedCollectionCard(long collectionId, String title, int recordCount, Instant createdAt) {
+public record FeedCollectionCard(long collectionId, String title, int recordCount,
+	String coverImageUrl, Instant createdAt) {
 }

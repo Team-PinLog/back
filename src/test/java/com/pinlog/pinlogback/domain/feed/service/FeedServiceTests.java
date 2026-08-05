@@ -174,8 +174,8 @@ class FeedServiceTests {
 			.thenReturn(Map.of(7L, Map.of("WALK", 1.0), 8L, Map.of("COFFEE_CHAT", 1.0)));
 		when(eventRepository.countRecentImpressions(anyLong(), any(), any())).thenReturn(Map.of());
 		when(candidateRepository.findVerifiedCards(any())).thenReturn(List.of(
-			new FeedCollectionCard(7L, "책1", 3, Instant.now()),
-			new FeedCollectionCard(8L, "책2", 3, Instant.now())));
+			new FeedCollectionCard(7L, "책1", 3, null, Instant.now()),
+			new FeedCollectionCard(8L, "책2", 3, null, Instant.now())));
 		when(keywordRepository.findPublicKeywordLabels(any())).thenReturn(Map.of(
 			"WALK", new FeedKeywordLabel(201, "산책", "ACTIVITY"),
 			"COFFEE_CHAT", new FeedKeywordLabel(202, "카페", "ACTIVITY")));
@@ -208,6 +208,6 @@ class FeedServiceTests {
 			.thenReturn(weights.isEmpty() ? Map.of() : Map.of(7L, weights));
 		when(eventRepository.countRecentImpressions(anyLong(), any(), any())).thenReturn(Map.of());
 		when(candidateRepository.findVerifiedCards(List.of(7L)))
-			.thenReturn(List.of(new FeedCollectionCard(7L, "책", 3, Instant.now())));
+			.thenReturn(List.of(new FeedCollectionCard(7L, "책", 3, null, Instant.now())));
 	}
 }

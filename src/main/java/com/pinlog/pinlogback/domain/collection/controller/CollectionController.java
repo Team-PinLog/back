@@ -15,9 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionAddRecordsRequest;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionCreateRequest;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionDetailResponse;
-import com.pinlog.pinlogback.domain.collection.dto.CollectionRenameRequest;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionSort;
 import com.pinlog.pinlogback.domain.collection.dto.CollectionSummaryResponse;
+import com.pinlog.pinlogback.domain.collection.dto.CollectionUpdateRequest;
 import com.pinlog.pinlogback.domain.collection.dto.PublicCollectionDetailResponse;
 import com.pinlog.pinlogback.domain.collection.dto.RecordSort;
 import com.pinlog.pinlogback.domain.collection.service.CollectionService;
@@ -79,10 +79,11 @@ public class CollectionController {
 		return collectionService.getDetail(me.memberId(), collectionId, recordCursor, recordSize, recordSort);
 	}
 
+	/** 제목·표지 수정(명세 7.4). 보내지 않았거나 null인 필드는 기존 값을 유지한다. */
 	@PatchMapping("/{collectionId}")
-	public CollectionSummaryResponse rename(@LoginMember MemberPrincipal me,
-		@PathVariable Long collectionId, @Valid @RequestBody CollectionRenameRequest request) {
-		return collectionService.rename(me.memberId(), collectionId, request.title());
+	public CollectionSummaryResponse update(@LoginMember MemberPrincipal me,
+		@PathVariable Long collectionId, @Valid @RequestBody CollectionUpdateRequest request) {
+		return collectionService.update(me.memberId(), collectionId, request);
 	}
 
 	@PostMapping("/{collectionId}/records")
