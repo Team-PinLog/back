@@ -89,8 +89,11 @@ public class WithdrawalCompletionService {
 			throw new UnsupportedSocialProviderException(provider.registrationId());
 		}
 		unlinkAbsorbingTransientFailure(client, tokens, memberId);
-		log.info("social account unlinked before withdrawal: memberId={}, provider={}",
-			memberId, provider);
+		// refreshToken 유무를 함께 남긴다. 이 줄만으로는 "2xx를 받았다"밖에 알 수 없어, Google에서
+		// 승인이 실제로 지워졌는지와 토큰만 죽었는지가 구분되지 않는다 — 그 차이를 못 읽어 진단이
+		// 한 바퀴 돌았다(S15P11A705-309). Kakao·Naver는 연결 단위라 이 값이 false여도 정상이다.
+		log.info("social account unlinked before withdrawal: memberId={}, provider={}, refreshToken={}",
+			memberId, provider, tokens.refreshToken() != null ? "present" : "absent");
 
 		memberWithdrawalService.withdraw(memberId);
 	}

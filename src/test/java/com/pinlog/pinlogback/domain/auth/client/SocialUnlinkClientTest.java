@@ -30,6 +30,10 @@ import org.springframework.web.client.RestClient;
 import com.pinlog.pinlogback.domain.auth.exception.SocialUnlinkException;
 import com.pinlog.pinlogback.domain.member.entity.SocialProvider;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+
 /**
  * 공급자 연결 해제 호출(BD-48 §①).
  *
@@ -42,6 +46,14 @@ class SocialUnlinkClientTest {
 
 	private static final String ACCESS_TOKEN = "provider-access-token";
 	private static final String REFRESH_TOKEN = "provider-refresh-token";
+
+	/** 로그가 성공과 실패를 구분하는지 보려면 실제로 찍힌 이벤트를 봐야 한다. */
+	private static ListAppender<ILoggingEvent> attachAppender(Class<?> type) {
+		ListAppender<ILoggingEvent> appender = new ListAppender<>();
+		appender.start();
+		((ch.qos.logback.classic.Logger)org.slf4j.LoggerFactory.getLogger(type)).addAppender(appender);
+		return appender;
+	}
 
 	private final RestClient.Builder builder = RestClient.builder();
 	private final MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
@@ -156,6 +168,22 @@ class SocialUnlinkClientTest {
 
 			assertThatThrownBy(() -> client.unlink(ProviderTokens.of(ACCESS_TOKEN)))
 				.isInstanceOf(SocialUnlinkException.class);
+		}
+
+		@Test
+		@DisplayName("refresh token이 없으면 경고를 남긴다 — 조용히 떨어지면 승인이 남는다")
+		void warnsWhenFallingBackToTheAccessToken() {
+			// 이 경로는 2xx를 받아도 승인이 남는다. 로그가 성공과 똑같으면 사용자가 자기 Google
+			// 계정을 열어 보기 전까지 아무도 모른다 — 실제로 그렇게 한 바퀴 돌았다.
+			ListAppender<ILoggingEvent> appender = attachAppender(GoogleUnlinkClient.class);
+			server.expect(requestTo("https://oauth2.googleapis.com/revoke"))
+				.andRespond(withSuccess());
+
+			client.unlink(ProviderTokens.of(ACCESS_TOKEN));
+
+			assertThat(appender.list)
+				.extracting(ILoggingEvent::getLevel)
+				.contains(Level.WARN);
 		}
 
 		@Test
