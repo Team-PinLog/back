@@ -173,12 +173,12 @@ class RecordApiTests extends IntegrationContainerSupport {
 		long memberId = newMemberId();
 		long recordId = createRecord(memberId, "api-thumb-1", "저장 이유");
 		jdbcTemplate.update(
-			"UPDATE core.place SET thumbnail_url = '/api/core/images/places/cafe-1.jpg' "
+			"UPDATE core.place SET thumbnail_url = '/api/core/images/places/test/cafe-1.webp' "
 				+ "WHERE kakao_place_id = 'api-thumb-1'");
 
 		mockMvc.perform(get("/v1/records/{recordId}", recordId).with(loginAs(memberId)))
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.data.place.thumbnailUrl").value("/api/core/images/places/cafe-1.jpg"));
+			.andExpect(jsonPath("$.data.place.thumbnailUrl").value("/api/core/images/places/test/cafe-1.webp"));
 	}
 
 	@Test
