@@ -125,7 +125,7 @@ FOR UPDATE SKIP LOCKED;
 → FastAPI 호출
 ```
 
-`updated_at = now()`는 선택이 아닙니다. 이 갱신이 마지막 재시도의 실행 창을 만들며, 빠뜨리면 `retry_count`가 3이 된 행의 `updated_at`이 여전히 만료 시각에 머물러 바로 다음 회차의 Finalizer 첫 단계에 잡힙니다 — 방금 보낸 재시도 요청이 아직 처리 중이어도 그렇습니다([3.1](#31-처리-순서) · [6.1](#61-대상)).
+`updated_at = now()`는 선택이 아닙니다. 이 갱신이 마지막 재시도의 실행 창을 만들며, 빠뜨리면 `retry_count`가 3이 된 행의 `updated_at`이 여전히 만료 시각에 머물러 바로 다음 회차의 Finalizer 첫 단계에 잡힙니다. 방금 보낸 재시도 요청이 아직 처리 중이어도 그렇습니다([3.1](#31-처리-순서) · [6.1](#61-대상)).
 
 만료된 PROCESSING을 PENDING으로 되돌리지 않습니다. Spring은 PROCESSING을 쓰지도, 해제하지도 않습니다. FastAPI의 선점 UPDATE가 `PROCESSING`을 허용 조건에 포함하고 있으므로(공용 계약 §6.5), stale PROCESSING은 재요청만으로 재개됩니다. Spring이 상태를 손대면 두 주체가 같은 컬럼을 경쟁적으로 쓰게 되어 소유권 경계가 무너집니다.
 
