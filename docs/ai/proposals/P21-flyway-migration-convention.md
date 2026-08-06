@@ -44,8 +44,8 @@ PinLog는 `core`(백엔드 도메인)와 `ai`(임베딩·키워드) 두 스키�
 
 ## 영향
 
-- 백엔드 도메인 마이그레이션은 `V2`부터 시작한다. `V1`은 이미 AI 파트가 스키마·extension을 만들었으므로, 백엔드는 **기존 스키마 위에 테이블만** 생성한다(`CREATE SCHEMA` 재선언 금지 → [P24](P24-flyway-schemas-unspecified.md) 참조).
-- `core.feed_event`가 `V102`(AI 구간)에 있다. 백엔드가 `core` 테이블을 훑을 때 누락으로 오인해 중복 정의하면 안 된다 → [P22](P22-feed-event-ownership.md).
+- 백엔드 도메인 마이그레이션은 `V2`부터 시작한다. `V1`은 이미 AI 파트가 스키마·extension을 만들었으므로, 백엔드는 **기존 스키마 위에 테이블만** 생성한다. `CREATE SCHEMA` 재선언 금지의 근거는 [P24](P24-flyway-schemas-unspecified.md)를 참조한다.
+- `core.feed_event`가 `V102`(AI 구간)에 있다. 백엔드가 `core` 테이블을 훑을 때 누락으로 오인해 중복 정의하면 안 된다. 근거는 [P22](P22-feed-event-ownership.md)에 있다.
 
 ## 검증
 
