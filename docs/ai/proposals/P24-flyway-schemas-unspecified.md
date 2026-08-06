@@ -1,4 +1,4 @@
-# P24: `flyway.schemas` 미지정 — 이력 테이블을 public에
+# P24: `flyway.schemas`를 지정하지 않아 이력 테이블을 public에 둔다
 
 - **상태**: Accepted
 - **날짜**: 2026-07-23
@@ -9,14 +9,14 @@
 
 스키마 생성은 `V1`(`CREATE SCHEMA core; CREATE SCHEMA ai; CREATE EXTENSION vector;`)이 전담한다. Flyway에는 `spring.flyway.schemas` 설정이 있는데, 이걸 `core`나 `ai`로 지정하면 두 가지 문제가 생긴다.
 
-1. Flyway가 지정된 첫 스키마를 **자동 생성**하려 시도해 `V1`의 `CREATE SCHEMA`와 역할이 충돌한다(스키마 생성 주체가 둘로 갈림).
+1. Flyway가 지정된 첫 스키마를 **자동 생성**하려 시도해 `V1`의 `CREATE SCHEMA`와 역할이 충돌한다. 스키마 생성 주체가 둘로 나뉘는 것이다.
 2. `flyway_schema_history` 이력 테이블이 그 스키마(`core`) 안에 생겨, 도메인 테이블과 인프라성 이력 테이블이 뒤섞인다.
 
 ## 결정
 
 - `spring.flyway.schemas`를 **지정하지 않는다.** 미지정 시 `flyway_schema_history`는 `public`에 생성돼 도메인 스키마(`core`/`ai`)와 분리된다.
 - 스키마 생성은 `V1`이 단독으로 담당한다.
-- `spring.jpa.hibernate.ddl-auto: validate` — 스키마 원본은 마이그레이션이고, JPA는 검증만 한다.
+- `spring.jpa.hibernate.ddl-auto: validate`로 둔다. 스키마 원본은 마이그레이션이고, JPA는 검증만 한다.
 
 ```yaml
 spring:
@@ -37,8 +37,8 @@ spring:
 
 ## 버린 대안
 
-- **`schemas: core` 지정**: 이력이 `core`에 들어가고 Flyway가 스키마 자동 생성을 시도해 `V1`과 충돌.
-- **`ddl-auto: update`**: JPA 엔티티가 진실의 원본이 되어 마이그레이션과 이중 관리. 파트 경계·검증 가능성이 무너진다.
+- **`schemas: core` 지정**: 이력이 `core`에 들어가고, Flyway가 스키마 자동 생성을 시도해 `V1`과 충돌한다.
+- **`ddl-auto: update`**: JPA 엔티티가 진실의 원본이 되어 마이그레이션과 이중 관리가 된다. 파트 경계·검증 가능성이 무너진다.
 
 ## 영향
 
