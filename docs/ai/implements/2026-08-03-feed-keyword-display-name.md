@@ -17,7 +17,7 @@ Record 상세·생성·AI 검색·(back#145로 채워진) Collection 목록은 �
 
 이유: 양쪽 키가 같기만 하면 Jaccard는 성립하므로 `display_name`을 키로 써도 **당장은 정상 동작한다.**
 그런데 `display_name`은 표시용 라벨이라 바뀔 수 있다. 바뀌는 순간 그 이전에 계산돼 저장된 값과
-매칭이 조용히 어긋난다 — 예외가 나지 않고 테스트도 깨지지 않는다. 증상은 "추천 품질이 이유 없이
+매칭이 조용히 어긋난다. 예외가 나지 않고 테스트도 깨지지 않는다. 증상은 "추천 품질이 이유 없이
 나빠짐"으로만 나타나 원인 추적이 사실상 불가능해진다. `code`는 `ai/data/keyword_preset.yaml`의
 불변 식별자이므로 이 위험이 없다.
 
@@ -27,7 +27,7 @@ findPublicKeywordWeights · findProfile   →  code를 키로 유지 (변경 없
 ```
 
 `FeedKeywordDisplayNameTests.renamingAPresetDoesNotMoveTheScoringKey()`가 이 결정을 실행으로
-고정한다 — Preset의 `display_name`을 바꾼 뒤에도 두 집계 메서드의 반환 키가 그대로임을 단언한다.
+고정한다. Preset의 `display_name`을 바꾼 뒤에도 두 집계 메서드의 반환 키가 그대로임을 단언한다.
 
 ## 변경한 파일
 
@@ -42,7 +42,7 @@ findPublicKeywordWeights · findProfile   →  code를 키로 유지 (변경 없
 특징 집계와 표시값 조회는 별개의 쿼리다. 그 사이에 Preset이 폐기(`is_active=false`)되거나 차단
 (`visibility='BLOCKED'`)되면, 특징 집계가 이미 들고 온 `code`를 표시값 쪽에서 못 찾는 상태가
 생긴다. 이때 `code`로 대신 채우는 폴백을 두면 그 폴백 자체가 08 §6.1 위반이 된다. 그래서 그런
-`code`는 응답에서 조용히 빠진다 — "영문이 뜬다"가 아니라 "그 Keyword만 덜 뜬다"가 계약이다.
+`code`는 응답에서 조용히 빠진다. "영문이 뜬다"가 아니라 "그 Keyword만 덜 뜬다"가 계약이다.
 `FeedServiceTests.aCodeWithoutAResolvableDisplayNameIsDroppedRatherThanShownAsCode()`로 고정했다.
 
 ## N+1 — 측정으로 확인했다
@@ -57,7 +57,7 @@ Collection 3건에서 12건으로 늘려도 표시값 조회 쿼리 수가 그�
 `code`를 모아 한 번에 조회하는 구조라 프리셋이 27개뿐이라는 사실과 무관하게 후보 수가 늘어도
 쿼리 수는 늘지 않는다.
 
-같은 카운터로 `feed-tests.md` N4·N5(Collection 특징 집계가 `IN (...)` 한 번)도 함께 고정했다 —
+같은 카운터로 `feed-tests.md` N4·N5(Collection 특징 집계가 `IN (...)` 한 번)도 함께 고정했다.
 명세가 "쿼리 카운터로 검증한다"고 적어 두고도 카운터가 없어 미검증 상태였던 것을 이번에 채웠다.
 
 ## 테스트
@@ -76,5 +76,5 @@ Collection 3건에서 12건으로 늘려도 표시값 조회 쿼리 수가 그�
 - 프론트가 기존 영문 `code`를 화면에 그대로 쓰고 있었는지는 back 레포 범위 밖이라 확인하지
   못했다. 결과 패킷에 조사 필요로 남긴다.
 - `docs/ai/troubleshooting/README.md`·`implements/README.md`의 인덱스가 back#154에서 이미
-  "원본과 어긋난 사례"로 지적된 적이 있다 — 이번 항목은 색인에 새로 추가했지만, 그 전 항목들의
-  정합성까지 다시 검증하지는 않았다(범위 밖).
+  "원본과 어긋난 사례"로 지적된 적이 있다. 이번 항목은 색인에 새로 추가했지만, 그 전 항목들의
+  정합성까지 다시 검증하지는 않았다. 범위 밖이기 때문이다.
