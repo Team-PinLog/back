@@ -411,6 +411,27 @@ class RecordSearchApiTests extends IntegrationContainerSupport {
 	}
 
 	/**
+	 * 문자열 검색 병합(P49 §4)은 <b>기본값이 꺼짐</b>이고, 꺼진 상태의 응답은 현행과 완전히 같아야
+	 * 한다(P49 §7 기준 4 — 「모든 플래그를 끄면 현행과 동일한 응답」). 이 클래스는 기본값 컨텍스트에서
+	 * 돌므로 그 계약을 여기서 고정한다 — 켠 상태의 병합 계약은 {@link LexicalSearchApiTests}가 맡는다.
+	 * 이 테스트가 깨졌다면 기본값이 켜졌거나, 꺼진 플래그가 문자열 경로를 완전히 막지 못하는 것이다.
+	 */
+	@Test
+	void lexicalMergeIsOffByDefaultSoABodyMatchAddsNothing() throws Exception {
+		long me = newMemberId();
+		long vectorOnly = newRecord(me, "search-lexoff", "37.5000000", "127.0000000");
+		long vectorContext = newContext(vectorOnly, me, "벡터로만 잡히는 기록");
+		long bodyMatch = newRecord(me, "search-lexoff-b", "37.6000000", "127.1000000");
+		newContext(bodyMatch, me, "신한은행 앞 골목의 가게");
+		STUB.willReturn(new FastApiSearchStub.Match(vectorOnly, vectorContext, 0.82));
+
+		search(me, "신한")
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(1))
+			.andExpect(jsonPath("$.data.items[0].recordId").value(vectorOnly));
+	}
+
+	/**
 	 * {@code keywords}는 매칭 Context의 것이 아니라 <b>Record의 활성 Context 전체 집계</b>다
 	 * (API 명세 6.1). 매칭 Context만 보면 같은 Record의 다른 Context가 가진 Keyword가 사라진다.
 	 */

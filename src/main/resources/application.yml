@@ -170,6 +170,14 @@ pinlog:
       # 재스캔과 Finalizer가 각각 한 회차에 집는 상한. 후보 건수가 계속 이 값에 붙어 있으면
       # FastAPI가 처리량을 못 따라가고 있다는 신호다(명세 8장).
       batch-size: 100
+  # 문자열 검색 병합(P49 §4·§5, 병합 규칙의 실측 근거는 ai 레포 I54). 검증 게이트(P49 §7) 통과
+  # 전에는 켜지 않는다 — 기본값 false가 곧 "현행과 동일한 검색"이다.
+  search:
+    lexical:
+      enabled: ${PINLOG_SEARCH_LEXICAL_ENABLED:false}
+      # 단어형 질의의 최대 글자 수. ai 레포 SEARCH_WORD_QUERY_MAX_CHARS와 같은 값·같은 의미여야
+      # 한다 — 어긋나면 「단어형」의 정의가 파트마다 달라져 게이트(단어형 한정)가 절반만 켜진다.
+      word-query-max-chars: ${PINLOG_SEARCH_LEXICAL_WORD_QUERY_MAX_CHARS:5}
   # Feed 추천 정책값. 정본은 AI 파트가 소유한 docs/ai/spec/feed-scoring.md이며 여기서 임의로
   # 바꾸지 않는다. 상수로 박지 않고 설정으로 두는 이유는 튜닝 대상이기 때문이다 — 재배포 없이
   # 조정할 수 있어야 하고, 가중치를 바꿔도 순위가 안 바뀌는 회귀를 테스트가 잡을 수 있어야 한다.
