@@ -16,5 +16,5 @@
 
 | T | 증상 | 상태 | 문서/해결 |
 |---|---|---|---|
-| T9 | H2가 pgvector·`VECTOR` 미지원 → 마이그레이션 검증 불가 | ✅ 해결됨 | [h2-pgvector-incompat.md](h2-pgvector-incompat.md) — H2 제거 + Testcontainers 전환(back#12) |
-| T10 | `flyway_schema_history` 스키마 배치 함정(`flyway.schemas` 지정 시 core에 섞이고 V1과 충돌) | ✅ 해결됨 | [P24](../proposals/P24-flyway-schemas-unspecified.md) — schemas 미지정 → 이력 public |
+| T9 | H2가 pgvector·`VECTOR`를 지원하지 않아 마이그레이션 검증 불가 | ✅ 해결됨 | [h2-pgvector-incompat.md](h2-pgvector-incompat.md) — H2 제거 + Testcontainers 전환(back#12) |
+| T10 | `flyway.schemas`를 지정하면 `flyway_schema_history`가 core 스키마에 섞이고 V1과 충돌 | ✅ 해결됨 | [P24](../proposals/P24-flyway-schemas-unspecified.md) — schemas를 지정하지 않아 이력 테이블을 public에 배치 |

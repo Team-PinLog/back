@@ -1,6 +1,6 @@
 # PinLog Backend — AI 파트 문서
 
-Spring 측 **AI 연동**과 **Feed 추천**의 설계·결정·구현 기록입니다. AI 파트 소유이며, 공용 계약의 단일 원본은 `Team-PinLog/docs`의 `static/05_AI_설계.md`입니다(여기는 Spring 구현 방법만 다룹니다).
+Spring 측 **AI 연동**과 **Feed 추천**의 설계·결정·구현 기록입니다. 이 구역은 AI 파트가 소유합니다. 공용 계약의 단일 원본은 `Team-PinLog/docs`의 `static/05_AI_설계.md`이고, 이 구역은 그 계약을 Spring에서 어떻게 구현하는지만 다룹니다.
 
 모든 AI 연동 문서를 관통하는 전제:
 
@@ -10,7 +10,7 @@ Spring 측 **AI 연동**과 **Feed 추천**의 설계·결정·구현 기록입�
 
 ## 편집 경계
 
-이 구역은 AI 파트가 작성·관리합니다. back 코드 변경에 수반되는 문서 갱신은 백엔드도 편집할 수 있습니다. 단 [`troubleshooting/`](troubleshooting/)·[`implements/`](implements/)는 **기록 보존 구역**이라 삭제 대신 **상태 갱신**으로 처리해 주세요(회고·복기 목적). `spec/`은 유효 명세라 이 제약의 대상이 아닙니다.
+이 구역은 AI 파트가 작성·관리합니다. back 코드 변경에 수반되는 문서 갱신은 백엔드도 편집할 수 있습니다. 단 [`troubleshooting/`](troubleshooting/)·[`implements/`](implements/)는 **기록 보존 구역**입니다. 회고와 복기에서 과거 이력을 추적할 수 있도록, 항목을 삭제하지 말고 **상태 표시만 갱신**해 주세요. `spec/`은 현재 유효한 명세이므로 이 보존 제약의 대상이 아닙니다.
 
 ## 구역
 
