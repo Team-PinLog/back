@@ -78,6 +78,14 @@ public abstract class IntegrationContainerSupport {
 		// 호출이 연결 타임아웃으로 실패한다(BT-01).
 		//
 		// 여기서 수동으로 시작하면 컨테이너 하나가 실행 내내 살아 있고, 정리는 JVM 종료 시 Ryuk가 한다.
+		//
+		// max_connections를 올리는 이유: Spring 테스트 컨텍스트 캐시는 컨텍스트를 닫지 않고 쌓는데,
+		// 컨텍스트마다 HikariPool(기본 10)이 이 컨테이너 하나에 연결을 잡는다. 합이 postgres 기본
+		// 한도(100)를 넘으면 늦게 뜨는 컨텍스트가 "FATAL: sorry, too many clients already"로 죽는다 —
+		// 검색 쪽 컨텍스트가 하나 늘면서(LexicalSearchApiTests) 실제로 넘었다. 캐시 상한을 줄이는
+		// 대안은 기각했다: evict된 컨텍스트를 쓰는 뒤 클래스가 재기동 비용을 갚고, 어떤 클래스가
+		// 느려지는지가 실행 순서에 따라 달라진다. 이 값은 테스트 전용 컨테이너 설정이라 운영과 무관하다.
+		POSTGRES.setCommand("postgres", "-c", "max_connections=300");
 		POSTGRES.start();
 		REDIS.start();
 	}
