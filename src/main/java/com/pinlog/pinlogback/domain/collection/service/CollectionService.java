@@ -21,6 +21,7 @@ import com.pinlog.pinlogback.domain.collection.dto.CollectionUpdateRequest;
 import com.pinlog.pinlogback.domain.collection.dto.FollowStatusResponse;
 import com.pinlog.pinlogback.domain.collection.dto.PublicCollectionDetailResponse;
 import com.pinlog.pinlogback.domain.collection.dto.PublicRecordCardResponse;
+import com.pinlog.pinlogback.domain.collection.dto.RecordCollectionCardResponse;
 import com.pinlog.pinlogback.domain.collection.dto.RecordSort;
 import com.pinlog.pinlogback.domain.collection.entity.Collection;
 import com.pinlog.pinlogback.domain.collection.entity.CollectionRecord;
@@ -116,6 +117,65 @@ public class CollectionService {
 		}
 		Collection last = page.get(page.size() - 1);
 		return CursorPage.of(items, Cursor.encode(last.getCreatedAt(), last.getId()));
+	}
+
+	/**
+	 * 특정 Record가 담긴 내 Collection 목록(명세 5.10). 경로는 Record 하위지만 반환 자원도 소유
+	 * 규칙도 Collection이라 유스케이스가 여기에 있다.
+	 *
+	 * <p>소유 확인을 생략하고 {@code memberId} 필터만으로 끝내지 않는다. 그러면 남의 Record id에
+	 * 빈 200이 돌아가 "담긴 Collection이 없다"와 "볼 수 없는 Record다"가 같은 응답이 된다.
+	 */
+	@Transactional(readOnly = true)
+	public CursorPage<RecordCollectionCardResponse> listByRecord(Long memberId, Long recordId,
+		String cursor, Integer size, CollectionSort sort) {
+		requireOwnedActiveRecord(memberId, recordId);
+		int pageSize = CursorPage.normalizeSize(size);
+		Pageable probe = PageRequest.of(0, pageSize + 1);
+
+		List<Collection> rows;
+		if (cursor == null || cursor.isBlank()) {
+			rows = sort.ascending()
+				? collectionRepository.findFirstPageByMemberIdAndRecordIdAsc(memberId, recordId, probe)
+				: collectionRepository.findFirstPageByMemberIdAndRecordIdDesc(memberId, recordId, probe);
+		} else {
+			Cursor decoded = Cursor.decode(cursor);
+			rows = sort.ascending()
+				? collectionRepository.findPageByMemberIdAndRecordIdAfterAsc(
+					memberId, recordId, decoded.sortKeyAsInstant(), decoded.id(), probe)
+				: collectionRepository.findPageByMemberIdAndRecordIdAfterDesc(
+					memberId, recordId, decoded.sortKeyAsInstant(), decoded.id(), probe);
+		}
+
+		boolean hasNext = rows.size() > pageSize;
+		List<Collection> page = hasNext ? rows.subList(0, pageSize) : rows;
+		List<RecordCollectionCardResponse> items = toRecordCollectionCards(page);
+		if (!hasNext) {
+			return CursorPage.last(items);
+		}
+		Collection last = page.get(page.size() - 1);
+		return CursorPage.of(items, Cursor.encode(last.getCreatedAt(), last.getId()));
+	}
+
+	/**
+	 * 페이지 전체의 Keyword를 <b>한 번에</b> 읽는다 — Collection마다 반복 조회하면 그대로
+	 * N+1이다(BD-18). 공개 범위 집계를 쓴다: 내 책의 표지도 남이 보는 표지와 같은 글자여야 한다.
+	 */
+	private List<RecordCollectionCardResponse> toRecordCollectionCards(List<Collection> page) {
+		List<Long> collectionIds = page.stream().map(Collection::getId).toList();
+		Map<Long, List<String>> keywords =
+			contextKeywordRepository.findCollectionKeywordsPublic(collectionIds);
+		return page.stream()
+			.map(collection -> RecordCollectionCardResponse.of(
+				collection, keywords.getOrDefault(collection.getId(), List.of())))
+			.toList();
+	}
+
+	/** {@code requireAllOwnedActiveRecords}와 같은 판정의 단건 형태다. */
+	private void requireOwnedActiveRecord(Long memberId, Long recordId) {
+		if (recordRepository.findByIdInAndMemberId(List.of(recordId), memberId).isEmpty()) {
+			throw new ResourceNotFoundException();
+		}
 	}
 
 	/**
