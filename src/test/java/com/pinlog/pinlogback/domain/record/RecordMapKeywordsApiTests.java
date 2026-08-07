@@ -7,7 +7,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.math.BigDecimal;
 
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -114,14 +117,15 @@ class RecordMapKeywordsApiTests extends IntegrationContainerSupport {
 			.andExpect(jsonPath("$.data.items[0].displayName").value("나만보기"));
 	}
 
-	@Test
-	void contextsWhoseKeywordJudgementIsNotCompletedAreExcluded() throws Exception {
+	@ParameterizedTest
+	@ValueSource(strings = {"PENDING", "PROCESSING", "FAILED", "CANCELLED"})
+	void contextsWhoseKeywordJudgementIsNotCompletedAreExcluded(String keywordStatus) throws Exception {
 		long memberId = newMemberId();
-		int preset = insertPreset("판정중", "PUBLIC", true);
-		long recordId = newRecordInside(memberId, "kw-status-1");
+		int preset = insertPreset("판정중-" + keywordStatus, "PUBLIC", true);
+		long recordId = newRecordInside(memberId, "kw-status-" + keywordStatus);
 		long contextId = newContext(recordId, memberId);
 		attachKeyword(contextId, preset);
-		putState(contextId, "PROCESSING");
+		putState(contextId, keywordStatus);
 
 		getInBounds(memberId)
 			.andExpect(status().isOk())
@@ -159,16 +163,30 @@ class RecordMapKeywordsApiTests extends IntegrationContainerSupport {
 	}
 
 	@Test
-	void atMostFiveKeywordsComeBack() throws Exception {
+	void topFiveAreTheLargestCounts() throws Exception {
 		long memberId = newMemberId();
-		for (int i = 0; i < 7; i++) {
+		int[] recordCounts = {6, 5, 4, 3, 2, 1};
+		int smallest = -1;
+		for (int i = 0; i < recordCounts.length; i++) {
 			int preset = insertPreset("키워드" + i, "PUBLIC", true);
-			attachTo(newRecordInside(memberId, "kw-limit-" + i), memberId, preset);
+			for (int r = 0; r < recordCounts[i]; r++) {
+				attachTo(newRecordInside(memberId, "kw-limit-" + i + "-" + r), memberId, preset);
+			}
+			if (recordCounts[i] == 1) {
+				smallest = preset;
+			}
 		}
 
 		getInBounds(memberId)
 			.andExpect(status().isOk())
-			.andExpect(jsonPath("$.data.items.length()").value(5));
+			.andExpect(jsonPath("$.data.items.length()").value(5))
+			.andExpect(jsonPath("$.data.items[0].recordCount").value(6))
+			.andExpect(jsonPath("$.data.items[1].recordCount").value(5))
+			.andExpect(jsonPath("$.data.items[2].recordCount").value(4))
+			.andExpect(jsonPath("$.data.items[3].recordCount").value(3))
+			.andExpect(jsonPath("$.data.items[4].recordCount").value(2))
+			.andExpect(jsonPath("$.data.items[*].keywordId").value(
+				Matchers.not(Matchers.hasItem(smallest))));
 	}
 
 	@Test
@@ -220,6 +238,18 @@ class RecordMapKeywordsApiTests extends IntegrationContainerSupport {
 	}
 
 	@Test
+	void otherMembersRecordsAreNotCountedWithoutBbox() throws Exception {
+		long me = newMemberId();
+		long other = newMemberId();
+		int preset = insertPreset("남의키워드", "PUBLIC", true);
+		attachTo(newRecordInside(other, "kw-other-nobbox-1"), other, preset);
+
+		mockMvc.perform(get(URL).with(loginAs(me)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items").isEmpty());
+	}
+
+	@Test
 	void memberWithoutKeywordsGetsEmptyArrayNot404() throws Exception {
 		long memberId = newMemberId();
 		newRecordInside(memberId, "kw-empty-1");
@@ -244,13 +274,27 @@ class RecordMapKeywordsApiTests extends IntegrationContainerSupport {
 	}
 
 	@Test
-	void softDeletedRecordsAreNotCounted() throws Exception {
+	void softDeletedContextsAreNotCounted() throws Exception {
 		long memberId = newMemberId();
-		int preset = insertPreset("지운기록", "PUBLIC", true);
-		long recordId = newRecordInside(memberId, "kw-deleted-1");
+		int preset = insertPreset("지운문맥", "PUBLIC", true);
+		long recordId = newRecordInside(memberId, "kw-deleted-context-1");
 		long contextId = newContext(recordId, memberId);
 		attachKeyword(contextId, preset);
 		jdbcTemplate.update("UPDATE core.context SET deleted_at = now() WHERE id = ?", contextId);
+
+		getInBounds(memberId)
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items").isEmpty());
+	}
+
+	@Test
+	void softDeletedRecordsAreNotCounted() throws Exception {
+		long memberId = newMemberId();
+		int preset = insertPreset("지운기록", "PUBLIC", true);
+		long recordId = newRecordInside(memberId, "kw-deleted-record-1");
+		long contextId = newContext(recordId, memberId);
+		attachKeyword(contextId, preset);
+		jdbcTemplate.update("UPDATE core.record SET deleted_at = now() WHERE id = ?", recordId);
 
 		getInBounds(memberId)
 			.andExpect(status().isOk())
