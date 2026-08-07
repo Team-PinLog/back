@@ -3,7 +3,8 @@
 - **날짜**: 2026-08-07
 - **추적**: S15P11A705-391
 - **관련**: [BI-43](../implements/BI-43-2026-08-07-record-collections-api.md) ·
-  `d8d0514`(Task 1~3) · [BI-38](../implements/BI-38-2026-08-03-massive-scale-plan-observation.md)
+  `f44fea2..00f09ab`(Task 1~4, 정정 — 원래 `d8d0514`(Task 1~3)로 적었으나 실제 커밋은
+  `f44fea2`·`55b26de`·`d8d0514`·`00f09ab` 네 개다) · [BI-38](../implements/BI-38-2026-08-03-massive-scale-plan-observation.md)
 
 `GET /v1/records/{recordId}/collections`(명세 §5.10)의 마지막 태스크. 앞선 세 태스크가
 첫 페이지·정렬 방향·커서 페이징을 순서대로 얹었고, 이번 태스크는 "항목이 늘어도 쿼리는
