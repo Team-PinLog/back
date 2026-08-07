@@ -182,6 +182,36 @@ public class ContextKeywordRepository {
 		LIMIT :limit
 		""";
 
+	/**
+	 * bbox 없는 전체 집계(S15P11A705-388).
+	 *
+	 * <p>{@code core.record}·{@code core.place} 조인이 없다. 삭제분은
+	 * {@code ct.deleted_at IS NULL}이 거르고 bbox가 없으니 {@code place}를 볼 이유도 없다.
+	 *
+	 * <p><b>이 경로는 회원 규모에 취약하다.</b> bbox가 없으면 플래너가 회원 슬라이스만으로
+	 * 판단하는데, 회원당 Context가 6,000 부근에 이르면 {@code ai.context_ai_state} 전체 Seq Scan
+	 * 으로 뒤집힌다(설계 문서 6.1 — 같은 크기 회원이 16ms와 49ms로 갈렸다). 지도 화면은 항상
+	 * bbox를 보내므로 실사용 경로는 아니며, 이 메서드가 존재하는 이유는 마커 조회와 계약을
+	 * 맞추기 위해서다. 성능을 다시 볼 일이 생기면 여기부터 본다.
+	 */
+	private static final String TOP_KEYWORDS_FOR_OWNER_SQL = """
+		SELECT kp.id AS keyword_id,
+			kp.display_name AS display_name,
+			COUNT(DISTINCT ct.record_id) AS record_count
+		FROM core.context ct
+		JOIN ai.context_ai_state st ON st.context_id = ct.id
+		JOIN ai.context_keyword  ck ON ck.context_id = ct.id
+		JOIN ai.keyword_preset   kp ON kp.id = ck.keyword_id
+		WHERE ct.member_id = :memberId
+			AND ct.deleted_at IS NULL
+			AND st.keyword_status = 'COMPLETED'
+			AND kp.visibility IN ('PUBLIC', 'PRIVATE_ONLY')
+			AND kp.is_active = true
+		GROUP BY kp.id, kp.display_name
+		ORDER BY record_count DESC, kp.id
+		LIMIT :limit
+		""";
+
 	private final NamedParameterJdbcTemplate jdbc;
 
 	public ContextKeywordRepository(NamedParameterJdbcTemplate jdbc) {
@@ -247,6 +277,15 @@ public class ContextKeywordRepository {
 			.addValue("neLng", neLng)
 			.addValue("limit", limit);
 		return jdbc.query(TOP_KEYWORDS_IN_BOUNDS_SQL, parameters, (rows, rowNum) -> new TopKeywordRow(
+			rows.getInt("keyword_id"), rows.getString("display_name"), rows.getLong("record_count")));
+	}
+
+	/** bbox를 전부 생략했을 때의 전체 집계. 취약점은 SQL 주석 참조. */
+	public List<TopKeywordRow> findTopKeywordsForOwner(long memberId, int limit) {
+		MapSqlParameterSource parameters = new MapSqlParameterSource()
+			.addValue("memberId", memberId)
+			.addValue("limit", limit);
+		return jdbc.query(TOP_KEYWORDS_FOR_OWNER_SQL, parameters, (rows, rowNum) -> new TopKeywordRow(
 			rows.getInt("keyword_id"), rows.getString("display_name"), rows.getLong("record_count")));
 	}
 

@@ -171,6 +171,42 @@ class RecordMapKeywordsApiTests extends IntegrationContainerSupport {
 			.andExpect(jsonPath("$.data.items.length()").value(5));
 	}
 
+	@Test
+	void recordsOutsideTheBoxAreExcluded() throws Exception {
+		long memberId = newMemberId();
+		int inside = insertPreset("안쪽", "PUBLIC", true);
+		int outside = insertPreset("바깥쪽", "PUBLIC", true);
+		attachTo(newRecordInside(memberId, "kw-bbox-in"), memberId, inside);
+		attachTo(newRecord(memberId, "kw-bbox-out", "35.0000000", "129.0000000"), memberId, outside);
+
+		getInBounds(memberId)
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(1))
+			.andExpect(jsonPath("$.data.items[0].displayName").value("안쪽"));
+	}
+
+	@Test
+	void omittingTheWholeBboxAggregatesEverything() throws Exception {
+		long memberId = newMemberId();
+		int inside = insertPreset("안쪽", "PUBLIC", true);
+		int outside = insertPreset("바깥쪽", "PUBLIC", true);
+		attachTo(newRecordInside(memberId, "kw-nobbox-in"), memberId, inside);
+		attachTo(newRecord(memberId, "kw-nobbox-out", "35.0000000", "129.0000000"), memberId, outside);
+
+		mockMvc.perform(get(URL).with(loginAs(memberId)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(2));
+	}
+
+	@Test
+	void partialBboxIs400() throws Exception {
+		long memberId = newMemberId();
+
+		mockMvc.perform(get(URL).with(loginAs(memberId)).param("swLat", "37.4"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
+	}
+
 	private ResultActions getInBounds(long memberId) throws Exception {
 		return mockMvc.perform(get(URL).with(loginAs(memberId))
 			.param("swLat", "37.4").param("swLng", "126.9")

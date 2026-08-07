@@ -254,8 +254,7 @@ public class RecordService {
 	@Transactional(readOnly = true)
 	public MapResponse map(Long memberId, BigDecimal swLat, BigDecimal swLng, BigDecimal neLat, BigDecimal neLng,
 		String keyword) {
-		requireWholeBbox(swLat, swLng, neLat, neLng);
-		boolean allPresent = swLat != null && swLng != null && neLat != null && neLng != null;
+		boolean allPresent = requireWholeBbox(swLat, swLng, neLat, neLng);
 		String likeKeyword = toLikeKeyword(keyword);
 		List<MapMarkerResponse> found = allPresent
 			? recordRepository.findMarkersWithinBounds(memberId, swLat, swLng, neLat, neLng, likeKeyword)
@@ -275,23 +274,28 @@ public class RecordService {
 	@Transactional(readOnly = true)
 	public MapKeywordsResponse mapKeywords(Long memberId, BigDecimal swLat, BigDecimal swLng,
 		BigDecimal neLat, BigDecimal neLng) {
-		requireWholeBbox(swLat, swLng, neLat, neLng);
-		List<TopKeywordRow> rows = contextKeywordRepository.findTopKeywordsInBounds(
-			memberId, swLat, swLng, neLat, neLng, TOP_KEYWORD_LIMIT);
+		boolean bounded = requireWholeBbox(swLat, swLng, neLat, neLng);
+		List<TopKeywordRow> rows = bounded
+			? contextKeywordRepository.findTopKeywordsInBounds(
+				memberId, swLat, swLng, neLat, neLng, TOP_KEYWORD_LIMIT)
+			: contextKeywordRepository.findTopKeywordsForOwner(memberId, TOP_KEYWORD_LIMIT);
 		return new MapKeywordsResponse(rows.stream().map(TopKeywordResponse::from).toList());
 	}
 
 	/**
 	 * bbox 파라미터는 넷 다 주거나 모두 생략해야 한다(API 명세 4.2). 마커 조회와 키워드 조회가
 	 * 같은 규칙을 쓰므로 한 자리에 둔다 — 갈라지면 두 엔드포인트의 400 조건이 어긋난다.
+	 *
+	 * @return 넷 다 주었으면 true, 모두 생략했으면 false
 	 */
-	private static void requireWholeBbox(BigDecimal swLat, BigDecimal swLng, BigDecimal neLat,
+	private static boolean requireWholeBbox(BigDecimal swLat, BigDecimal swLng, BigDecimal neLat,
 		BigDecimal neLng) {
 		boolean allPresent = swLat != null && swLng != null && neLat != null && neLng != null;
 		boolean nonePresent = swLat == null && swLng == null && neLat == null && neLng == null;
 		if (!allPresent && !nonePresent) {
 			throw new InvalidRequestException("bbox 파라미터(swLat·swLng·neLat·neLng)는 모두 주거나 모두 생략해야 합니다.");
 		}
+		return allPresent;
 	}
 
 	/**
