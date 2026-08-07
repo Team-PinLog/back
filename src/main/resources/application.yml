@@ -13,8 +13,8 @@ server:
 spring:
   servlet:
     multipart:
-      max-file-size: 5MB
-      max-request-size: 6MB
+      max-file-size: 10MB
+      max-request-size: 11MB
   # 로컬 .env를 프로퍼티로 올린다. Spring Boot는 .env를 자동으로 읽지 않아서,
   # 이게 없으면 소셜 로그인 자격증명이 애플리케이션에 전달되지 않는다(compose만 읽는다).
   # optional: 이므로 .env가 없는 CI·운영 컨테이너에서도 기동이 깨지지 않는다.
