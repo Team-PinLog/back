@@ -146,9 +146,6 @@ public class CollectionService {
 				: collectionRepository.findPageByMemberIdAndRecordIdAfterDesc(
 					memberId, recordId, decoded.sortKeyAsInstant(), decoded.id(), probe);
 		}
-		if (rows.isEmpty()) {
-			return CursorPage.empty();
-		}
 
 		boolean hasNext = rows.size() > pageSize;
 		List<Collection> page = hasNext ? rows.subList(0, pageSize) : rows;
