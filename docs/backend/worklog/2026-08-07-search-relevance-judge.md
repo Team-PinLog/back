@@ -1,7 +1,7 @@
 # 검색 4번째 신호(LLM 관련도 재판정)를 추가했다
 
 - **날짜**: 2026-08-07
-- **관련**: [BI-44](../implements/BI-44-2026-08-07-search-relevance-judge.md) · ai 레포 `S15P11A705-relevance-judge` 브랜치 · [BI-43](../implements/BI-43-2026-08-06-search-lexical-merge.md)(앞선 세 신호)
+- **관련**: [BI-45](../implements/BI-45-2026-08-07-search-relevance-judge.md) · ai 레포 `S15P11A705-relevance-judge` 브랜치 · [BI-43](../implements/BI-43-2026-08-06-search-lexical-merge.md)(앞선 세 신호)
 
 사용자가 실배포에서 발견한 검색 순위 오류(문장형 질의에 포함된 고유명사가 세 신호 모두의 사각지대에 걸려 관련 기록이 무관한 기록보다 낮은 순위로 나온 사례)를 교정하기 위해 4번째 검색 신호를 추가했다. ai가 후보의 LLM 관련도를 4단계로 재판정하고, back은 그 결과로 무관한 결과를 걸러내고 재정렬한다.
 
