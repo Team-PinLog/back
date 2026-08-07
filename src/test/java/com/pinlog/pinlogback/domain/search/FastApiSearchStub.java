@@ -29,11 +29,21 @@ import tools.jackson.databind.json.JsonMapper;
 final class FastApiSearchStub {
 
 	static final String PATH = "/internal/v1/search";
+	/** 검색 4번째 신호(관련도 재판정)의 경로. 같은 대역이 같은 포트에서 함께 받는다. */
+	static final String JUDGE_PATH = "/internal/v1/search/judge";
 
 	private static final JsonMapper JSON = JsonMapper.builder().build();
 
 	/** FastAPI가 Record 단위로 집계해 돌려주는 한 건(AI 설계 9.4). 본문은 돌려주지 않는다. */
 	record Match(long recordId, long contextId, double similarity) {
+	}
+
+	/** {@code POST /internal/v1/search/judge} 응답 한 건. */
+	record Judgment(long contextId, String relevance) {
+	}
+
+	/** {@code /internal/v1/search/judge}로 도착한 요청의 관측 결과. */
+	record JudgeReceived(String query, java.util.List<Long> candidateContextIds, String internalSecret) {
 	}
 
 	/**
@@ -81,6 +91,9 @@ final class FastApiSearchStub {
 	private final AtomicReference<Mode> mode = new AtomicReference<>(Mode.RESULTS);
 	private final AtomicReference<List<Match>> results = new AtomicReference<>(List.of());
 	private final AtomicReference<Received> received = new AtomicReference<>();
+	private final AtomicReference<List<Judgment>> judgments = new AtomicReference<>(List.of());
+	private final AtomicReference<Boolean> judgeFails = new AtomicReference<>(false);
+	private final AtomicReference<JudgeReceived> judgeReceived = new AtomicReference<>();
 
 	FastApiSearchStub() {
 		try {
@@ -89,6 +102,7 @@ final class FastApiSearchStub {
 			throw new IllegalStateException("FastAPI 검색 대역을 띄우지 못했다", e);
 		}
 		server.createContext(PATH, this::handle);
+		server.createContext(JUDGE_PATH, this::handleJudge);
 		server.setExecutor(Executors.newFixedThreadPool(2));
 		server.start();
 	}
@@ -114,6 +128,22 @@ final class FastApiSearchStub {
 	/** 마지막으로 도착한 요청. 호출이 없었으면 {@code null}. 검색은 동기 호출이라 대기가 필요 없다. */
 	Received lastCall() {
 		return received.get();
+	}
+
+	/** 관련도 재판정 응답을 갈아 끼운다. contextId별 4단계 라벨. */
+	void willJudge(Judgment... items) {
+		judgeFails.set(false);
+		judgments.set(List.of(items));
+	}
+
+	/** 관련도 재판정 호출이 5xx로 실패하는 상황을 재현한다 — 강등 계약 검증용. */
+	void willFailJudge() {
+		judgeFails.set(true);
+	}
+
+	/** 판정 호출이 없었으면 {@code null}. */
+	JudgeReceived lastJudgeCall() {
+		return judgeReceived.get();
 	}
 
 	void stop() {
@@ -153,6 +183,25 @@ final class FastApiSearchStub {
 			case NULL_MATCH_ELEMENT -> respond(exchange, 200, "{\"results\":[null]}");
 			case RESULTS -> respond(exchange, 200, resultsJson());
 		}
+	}
+
+	private void handleJudge(HttpExchange exchange) throws IOException {
+		JsonNode body = JSON.readTree(exchange.getRequestBody().readAllBytes());
+		List<Long> candidateIds = new java.util.ArrayList<>();
+		body.path("candidates").forEach(c -> candidateIds.add(c.path("contextId").asLong()));
+		judgeReceived.set(new JudgeReceived(
+			body.path("query").asString(""),
+			List.copyOf(candidateIds),
+			exchange.getRequestHeaders().getFirst("X-Internal-Secret")));
+
+		if (Boolean.TRUE.equals(judgeFails.get())) {
+			respond(exchange, 503, "");
+			return;
+		}
+		String items = judgments.get().stream()
+			.map(j -> "{\"contextId\":%d,\"relevance\":\"%s\"}".formatted(j.contextId(), j.relevance()))
+			.collect(Collectors.joining(","));
+		respond(exchange, 200, "{\"results\":[" + items + "]}");
 	}
 
 	private String resultsJson() {

@@ -17,6 +17,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  *     {@code docs/backend/decisions/BD-39-embedding-profile-in-application-config.md}
  * @param process {@code POST /internal/v1/context/process} 타임아웃
  * @param search {@code POST /internal/v1/search} 타임아웃
+ * @param judge {@code POST /internal/v1/search/judge} 타임아웃(검색 4번째 신호). 후보 최대
+ *     10건의 본문을 한 번의 LLM 호출로 판정하므로 {@code search}보다 길다
  */
 @ConfigurationProperties("pinlog.ai")
 public record AiProperties(
@@ -24,7 +26,8 @@ public record AiProperties(
 	String internalSecret,
 	String embeddingProfile,
 	Timeouts process,
-	Timeouts search
+	Timeouts search,
+	Timeouts judge
 ) {
 
 	/**
