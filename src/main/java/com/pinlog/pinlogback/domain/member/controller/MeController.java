@@ -5,8 +5,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.pinlog.pinlogback.domain.member.dto.MeActivityResponse;
 import com.pinlog.pinlogback.domain.member.dto.MeSummaryResponse;
 import com.pinlog.pinlogback.domain.member.dto.WithdrawalStartResponse;
+import com.pinlog.pinlogback.domain.member.service.MemberActivityService;
 import com.pinlog.pinlogback.domain.member.service.MemberSummaryService;
 import com.pinlog.pinlogback.domain.member.service.WithdrawalAuthorizationService;
 import com.pinlog.pinlogback.global.security.authentication.LoginMember;
@@ -24,19 +26,35 @@ public class MeController {
 
 	private final WithdrawalAuthorizationService withdrawalAuthorizationService;
 	private final MemberSummaryService memberSummaryService;
+	private final MemberActivityService memberActivityService;
 
 	public MeController(
 		WithdrawalAuthorizationService withdrawalAuthorizationService,
-		MemberSummaryService memberSummaryService
+		MemberSummaryService memberSummaryService,
+		MemberActivityService memberActivityService
 	) {
 		this.withdrawalAuthorizationService = withdrawalAuthorizationService;
 		this.memberSummaryService = memberSummaryService;
+		this.memberActivityService = memberActivityService;
 	}
 
 	/** 마이페이지 요약(API 명세 3.5). 진입 시 1회 호출한다. */
 	@GetMapping("/summary")
 	public MeSummaryResponse summary(@LoginMember MemberPrincipal me) {
 		return memberSummaryService.summarize(me.memberId());
+	}
+
+	/**
+	 * 나의 활동 기록 집계(S15P11A705-397). 진입 시 1회 호출한다.
+	 *
+	 * <p>{@code /summary}를 대체하지 않고 옆에 둔다 — 그쪽은 계정 정보와 카운트 넷이고, 이쪽은
+	 * 월별·지역별 집계라 호출 시점과 응답 크기가 다르다.
+	 *
+	 * <p>기간 파라미터가 없다. 전체 누적 고정이다.
+	 */
+	@GetMapping("/activity")
+	public MeActivityResponse activity(@LoginMember MemberPrincipal me) {
+		return memberActivityService.summarize(me.memberId());
 	}
 
 	/**

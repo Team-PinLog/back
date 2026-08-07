@@ -30,4 +30,16 @@ public interface ContextRepository extends JpaRepository<Context, Long> {
 	List<Context> findByRecordId(Long recordId);
 
 	long countByRecordId(Long recordId);
+
+	/**
+	 * 나의 활동 기록 집계의 맥락 메모 수(S15P11A705-397).
+	 *
+	 * <p>{@code member_id}는 Context에 비정규화돼 있어 Record 조인 없이 센다(V3:52). 소프트 삭제는
+	 * {@code @SQLRestriction("deleted_at IS NULL")}이 count 쿼리에도 걸리므로 조건을 적지 않는다 —
+	 * 명시하려다 빠뜨리면 오히려 삭제분이 섞인다(S15P11A705-200에서 뮤테이션으로 확인).
+	 *
+	 * <p>수정으로 교체된 구 Context는 소프트 삭제되므로 세지 않는다. 즉 이 값은 "지금 살아 있는
+	 * 메모 수"이지 "지금까지 쓴 메모 수"가 아니다.
+	 */
+	long countByMemberId(Long memberId);
 }
