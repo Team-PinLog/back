@@ -20,6 +20,7 @@ import com.pinlog.pinlogback.domain.record.dto.ContextMutationResponse;
 import com.pinlog.pinlogback.domain.record.dto.ContextSort;
 import com.pinlog.pinlogback.domain.record.dto.ContextUpdateRequest;
 import com.pinlog.pinlogback.domain.record.dto.MapResponse;
+import com.pinlog.pinlogback.domain.record.dto.RecentRecordCardResponse;
 import com.pinlog.pinlogback.domain.record.dto.RecordByPlaceResponse;
 import com.pinlog.pinlogback.domain.record.dto.RecordCreateRequest;
 import com.pinlog.pinlogback.domain.record.dto.RecordCreateResponse;
@@ -27,6 +28,7 @@ import com.pinlog.pinlogback.domain.record.dto.RecordDetailResponse;
 import com.pinlog.pinlogback.domain.record.dto.RecordSaveResult;
 import com.pinlog.pinlogback.domain.record.service.RecordDeletionService;
 import com.pinlog.pinlogback.domain.record.service.RecordService;
+import com.pinlog.pinlogback.global.response.CursorPage;
 import com.pinlog.pinlogback.global.security.authentication.LoginMember;
 import com.pinlog.pinlogback.global.security.authentication.MemberPrincipal;
 
@@ -72,6 +74,27 @@ public class RecordController {
 	public RecordByPlaceResponse byPlace(@LoginMember MemberPrincipal me,
 		@RequestParam String kakaoPlaceId) {
 		return recordService.getByKakaoPlaceId(me.memberId(), kakaoPlaceId);
+	}
+
+	/**
+	 * 최근 7일 안에 만든 내 Record 목록(명세 5.9). 홈 화면 "최근 기록" 영역이 쓴다.
+	 *
+	 * <p>기간·정렬 파라미터가 없다. 창은 서버가 7일로 고정하고 정렬은 최신순 고정이다 — "최근"이 곧
+	 * 정렬이라, 오래된순으로 뒤집을 수 있는 {@code /recent}는 이름과 동작이 어긋난다.
+	 *
+	 * <p>{@code size} 기본값이 1이라 {@code required = false}로 받아 서비스가 정규화한다. 여기에
+	 * {@code defaultValue = "1"}을 두면 상한·하한 접기가 컨트롤러와 서비스로 나뉜다.
+	 *
+	 * <p><b>이 매핑이 {@code /{recordId}}보다 앞서 선언되어야 하는 것은 아니다.</b> Spring MVC가
+	 * 리터럴 세그먼트를 경로 변수보다 구체적인 패턴으로 보고 먼저 고른다. 다만 매핑이 없을 때는
+	 * {@code "recent"}가 {@code Long} 변환에 실패해 404가 아니라 400이 나온다 — 이 경로를 지우면
+	 * 그 400이 조용히 돌아온다.
+	 */
+	@GetMapping("/recent")
+	public CursorPage<RecentRecordCardResponse> recent(@LoginMember MemberPrincipal me,
+		@RequestParam(required = false) String cursor,
+		@RequestParam(required = false) Integer size) {
+		return recordService.listRecent(me.memberId(), cursor, size);
 	}
 
 	/** {@code contexts}의 기본 정렬은 최초 작성 시각 오름차순이다(명세 5.2, BD-25·BD-46). */
