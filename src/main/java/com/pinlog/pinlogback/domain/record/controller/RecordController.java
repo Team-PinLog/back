@@ -19,6 +19,7 @@ import com.pinlog.pinlogback.domain.record.dto.ContextCreateRequest;
 import com.pinlog.pinlogback.domain.record.dto.ContextMutationResponse;
 import com.pinlog.pinlogback.domain.record.dto.ContextSort;
 import com.pinlog.pinlogback.domain.record.dto.ContextUpdateRequest;
+import com.pinlog.pinlogback.domain.record.dto.MapKeywordsResponse;
 import com.pinlog.pinlogback.domain.record.dto.MapResponse;
 import com.pinlog.pinlogback.domain.record.dto.RecentRecordCardResponse;
 import com.pinlog.pinlogback.domain.record.dto.RecordByPlaceResponse;
@@ -68,6 +69,22 @@ public class RecordController {
 		@RequestParam(required = false) BigDecimal neLng,
 		@RequestParam(required = false) String keyword) {
 		return recordService.map(me.memberId(), swLat, swLng, neLat, neLng, keyword);
+	}
+
+	/**
+	 * 지도에 보이는 범위의 Keyword 상위 5건(S15P11A705-388). 검색창 밑 추천 칩이 쓴다.
+	 *
+	 * <p>bbox 계약은 {@link #map}과 같다. 개수는 5 고정이라 파라미터가 없다.
+	 *
+	 * <p>리터럴 세그먼트가 두 개라 {@code /{recordId}}와 충돌하지 않는다.
+	 */
+	@GetMapping("/map/keywords")
+	public MapKeywordsResponse mapKeywords(@LoginMember MemberPrincipal me,
+		@RequestParam(required = false) BigDecimal swLat,
+		@RequestParam(required = false) BigDecimal swLng,
+		@RequestParam(required = false) BigDecimal neLat,
+		@RequestParam(required = false) BigDecimal neLng) {
+		return recordService.mapKeywords(me.memberId(), swLat, swLng, neLat, neLng);
 	}
 
 	@GetMapping("/by-place")
