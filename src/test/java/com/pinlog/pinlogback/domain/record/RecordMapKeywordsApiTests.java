@@ -128,6 +128,49 @@ class RecordMapKeywordsApiTests extends IntegrationContainerSupport {
 			.andExpect(jsonPath("$.data.items").isEmpty());
 	}
 
+	@Test
+	void sameKeywordOnSeveralContextsOfOneRecordCountsOnce() throws Exception {
+		long memberId = newMemberId();
+		int preset = insertPreset("카페", "PUBLIC", true);
+		long recordId = newRecordInside(memberId, "kw-dedup-1");
+		attachKeyword(newContext(recordId, memberId), preset);
+		attachKeyword(newContext(recordId, memberId), preset);
+		attachKeyword(newContext(recordId, memberId), preset);
+
+		getInBounds(memberId)
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(1))
+			.andExpect(jsonPath("$.data.items[0].recordCount").value(1));
+	}
+
+	@Test
+	void tiesAreBrokenByKeywordIdAscending() throws Exception {
+		long memberId = newMemberId();
+		int first = insertPreset("힣하나", "PUBLIC", true);
+		int second = insertPreset("가둘", "PUBLIC", true);
+		attachTo(newRecordInside(memberId, "kw-tie-1"), memberId, first);
+		attachTo(newRecordInside(memberId, "kw-tie-2"), memberId, second);
+
+		getInBounds(memberId)
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(2))
+			.andExpect(jsonPath("$.data.items[0].keywordId").value(first))
+			.andExpect(jsonPath("$.data.items[1].keywordId").value(second));
+	}
+
+	@Test
+	void atMostFiveKeywordsComeBack() throws Exception {
+		long memberId = newMemberId();
+		for (int i = 0; i < 7; i++) {
+			int preset = insertPreset("키워드" + i, "PUBLIC", true);
+			attachTo(newRecordInside(memberId, "kw-limit-" + i), memberId, preset);
+		}
+
+		getInBounds(memberId)
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(5));
+	}
+
 	private ResultActions getInBounds(long memberId) throws Exception {
 		return mockMvc.perform(get(URL).with(loginAs(memberId))
 			.param("swLat", "37.4").param("swLng", "126.9")
