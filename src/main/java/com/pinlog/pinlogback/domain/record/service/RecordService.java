@@ -23,12 +23,14 @@ import com.pinlog.pinlogback.domain.ai.event.ContextAiRequested;
 import com.pinlog.pinlogback.domain.ai.repository.AiDerivedDataRepository;
 import com.pinlog.pinlogback.domain.ai.repository.ContextAiStateRepository;
 import com.pinlog.pinlogback.domain.ai.repository.ContextKeywordRepository;
+import com.pinlog.pinlogback.domain.ai.repository.TopKeywordRow;
 import com.pinlog.pinlogback.domain.collection.repository.RecordLatestCollectionRepository;
 import com.pinlog.pinlogback.domain.place.entity.Place;
 import com.pinlog.pinlogback.domain.place.repository.PlaceRepository;
 import com.pinlog.pinlogback.domain.record.dto.ContextMutationResponse;
 import com.pinlog.pinlogback.domain.record.dto.ContextResponse;
 import com.pinlog.pinlogback.domain.record.dto.ContextSort;
+import com.pinlog.pinlogback.domain.record.dto.MapKeywordsResponse;
 import com.pinlog.pinlogback.domain.record.dto.MapMarkerResponse;
 import com.pinlog.pinlogback.domain.record.dto.MapResponse;
 import com.pinlog.pinlogback.domain.record.dto.PlacePayload;
@@ -38,6 +40,7 @@ import com.pinlog.pinlogback.domain.record.dto.RecordCreateRequest;
 import com.pinlog.pinlogback.domain.record.dto.RecordCreateResponse;
 import com.pinlog.pinlogback.domain.record.dto.RecordDetailResponse;
 import com.pinlog.pinlogback.domain.record.dto.RecordSaveResult;
+import com.pinlog.pinlogback.domain.record.dto.TopKeywordResponse;
 import com.pinlog.pinlogback.domain.record.entity.Context;
 import com.pinlog.pinlogback.domain.record.entity.Record;
 import com.pinlog.pinlogback.domain.record.repository.ContextRepository;
@@ -60,6 +63,9 @@ public class RecordService {
 
 	/** 명세 5.9 — size 기본값. 홈 화면이 카드를 한 장씩 넘긴다. */
 	private static final int DEFAULT_RECENT_SIZE = 1;
+
+	/** 칩 개수는 서버가 고정한다. 파라미터로 열면 캐시 키와 테스트가 함께 늘어난다. */
+	private static final int TOP_KEYWORD_LIMIT = 5;
 
 	private final PlaceRepository placeRepository;
 	private final RecordRepository recordRepository;
@@ -248,11 +254,8 @@ public class RecordService {
 	@Transactional(readOnly = true)
 	public MapResponse map(Long memberId, BigDecimal swLat, BigDecimal swLng, BigDecimal neLat, BigDecimal neLng,
 		String keyword) {
+		requireWholeBbox(swLat, swLng, neLat, neLng);
 		boolean allPresent = swLat != null && swLng != null && neLat != null && neLng != null;
-		boolean nonePresent = swLat == null && swLng == null && neLat == null && neLng == null;
-		if (!allPresent && !nonePresent) {
-			throw new InvalidRequestException("bbox 파라미터(swLat·swLng·neLat·neLng)는 모두 주거나 모두 생략해야 합니다.");
-		}
 		String likeKeyword = toLikeKeyword(keyword);
 		List<MapMarkerResponse> found = allPresent
 			? recordRepository.findMarkersWithinBounds(memberId, swLat, swLng, neLat, neLng, likeKeyword)
@@ -260,6 +263,35 @@ public class RecordService {
 		List<MapMarkerResponse> items = sortByName(withLatestCollectionIds(found));
 		return new MapResponse(
 			BoundsResponse.enclosing(items, MapMarkerResponse::lat, MapMarkerResponse::lng), items);
+	}
+
+	/**
+	 * 지도에 보이는 사각형 안 Record의 Keyword 상위 5건(S15P11A705-388).
+	 *
+	 * <p>bbox만 반영한다. 장소명 검색어({@code keyword})도, 적용 중인 키워드 필터도 반영하지
+	 * 않는다 — 적용 중인 필터를 반영하면 그 키워드를 뺀 나머지 칩이 전부 0이 되어 사라지고,
+	 * 사용자가 다른 칩으로 갈아탈 수 없다.
+	 */
+	@Transactional(readOnly = true)
+	public MapKeywordsResponse mapKeywords(Long memberId, BigDecimal swLat, BigDecimal swLng,
+		BigDecimal neLat, BigDecimal neLng) {
+		requireWholeBbox(swLat, swLng, neLat, neLng);
+		List<TopKeywordRow> rows = contextKeywordRepository.findTopKeywordsInBounds(
+			memberId, swLat, swLng, neLat, neLng, TOP_KEYWORD_LIMIT);
+		return new MapKeywordsResponse(rows.stream().map(TopKeywordResponse::from).toList());
+	}
+
+	/**
+	 * bbox 파라미터는 넷 다 주거나 모두 생략해야 한다(API 명세 4.2). 마커 조회와 키워드 조회가
+	 * 같은 규칙을 쓰므로 한 자리에 둔다 — 갈라지면 두 엔드포인트의 400 조건이 어긋난다.
+	 */
+	private static void requireWholeBbox(BigDecimal swLat, BigDecimal swLng, BigDecimal neLat,
+		BigDecimal neLng) {
+		boolean allPresent = swLat != null && swLng != null && neLat != null && neLng != null;
+		boolean nonePresent = swLat == null && swLng == null && neLat == null && neLng == null;
+		if (!allPresent && !nonePresent) {
+			throw new InvalidRequestException("bbox 파라미터(swLat·swLng·neLat·neLng)는 모두 주거나 모두 생략해야 합니다.");
+		}
 	}
 
 	/**

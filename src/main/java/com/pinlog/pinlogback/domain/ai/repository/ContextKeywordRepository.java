@@ -1,10 +1,12 @@
 package com.pinlog.pinlogback.domain.ai.repository;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -142,6 +144,44 @@ public class ContextKeywordRepository {
 		GROUP BY ct.record_id
 		""";
 
+	/**
+	 * bbox 안 Record를 대상으로 한 Keyword 상위 집계(S15P11A705-388).
+	 *
+	 * <p>가시성·상태 조건은 {@link #KEYWORDS_FOR_OWNER_SQL}과 같다. 같은 규칙을 두 SQL이 나눠
+	 * 갖는 것이 이 클래스를 한 곳으로 유지하는 이유다 — 다른 클래스로 흩어지면 visibility 값이
+	 * 추가될 때 한쪽만 고쳐진다(BD-13).
+	 *
+	 * <p><b>{@code core.record} 조인은 bbox 때문이지 삭제 필터 때문이 아니다.</b> Record를 지우면
+	 * {@code RecordDeletionService}가 그 Record의 Context를 전부 소프트 삭제하므로
+	 * {@code ct.deleted_at IS NULL}이 이미 삭제분을 거른다. 삭제 목적으로 이 조인을 bbox 없는
+	 * 경로에까지 넣으면 플래너가 {@code core.record}를 통째로 스캔한다(설계 문서 6.2 — 회원당
+	 * Context 3,000에서 73ms 대 17ms).
+	 *
+	 * <p>동점을 {@code kp.id}로 끊는다. {@code display_name}으로 끊으면 한글에 동순위 가중치를
+	 * 주는 collation에서 운영 DB와 테스트 컨테이너의 순서가 갈린다.
+	 */
+	private static final String TOP_KEYWORDS_IN_BOUNDS_SQL = """
+		SELECT kp.id AS keyword_id,
+			kp.display_name AS display_name,
+			COUNT(DISTINCT ct.record_id) AS record_count
+		FROM core.record r
+		JOIN core.place p ON p.id = r.place_id
+		JOIN core.context ct ON ct.record_id = r.id AND ct.deleted_at IS NULL
+		JOIN ai.context_ai_state st ON st.context_id = ct.id
+		JOIN ai.context_keyword  ck ON ck.context_id = ct.id
+		JOIN ai.keyword_preset   kp ON kp.id = ck.keyword_id
+		WHERE r.member_id = :memberId
+			AND r.deleted_at IS NULL
+			AND p.lat BETWEEN :swLat AND :neLat
+			AND p.lng BETWEEN :swLng AND :neLng
+			AND st.keyword_status = 'COMPLETED'
+			AND kp.visibility IN ('PUBLIC', 'PRIVATE_ONLY')
+			AND kp.is_active = true
+		GROUP BY kp.id, kp.display_name
+		ORDER BY record_count DESC, kp.id
+		LIMIT :limit
+		""";
+
 	private final NamedParameterJdbcTemplate jdbc;
 
 	public ContextKeywordRepository(NamedParameterJdbcTemplate jdbc) {
@@ -190,6 +230,24 @@ public class ContextKeywordRepository {
 				.add(rows.getString("display_name"));
 		});
 		return byRecord;
+	}
+
+	/**
+	 * bbox 안 Record의 Keyword 상위 {@code limit}건.
+	 *
+	 * <p>넷 다 있는 bbox를 전제한다. 호출부가 "넷 다 또는 전부 생략"을 검증한 뒤 부른다.
+	 */
+	public List<TopKeywordRow> findTopKeywordsInBounds(long memberId, BigDecimal swLat, BigDecimal swLng,
+		BigDecimal neLat, BigDecimal neLng, int limit) {
+		MapSqlParameterSource parameters = new MapSqlParameterSource()
+			.addValue("memberId", memberId)
+			.addValue("swLat", swLat)
+			.addValue("swLng", swLng)
+			.addValue("neLat", neLat)
+			.addValue("neLng", neLng)
+			.addValue("limit", limit);
+		return jdbc.query(TOP_KEYWORDS_IN_BOUNDS_SQL, parameters, (rows, rowNum) -> new TopKeywordRow(
+			rows.getInt("keyword_id"), rows.getString("display_name"), rows.getLong("record_count")));
 	}
 
 	/**
