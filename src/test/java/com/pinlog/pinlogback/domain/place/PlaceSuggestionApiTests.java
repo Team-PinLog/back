@@ -121,14 +121,27 @@ class PlaceSuggestionApiTests extends IntegrationContainerSupport {
 	}
 
 	@Test
-	void rejectsAnImageOverTheInitialFiveMiBLimit() throws Exception {
-		byte[] oversized = new byte[5 * 1024 * 1024 + 1];
+	void rejectsAnImageOverTheInitialTenMiBLimit() throws Exception {
+		byte[] oversized = new byte[10 * 1024 * 1024 + 1];
 		mockMvc.perform(multipart(URL)
 				.file(image("chat.png", "image/png", oversized))
 				.with(loginAs(1L)))
 			.andExpect(status().isContentTooLarge())
 			.andExpect(jsonPath("$.error.code").value("IMAGE_TOO_LARGE"));
 		assertThat(STUB.lastCall()).isNull();
+	}
+
+	// S15P11A705-366: 5MiB 제한일 때는 7MiB 이미지가 여기서 거부됐다(RED). 10MiB로 올린 뒤
+	// FastAPI까지 릴레이되는지 확인한다(GREEN) — 상한 초과 거부 테스트와 달리 "이제 통과해야
+	// 하는" 중간 크기를 검증하므로 별도 테스트로 둔다.
+	@Test
+	void acceptsAnImageWithinTheNewTenMiBLimit() throws Exception {
+		byte[] withinNewLimit = new byte[7 * 1024 * 1024];
+		mockMvc.perform(multipart(URL)
+				.file(image("chat.png", "image/png", withinNewLimit))
+				.with(loginAs(1L)))
+			.andExpect(status().isOk());
+		assertThat(STUB.lastCall()).isNotNull();
 	}
 
 	@Test
