@@ -70,10 +70,13 @@ bbox 기준 집계는 화면 정합성(칩 숫자와 핀 수가 일치해야 한
 ## 남은 것
 
 - 지도 필터(`GET /v1/records/map`에 `keywordId` 추가) — S15P11A705-390
-- 공개 API 명세 반영
+- 공개 API 명세 반영 — [docs#52](https://github.com/Team-PinLog/docs/pull/52)로 올라감(머지 대기).
+  `08_API_명세.md` 2.2·4.2·4.3에 지도 키워드 칩 조회 API와 마커 키워드 필터가 반영돼 있다.
 
 ## 검증
 
-`./gradlew clean check --no-daemon` 통과. `RecordMapKeywordsApiTests` 15건 — bbox 안/밖, 가시성
-화이트리스트(`BLOCKED`·비활성·미완료 제외, `PRIVATE_ONLY` 포함), Record 단위 중복 제거, 동점
-`keywordId` 정렬, 소유권 격리, 빈 결과 계약을 고정한다.
+`./gradlew clean check --no-daemon` 통과. `RecordMapKeywordsApiTests` 20건(실행 기준, 파라미터
+테스트 포함) — bbox 안/밖, 가시성 화이트리스트(`BLOCKED`·비활성·`PENDING`/`PROCESSING`/`FAILED`/
+`CANCELLED` 제외, `PRIVATE_ONLY` 포함), Record 단위 중복 제거, 동점 `keywordId` 정렬, 상위 5건이
+가장 큰 값이라는 계약, `core.record`·`core.context` 각각의 소프트 삭제 제외, bbox 있는/없는 경로
+양쪽의 소유권 격리, 빈 결과 계약을 고정한다.
