@@ -13,7 +13,7 @@ import com.pinlog.pinlogback.domain.place.dto.PlaceSuggestionResponse;
 @Service
 public class PlaceSuggestionService {
 
-	private static final long INITIAL_MAX_IMAGE_BYTES = 5L * 1024 * 1024;
+	private static final long INITIAL_MAX_IMAGE_BYTES = 10L * 1024 * 1024;
 	private static final Set<String> SUPPORTED_CONTENT_TYPES = Set.of("image/png", "image/jpeg");
 
 	private final AiPlaceSuggestionClient aiPlaceSuggestionClient;
