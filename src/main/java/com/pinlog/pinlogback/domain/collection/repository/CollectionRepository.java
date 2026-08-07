@@ -94,4 +94,12 @@ public interface CollectionRepository extends JpaRepository<Collection, Long> {
 		+ " order by c.createdAt asc, c.id asc")
 	List<Collection> findFirstPageByMemberIdAndRecordIdAsc(@Param("memberId") Long memberId,
 		@Param("recordId") Long recordId, Pageable pageable);
+
+	/** {@link #findFirstPageByMemberIdAndRecordIdAsc}의 내림차순 짝(BD-46, 명세 7.2 sort=CREATED_AT_DESC). */
+	@Query("select c from Collection c where c.memberId = :memberId"
+		+ " and exists (select 1 from CollectionRecord cr"
+		+ " where cr.collectionId = c.id and cr.recordId = :recordId)"
+		+ " order by c.createdAt desc, c.id desc")
+	List<Collection> findFirstPageByMemberIdAndRecordIdDesc(@Param("memberId") Long memberId,
+		@Param("recordId") Long recordId, Pageable pageable);
 }

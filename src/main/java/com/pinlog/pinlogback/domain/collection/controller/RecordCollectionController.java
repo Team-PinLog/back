@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.pinlog.pinlogback.domain.collection.dto.CollectionSort;
 import com.pinlog.pinlogback.domain.collection.dto.RecordCollectionCardResponse;
 import com.pinlog.pinlogback.domain.collection.service.CollectionService;
 import com.pinlog.pinlogback.global.response.CursorPage;
@@ -31,7 +32,8 @@ public class RecordCollectionController {
 	public CursorPage<RecordCollectionCardResponse> listByRecord(@LoginMember MemberPrincipal me,
 		@PathVariable Long recordId,
 		@RequestParam(required = false) String cursor,
-		@RequestParam(required = false) Integer size) {
-		return collectionService.listByRecord(me.memberId(), recordId, cursor, size);
+		@RequestParam(required = false) Integer size,
+		@RequestParam(defaultValue = "CREATED_AT_ASC") CollectionSort sort) {
+		return collectionService.listByRecord(me.memberId(), recordId, cursor, size, sort);
 	}
 }

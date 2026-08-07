@@ -4,6 +4,7 @@ import static com.pinlog.pinlogback.support.AuthTestSupport.loginAs;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import java.util.ArrayList;
@@ -131,6 +132,31 @@ class RecordCollectionApiTests extends CoreApiFixtures {
 
 		assertThat(item.at("/keywords").isArray()).isTrue();
 		assertThat(keywordsOf(item)).isEmpty();
+	}
+
+	@Test
+	void sortDescReversesTheOrderAndAscIsTheDefault() throws Exception {
+		long me = newMemberId();
+		long recordId = createRecord(me, seed("rc-sort"), "정렬 검증용");
+		long first = createCollection(me, "먼저 만든 책", List.of(recordId));
+		long second = createCollection(me, "나중 만든 책", List.of(recordId));
+
+		assertThat(collectionIdsOf(list(me, recordId, ""))).containsExactly(first, second);
+		assertThat(collectionIdsOf(list(me, recordId, "?sort=CREATED_AT_ASC")))
+			.containsExactly(first, second);
+		assertThat(collectionIdsOf(list(me, recordId, "?sort=CREATED_AT_DESC")))
+			.containsExactly(second, first);
+	}
+
+	@Test
+	void unknownSortValueIs400() throws Exception {
+		long me = newMemberId();
+		long recordId = createRecord(me, seed("rc-badsort"), "잘못된 정렬값");
+
+		mockMvc.perform(get("/v1/records/{recordId}/collections", recordId)
+				.param("sort", "NEWEST").with(loginAs(me)))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
 	}
 
 	private JsonNode list(long memberId, long recordId, String query) throws Exception {

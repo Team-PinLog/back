@@ -128,13 +128,14 @@ public class CollectionService {
 	 */
 	@Transactional(readOnly = true)
 	public CursorPage<RecordCollectionCardResponse> listByRecord(Long memberId, Long recordId,
-		String cursor, Integer size) {
+		String cursor, Integer size, CollectionSort sort) {
 		requireOwnedActiveRecord(memberId, recordId);
 		int pageSize = CursorPage.normalizeSize(size);
 		Pageable probe = PageRequest.of(0, pageSize + 1);
 
-		List<Collection> rows =
-			collectionRepository.findFirstPageByMemberIdAndRecordIdAsc(memberId, recordId, probe);
+		List<Collection> rows = sort.ascending()
+			? collectionRepository.findFirstPageByMemberIdAndRecordIdAsc(memberId, recordId, probe)
+			: collectionRepository.findFirstPageByMemberIdAndRecordIdDesc(memberId, recordId, probe);
 		if (rows.isEmpty()) {
 			return CursorPage.empty();
 		}
