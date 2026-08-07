@@ -432,6 +432,24 @@ class RecordSearchApiTests extends IntegrationContainerSupport {
 	}
 
 	/**
+	 * 결합 신뢰도 게이트(S15P11A705-400, BD-52)는 <b>기본값이 꺼짐</b>이고, 꺼진 상태의 응답은
+	 * 현행과 완전히 같아야 한다. 유사도가 매우 낮아도 게이트가 꺼져 있으면 지워지지 않는다 —
+	 * 켠 상태의 게이트 계약은 {@link ConfidenceGateApiTests}가 맡는다.
+	 */
+	@Test
+	void confidenceGateIsOffByDefaultSoAWeakResultIsStillReturned() throws Exception {
+		long me = newMemberId();
+		long weak = newRecord(me, "search-gateoff", "37.5000000", "127.0000000");
+		long weakContext = newContext(weak, me, "유사도가 매우 낮은 기록");
+		STUB.willReturn(new FastApiSearchStub.Match(weak, weakContext, 0.05));
+
+		search(me, "질의")
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(1))
+			.andExpect(jsonPath("$.data.items[0].recordId").value(weak));
+	}
+
+	/**
 	 * {@code keywords}는 매칭 Context의 것이 아니라 <b>Record의 활성 Context 전체 집계</b>다
 	 * (API 명세 6.1). 매칭 Context만 보면 같은 Record의 다른 Context가 가진 Keyword가 사라진다.
 	 */

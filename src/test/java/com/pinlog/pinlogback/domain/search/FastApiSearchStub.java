@@ -32,8 +32,17 @@ final class FastApiSearchStub {
 
 	private static final JsonMapper JSON = JsonMapper.builder().build();
 
-	/** FastAPI가 Record 단위로 집계해 돌려주는 한 건(AI 설계 9.4). 본문은 돌려주지 않는다. */
-	record Match(long recordId, long contextId, double similarity) {
+	/**
+	 * FastAPI가 Record 단위로 집계해 돌려주는 한 건(AI 설계 9.4). 본문은 돌려주지 않는다.
+	 *
+	 * <p>{@code keywordMatched}는 ai 레포 키워드 재정렬의 매치 여부(S15P11A705-399)다. 3-인자
+	 * 생성자는 그 신호가 없는(false) 기존 호출부 전부를 그대로 둔다 — 결합 신뢰도 게이트
+	 * (S15P11A705-400)를 재는 테스트만 4-인자로 명시한다.
+	 */
+	record Match(long recordId, long contextId, double similarity, boolean keywordMatched) {
+		Match(long recordId, long contextId, double similarity) {
+			this(recordId, contextId, similarity, false);
+		}
 	}
 
 	/**
@@ -157,8 +166,8 @@ final class FastApiSearchStub {
 
 	private String resultsJson() {
 		String items = results.get().stream()
-			.map(match -> "{\"recordId\":%d,\"contextId\":%d,\"similarity\":%s}"
-				.formatted(match.recordId(), match.contextId(), match.similarity()))
+			.map(match -> "{\"recordId\":%d,\"contextId\":%d,\"similarity\":%s,\"keywordMatched\":%s}"
+				.formatted(match.recordId(), match.contextId(), match.similarity(), match.keywordMatched()))
 			.collect(Collectors.joining(","));
 		return "{\"results\":[" + items + "]}";
 	}
