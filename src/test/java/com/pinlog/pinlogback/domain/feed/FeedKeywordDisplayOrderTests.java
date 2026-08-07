@@ -2,13 +2,13 @@ package com.pinlog.pinlogback.domain.feed;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+
+import com.pinlog.pinlogback.global.response.CursorPage;
 
 import tools.jackson.databind.JsonNode;
 
@@ -34,9 +34,6 @@ import tools.jackson.databind.JsonNode;
 @SpringBootTest
 @AutoConfigureMockMvc
 class FeedKeywordDisplayOrderTests extends FeedFixtures {
-
-	/** 같은 테스트가 두 번 조회할 때 중복 Follow(409)를 내지 않기 위한 기록. */
-	private final Set<Long> following = new HashSet<>();
 
 	/**
 	 * KW1·KW3 — 축이 넷이고 빈도가 전부 같을 때. 상위 3칸이 <b>서로 다른 축</b>으로 채워지고 같은 축의
@@ -213,18 +210,35 @@ class FeedKeywordDisplayOrderTests extends FeedFixtures {
 	}
 
 	/**
-	 * 후보 풀에 확실히 들어가도록 <b>팔로우한 뒤</b> 조회한다. 공유 컨테이너라 다른 테스트가 만든
-	 * Collection이 계속 쌓이는데, 팔로우 채널은 후보 병합에서 가장 앞이고 {@code followSignal}이
-	 * 1.0이라 점수에서도 앞선다 — 내 Collection이 페이지 밖으로 밀려 테스트가 산발적으로 깨지는
-	 * 것을 막는다.
+	 * 후보 풀에서 만든 Collection을 <b>페이지를 끝까지 넘겨</b> 찾는다.
+	 *
+	 * <p>예전에는 팔로우로 강제 상위 노출을 만들었다. 탐색 탭이 팔로우한 사람의 Collection을
+	 * 제외하도록 바뀌면서(BD-51) 그 트릭은 역효과가 됐다 — 지금 팔로우하면 오히려 후보에서
+	 * 빠진다. 이 테스트는 순위·팔로우 여부가 아니라 <b>선택된 Keyword의 정렬</b>만 보므로, 몇 번째
+	 * 페이지에 있는지는 중요하지 않다. 공유 컨테이너라 다른 테스트가 계속 Collection을 쌓지만,
+	 * 방금 만든 것은 최신 채널의 {@code recent-limit}(100) 안에는 반드시 들어오므로 페이지를
+	 * 끝까지 넘기면 찾는다.
 	 */
 	private List<String> keywordsFor(long viewer, long owner, long collectionId) throws Exception {
-		if (!following.contains(collectionId)) {
-			follow(viewer, collectionId);
-			following.add(collectionId);
-		}
-		JsonNode item = itemOf(parse(feedPayload(viewer)), collectionId);
+		JsonNode item = findAcrossPages(viewer, collectionId);
 		assertThat(item).as("만든 Collection이 후보에 들어오지 않았다. owner=%d", owner).isNotNull();
 		return keywordsOf(item);
+	}
+
+	private JsonNode findAcrossPages(long viewer, long collectionId) throws Exception {
+		String cursor = null;
+		for (int page = 0; page < 10; page++) {
+			String query = "?size=" + CursorPage.MAX_SIZE + (cursor == null ? "" : "&cursor=" + cursor);
+			JsonNode response = feed(viewer, query);
+			JsonNode item = itemOf(response, collectionId);
+			if (item != null) {
+				return item;
+			}
+			if (!response.at("/data/hasNext").asBoolean()) {
+				return null;
+			}
+			cursor = response.at("/data/nextCursor").asString();
+		}
+		return null;
 	}
 }
