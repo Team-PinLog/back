@@ -146,6 +146,12 @@ pinlog:
       # 스레드 점유만 늘린다(AI 파트 소유 명세 docs/ai/spec/ai-integration.md 3장).
       connect-timeout: 1s
       read-timeout: 5s
+    judge:
+      # 검색 4번째 신호(관련도 재판정). 후보 최대 10건의 본문을 한 번의 LLM 호출로 판정하는
+      # 동기 경로라 search보다 길다. 초과·실패는 예외가 아니라 강등이다 — 판정 이전 순서로
+      # 되돌아간다(RecordSearchService.judgeRelevance).
+      connect-timeout: 1s
+      read-timeout: 10s
     place-suggestion:
       connect-timeout: 1s
       read-timeout: 35s
@@ -178,6 +184,11 @@ pinlog:
       # 단어형 질의의 최대 글자 수. ai 레포 SEARCH_WORD_QUERY_MAX_CHARS와 같은 값·같은 의미여야
       # 한다 — 어긋나면 「단어형」의 정의가 파트마다 달라져 게이트(단어형 한정)가 절반만 켜진다.
       word-query-max-chars: ${PINLOG_SEARCH_LEXICAL_WORD_QUERY_MAX_CHARS:5}
+    # 검색 결과 LLM 관련도 재판정(4번째 신호). 사용자 보고 실사례(문장형 질의에 포함된 고유명사가
+    # 세 신호 모두의 사각지대에 걸려 관련 기록이 무관한 기록보다 낮은 순위로 나온 사례)를 교정한다.
+    # 기본값 false가 곧 "현행과 동일한 검색"이다 — 켜는 것은 이 구현이 배포·관측된 뒤의 결정이다.
+    relevance-judge:
+      enabled: ${PINLOG_SEARCH_RELEVANCE_JUDGE_ENABLED:false}
     # 결합 신뢰도 게이트(S15P11A705-400, BD-52). 벡터 신호 하나뿐이고 유사도가 낮은 결과를
     # 응답에서 뺀다. 기본값 false가 곧 "현행과 동일한 검색"이다.
     gate:

@@ -67,7 +67,7 @@ class AiSearchClientTest {
 		AiProperties.Timeouts timeouts =
 			new AiProperties.Timeouts(Duration.ofSeconds(1), Duration.ofSeconds(5));
 		AiProperties properties = new AiProperties(
-			"http://localhost:8000", "test-internal-secret", embeddingProfile, timeouts, timeouts);
+			"http://localhost:8000", "test-internal-secret", embeddingProfile, timeouts, timeouts, timeouts);
 		return new AiSearchClient(
 			RestClient.create(), JsonMapper.builder().build(), properties, environment);
 	}

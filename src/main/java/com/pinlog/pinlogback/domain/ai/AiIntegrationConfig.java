@@ -55,6 +55,15 @@ public class AiIntegrationConfig {
 		return restClient(properties.baseUrl(), properties.search());
 	}
 
+	/**
+	 * {@code judge}용 전용 인스턴스다. 후보 최대 10건의 본문을 한 번의 LLM 호출로 판정하는 동기
+	 * 경로라 {@code search}보다 응답이 느리다 — 같은 타임아웃을 쓰면 정상 판정이 잘린다.
+	 */
+	@Bean
+	public RestClient aiJudgeRestClient(AiProperties properties) {
+		return restClient(properties.baseUrl(), properties.judge());
+	}
+
 	@Bean
 	public RestClient aiPlaceSuggestionRestClient(AiProperties properties,
 		AiPlaceSuggestionProperties placeSuggestionProperties) {
