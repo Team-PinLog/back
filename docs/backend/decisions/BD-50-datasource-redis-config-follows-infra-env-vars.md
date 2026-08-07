@@ -1,8 +1,9 @@
-# BD-46. datasource·Redis 접속 정보는 코드 리터럴이 아니라 infra 환경변수를 따른다
+# BD-50. datasource·Redis 접속 정보는 코드 리터럴이 아니라 infra 환경변수를 따른다
 
 - **상태**: Accepted
 - **날짜**: 2026-08-03
 - **관련**: [back#164](https://github.com/Team-PinLog/back/pull/164), `infra/apps/prod/back/values.yaml`, [`docs` 레포 `static/12_배포_변수_및_Secret_표준.md`](https://github.com/Team-PinLog/docs/blob/main/static/12_배포_변수_및_Secret_표준.md)
+- **번호 정정(2026-08-07)**: 이 결정은 처음 `BD-46`으로 머지됐으나 그 번호가 [BD-46(목록 기본 정렬)](BD-46-list-sort-default-asc-with-params.md)과 겹쳤다. `dev` 머지 순서가 번호를 확정한다는 [README](README.md)의 규칙에 따라 먼저 머지된 쪽이 46을 유지하고, 나중에 머지된 이 문서를 50으로 옮겼다. **결정 내용은 바뀌지 않았다.**
 
 ## 맥락
 
