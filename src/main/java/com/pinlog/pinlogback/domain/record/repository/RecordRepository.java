@@ -1,9 +1,11 @@
 package com.pinlog.pinlogback.domain.record.repository;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -32,6 +34,39 @@ public interface RecordRepository extends JpaRepository<Record, Long> {
 	long countByMemberId(Long memberId);
 
 	List<Record> findByIdInAndMemberId(List<Long> ids, Long memberId);
+
+	/**
+	 * 최근 Record 목록의 첫 페이지(API 명세 5.9). {@code since} 이후에 만들어진 내 활성 Record를
+	 * 최신순으로 준다.
+	 *
+	 * <p>삭제 조건을 적지 않는다. {@code @SQLRestriction("deleted_at IS NULL")}이 이미 걸리며,
+	 * 명시하려다 빠뜨리면 오히려 삭제분이 섞인다(S15P11A705-200에서 뮤테이션으로 확인).
+	 *
+	 * <p><b>{@code id} 정렬이 동률을 끊는다.</b> {@code created_at}은 DB {@code now()}가 채우므로 한
+	 * 트랜잭션에서 만들어진 Record들이 같은 값을 가질 수 있고, 그때 이 조건이 없으면 페이지 경계에서
+	 * 항목이 중복되거나 사라진다.
+	 */
+	@Query("select r from Record r"
+		+ " where r.memberId = :memberId and r.createdAt >= :since"
+		+ " order by r.createdAt desc, r.id desc")
+	List<Record> findRecentFirstPage(@Param("memberId") Long memberId, @Param("since") Instant since,
+		Pageable pageable);
+
+	/**
+	 * 최근 Record 목록의 커서 이후 페이지. 정렬키 쌍 {@code (createdAt, id)}보다 <b>작은</b> 것만
+	 * 읽는다 — 첫 페이지와 같은 정렬이므로 이미 준 항목이 다시 나오지 않는다.
+	 *
+	 * <p>{@code since}는 요청마다 다시 계산되어 창의 뒤쪽 경계가 앞으로 밀린다. 최신순이라 밀려서
+	 * 빠지는 것은 아직 주지 않은 뒤쪽뿐이고, 이미 준 항목이 중복되지는 않는다(명세 5.9).
+	 */
+	@Query("select r from Record r"
+		+ " where r.memberId = :memberId and r.createdAt >= :since"
+		+ " and (r.createdAt < :cursorCreatedAt"
+		+ " or (r.createdAt = :cursorCreatedAt and r.id < :cursorId))"
+		+ " order by r.createdAt desc, r.id desc")
+	List<Record> findRecentAfter(@Param("memberId") Long memberId, @Param("since") Instant since,
+		@Param("cursorCreatedAt") Instant cursorCreatedAt, @Param("cursorId") Long cursorId,
+		Pageable pageable);
 
 	/**
 	 * 동시 요청에 안전한 Record 확보(데이터모델 6.1·6.3). Place upsert와 같은 패턴이며 이유도 같다 —

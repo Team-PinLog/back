@@ -2,12 +2,18 @@ package com.pinlog.pinlogback.domain.record.service;
 
 import java.math.BigDecimal;
 import java.text.Collator;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
@@ -17,20 +23,24 @@ import com.pinlog.pinlogback.domain.ai.event.ContextAiRequested;
 import com.pinlog.pinlogback.domain.ai.repository.AiDerivedDataRepository;
 import com.pinlog.pinlogback.domain.ai.repository.ContextAiStateRepository;
 import com.pinlog.pinlogback.domain.ai.repository.ContextKeywordRepository;
+import com.pinlog.pinlogback.domain.ai.repository.TopKeywordRow;
 import com.pinlog.pinlogback.domain.collection.repository.RecordLatestCollectionRepository;
 import com.pinlog.pinlogback.domain.place.entity.Place;
 import com.pinlog.pinlogback.domain.place.repository.PlaceRepository;
 import com.pinlog.pinlogback.domain.record.dto.ContextMutationResponse;
 import com.pinlog.pinlogback.domain.record.dto.ContextResponse;
 import com.pinlog.pinlogback.domain.record.dto.ContextSort;
+import com.pinlog.pinlogback.domain.record.dto.MapKeywordsResponse;
 import com.pinlog.pinlogback.domain.record.dto.MapMarkerResponse;
 import com.pinlog.pinlogback.domain.record.dto.MapResponse;
 import com.pinlog.pinlogback.domain.record.dto.PlacePayload;
+import com.pinlog.pinlogback.domain.record.dto.RecentRecordCardResponse;
 import com.pinlog.pinlogback.domain.record.dto.RecordByPlaceResponse;
 import com.pinlog.pinlogback.domain.record.dto.RecordCreateRequest;
 import com.pinlog.pinlogback.domain.record.dto.RecordCreateResponse;
 import com.pinlog.pinlogback.domain.record.dto.RecordDetailResponse;
 import com.pinlog.pinlogback.domain.record.dto.RecordSaveResult;
+import com.pinlog.pinlogback.domain.record.dto.TopKeywordResponse;
 import com.pinlog.pinlogback.domain.record.entity.Context;
 import com.pinlog.pinlogback.domain.record.entity.Record;
 import com.pinlog.pinlogback.domain.record.repository.ContextRepository;
@@ -38,6 +48,8 @@ import com.pinlog.pinlogback.domain.record.repository.RecordRepository;
 import com.pinlog.pinlogback.global.exception.InvalidRequestException;
 import com.pinlog.pinlogback.global.exception.ResourceNotFoundException;
 import com.pinlog.pinlogback.global.response.BoundsResponse;
+import com.pinlog.pinlogback.global.response.Cursor;
+import com.pinlog.pinlogback.global.response.CursorPage;
 
 /**
  * Record·Context 유스케이스. 사용자 식별자는 컨트롤러가 인증 경계에서 해석한 memberId를
@@ -45,6 +57,15 @@ import com.pinlog.pinlogback.global.response.BoundsResponse;
  */
 @Service
 public class RecordService {
+
+	/** 명세 5.9 — "최근"의 기준. 파라미터로 열지 않고 서버가 고정한다. */
+	private static final Duration RECENT_WINDOW = Duration.ofDays(7);
+
+	/** 명세 5.9 — size 기본값. 홈 화면이 카드를 한 장씩 넘긴다. */
+	private static final int DEFAULT_RECENT_SIZE = 1;
+
+	/** 칩 개수는 서버가 고정한다. 파라미터로 열면 캐시 키와 테스트가 함께 늘어난다. */
+	private static final int TOP_KEYWORD_LIMIT = 5;
 
 	private final PlaceRepository placeRepository;
 	private final RecordRepository recordRepository;
@@ -106,6 +127,77 @@ public class RecordService {
 		return detailOf(record, keywordsForOwner(record, memberId), contextSort);
 	}
 
+	/**
+	 * 최근 Record 목록(API 명세 5.9). 홈 화면 "최근 기록" 영역이 카드를 한 장씩 넘겨 본다.
+	 *
+	 * <p>항목 수와 무관하게 쿼리는 셋이다 — Record 페이지, Place 일괄 조회, Keyword 일괄 조회.
+	 * Record마다 Place·Keyword를 부르면 그대로 N+1이고, 그것을 {@code RecordRecentQueryCountTests}가
+	 * 측정으로 붙잡는다.
+	 */
+	@Transactional(readOnly = true)
+	public CursorPage<RecentRecordCardResponse> listRecent(Long memberId, String cursor, Integer size) {
+		int pageSize = normalizeRecentSize(size);
+		Instant since = Instant.now().minus(RECENT_WINDOW);
+		Pageable probe = PageRequest.of(0, pageSize + 1);
+
+		List<Record> rows;
+		if (cursor == null || cursor.isBlank()) {
+			rows = recordRepository.findRecentFirstPage(memberId, since, probe);
+		} else {
+			Cursor decoded = Cursor.decode(cursor);
+			rows = recordRepository.findRecentAfter(
+				memberId, since, decoded.sortKeyAsInstant(), decoded.id(), probe);
+		}
+		if (rows.isEmpty()) {
+			return CursorPage.empty();
+		}
+
+		boolean hasNext = rows.size() > pageSize;
+		List<Record> page = hasNext ? rows.subList(0, pageSize) : rows;
+		List<RecentRecordCardResponse> items = toRecentCards(memberId, page);
+		if (!hasNext) {
+			return CursorPage.last(items);
+		}
+		Record last = page.get(page.size() - 1);
+		return CursorPage.of(items, Cursor.encode(last.getCreatedAt(), last.getId()));
+	}
+
+	private List<RecentRecordCardResponse> toRecentCards(Long memberId, List<Record> page) {
+		List<Long> recordIds = page.stream().map(Record::getId).toList();
+		Map<Long, Place> places = placeRepository
+			.findAllById(page.stream().map(Record::getPlaceId).distinct().toList())
+			.stream()
+			.collect(Collectors.toMap(Place::getId, Function.identity()));
+		Map<Long, List<String>> keywords = contextKeywordRepository
+			.findKeywordsForOwner(recordIds, memberId);
+		return page.stream()
+			.map(record -> RecentRecordCardResponse.of(
+				record,
+				requirePlace(places, record.getPlaceId()),
+				keywords.getOrDefault(record.getId(), List.of())))
+			.toList();
+	}
+
+	/** Place는 삭제되지 않으므로(BaseEntity를 상속하지 않는다) 빠질 자리가 없다 — 빠졌다면 데이터 이상이다. */
+	private Place requirePlace(Map<Long, Place> places, Long placeId) {
+		Place place = places.get(placeId);
+		if (place == null) {
+			throw new ResourceNotFoundException();
+		}
+		return place;
+	}
+
+	/**
+	 * {@link CursorPage#normalizeSize}를 쓰지 않는다 — 그쪽은 미지정을 20으로 되돌리는데 이 목록의
+	 * 기본은 1이다(명세 5.9). 상한은 공용 값을 그대로 쓴다.
+	 */
+	private int normalizeRecentSize(Integer requested) {
+		if (requested == null || requested <= 0) {
+			return DEFAULT_RECENT_SIZE;
+		}
+		return Math.min(requested, CursorPage.MAX_SIZE);
+	}
+
 	@Transactional(readOnly = true)
 	public RecordByPlaceResponse getByKakaoPlaceId(Long memberId, String kakaoPlaceId) {
 		RecordDetailResponse detail = placeRepository.findByKakaoPlaceId(kakaoPlaceId)
@@ -162,11 +254,7 @@ public class RecordService {
 	@Transactional(readOnly = true)
 	public MapResponse map(Long memberId, BigDecimal swLat, BigDecimal swLng, BigDecimal neLat, BigDecimal neLng,
 		String keyword) {
-		boolean allPresent = swLat != null && swLng != null && neLat != null && neLng != null;
-		boolean nonePresent = swLat == null && swLng == null && neLat == null && neLng == null;
-		if (!allPresent && !nonePresent) {
-			throw new InvalidRequestException("bbox 파라미터(swLat·swLng·neLat·neLng)는 모두 주거나 모두 생략해야 합니다.");
-		}
+		boolean allPresent = requireWholeBbox(swLat, swLng, neLat, neLng);
 		String likeKeyword = toLikeKeyword(keyword);
 		List<MapMarkerResponse> found = allPresent
 			? recordRepository.findMarkersWithinBounds(memberId, swLat, swLng, neLat, neLng, likeKeyword)
@@ -174,6 +262,40 @@ public class RecordService {
 		List<MapMarkerResponse> items = sortByName(withLatestCollectionIds(found));
 		return new MapResponse(
 			BoundsResponse.enclosing(items, MapMarkerResponse::lat, MapMarkerResponse::lng), items);
+	}
+
+	/**
+	 * 지도에 보이는 사각형 안 Record의 Keyword 상위 5건(S15P11A705-388).
+	 *
+	 * <p>bbox만 반영한다. 장소명 검색어({@code keyword})도, 적용 중인 키워드 필터도 반영하지
+	 * 않는다 — 적용 중인 필터를 반영하면 그 키워드를 뺀 나머지 칩이 전부 0이 되어 사라지고,
+	 * 사용자가 다른 칩으로 갈아탈 수 없다.
+	 */
+	@Transactional(readOnly = true)
+	public MapKeywordsResponse mapKeywords(Long memberId, BigDecimal swLat, BigDecimal swLng,
+		BigDecimal neLat, BigDecimal neLng) {
+		boolean bounded = requireWholeBbox(swLat, swLng, neLat, neLng);
+		List<TopKeywordRow> rows = bounded
+			? contextKeywordRepository.findTopKeywordsInBounds(
+				memberId, swLat, swLng, neLat, neLng, TOP_KEYWORD_LIMIT)
+			: contextKeywordRepository.findTopKeywordsForOwner(memberId, TOP_KEYWORD_LIMIT);
+		return new MapKeywordsResponse(rows.stream().map(TopKeywordResponse::from).toList());
+	}
+
+	/**
+	 * bbox 파라미터는 넷 다 주거나 모두 생략해야 한다(API 명세 4.2). 마커 조회와 키워드 조회가
+	 * 같은 규칙을 쓰므로 한 자리에 둔다 — 갈라지면 두 엔드포인트의 400 조건이 어긋난다.
+	 *
+	 * @return 넷 다 주었으면 true, 모두 생략했으면 false
+	 */
+	private static boolean requireWholeBbox(BigDecimal swLat, BigDecimal swLng, BigDecimal neLat,
+		BigDecimal neLng) {
+		boolean allPresent = swLat != null && swLng != null && neLat != null && neLng != null;
+		boolean nonePresent = swLat == null && swLng == null && neLat == null && neLng == null;
+		if (!allPresent && !nonePresent) {
+			throw new InvalidRequestException("bbox 파라미터(swLat·swLng·neLat·neLng)는 모두 주거나 모두 생략해야 합니다.");
+		}
+		return allPresent;
 	}
 
 	/**

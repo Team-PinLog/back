@@ -18,7 +18,7 @@ import org.springframework.core.io.ClassPathResource;
  *
  * <p>datasource·redis 접속 정보는 여기서 검증하지 않는다 — {@code application-prod.yml}에 두지 않고
  * infra가 {@code SPRING_DATASOURCE_*}·{@code SPRING_DATA_REDIS_*} 표준 이름으로 주입하는 환경변수에
- * 전적으로 맡기기로 했다(BD-46). 이 파일에 리터럴을 다시 쓰면 그 결정을 되돌리는 것이다.
+ * 전적으로 맡기기로 했다(BD-50). 이 파일에 리터럴을 다시 쓰면 그 결정을 되돌리는 것이다.
  */
 class ConfigurationContractTests {
 
@@ -34,7 +34,7 @@ class ConfigurationContractTests {
 	}
 
 	/**
-	 * datasource·redis는 infra가 표준 이름 환경변수로 전부 주입하므로(BD-46), 이 파일에
+	 * datasource·redis는 infra가 표준 이름 환경변수로 전부 주입하므로(BD-50), 이 파일에
 	 * {@code spring.datasource.*}·{@code spring.data.redis.*}를 다시 적지 않는다 — 적어봤자
 	 * OS 환경변수 우선순위에 밀려 무시되고, 리터럴이 실제 접속 정보와 어긋나도 아무도 모른다.
 	 */
@@ -43,7 +43,7 @@ class ConfigurationContractTests {
 		Map<String, Object> prod = load("application-prod.yml");
 
 		assertThat(prod.keySet())
-			.as("infra 환경변수가 이미 주입하는 키를 이 파일에서 다시 선언하지 않는다(BD-46)")
+			.as("infra 환경변수가 이미 주입하는 키를 이 파일에서 다시 선언하지 않는다(BD-50)")
 			.noneMatch(key -> key.startsWith("spring.datasource.") || key.startsWith("spring.data.redis."));
 	}
 

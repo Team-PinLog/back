@@ -76,7 +76,7 @@ env:
     value: "6379"
 ```
 
-`application.yml`에는 `spring.datasource.*`·`spring.data.redis.*`를 아예 적지 않습니다. 위 다섯 개가 실제 k8s 환경변수로 주입되고, Spring Boot의 표준 이름 자동 바인딩이 그대로 `spring.datasource.url` 등으로 매핑하기 때문입니다 — `${...}` placeholder도, 리터럴 기본값도 필요 없습니다. `SPRING_DATASOURCE_PASSWORD`만 `postgres-credentials` Secret에서 오고 나머지 네 개는 평문 GitOps 값입니다. 새 비밀번호·API 키가 필요하면 저장소에 넣지 말고 인프라 담당자에게 요청합니다. (이전엔 이 값들을 `application-prod.yml`에 리터럴로 다시 적어 두었으나, OS 환경변수가 profile yaml보다 우선순위가 높아 애초에 무시되고 있었다 — [BD-46](../backend/decisions/BD-46-datasource-redis-config-follows-infra-env-vars.md).)
+`application.yml`에는 `spring.datasource.*`·`spring.data.redis.*`를 아예 적지 않습니다. 위 다섯 개가 실제 k8s 환경변수로 주입되고, Spring Boot의 표준 이름 자동 바인딩이 그대로 `spring.datasource.url` 등으로 매핑하기 때문입니다 — `${...}` placeholder도, 리터럴 기본값도 필요 없습니다. `SPRING_DATASOURCE_PASSWORD`만 `postgres-credentials` Secret에서 오고 나머지 네 개는 평문 GitOps 값입니다. 새 비밀번호·API 키가 필요하면 저장소에 넣지 말고 인프라 담당자에게 요청합니다. (이전엔 이 값들을 `application-prod.yml`에 리터럴로 다시 적어 두었으나, OS 환경변수가 profile yaml보다 우선순위가 높아 애초에 무시되고 있었다 — [BD-50](../backend/decisions/BD-50-datasource-redis-config-follows-infra-env-vars.md).)
 
 > **정정 (2026-08-03)**: 이 절은 한동안 "환경변수로 주입되는 건 `DB_PASSWORD` 하나뿐, url·username·host는 yaml 리터럴"이라고 적혀 있었으나, 그 이름·계약 모두 실제 배포(`infra/apps/prod/back/values.yaml`)와 달랐다. 실제 계약은 [`docs`(팀 공용) 레포의 `docs/static/12_배포_변수_및_Secret_표준.md`](https://github.com/Team-PinLog/docs/blob/main/static/12_배포_변수_및_Secret_표준.md)와 일치하며, 위 내용이 그것으로 교체한 결과다. `infra/docs/backend-conventions.md` §5도 같은 이유로 낡아서 인프라 담당자에게 별도로 전달했다.
 
@@ -131,7 +131,7 @@ spring:
 
 운영은 클러스터 내부 주소를 쓰고, 접속 정보 다섯 개(url·username·password·Redis host·port) 전부를 infra가 환경변수로 주입합니다 — 위 "비밀값과 자격증명 주입" 절 참고.
 
-`application-prod.yml`에는 `spring.datasource.*`·`spring.data.redis.*`를 적지 않습니다([BD-46](../backend/decisions/BD-46-datasource-redis-config-follows-infra-env-vars.md)). 예전엔 주소·사용자명을 리터럴로 파일에 적어 "코드로 접속 정보를 통제한다"는 의도였지만, OS 환경변수가 profile yaml보다 우선순위가 높아 그 리터럴은 애초에 무시되고 있었다 — infra가 이미 표준 이름 환경변수로 다섯 개를 전부 주입하고 있었기 때문이다. `ConfigurationContractTests`는 이제 반대로 이 키들이 **재선언되지 않았는지**를 감시합니다.
+`application-prod.yml`에는 `spring.datasource.*`·`spring.data.redis.*`를 적지 않습니다([BD-50](../backend/decisions/BD-50-datasource-redis-config-follows-infra-env-vars.md)). 예전엔 주소·사용자명을 리터럴로 파일에 적어 "코드로 접속 정보를 통제한다"는 의도였지만, OS 환경변수가 profile yaml보다 우선순위가 높아 그 리터럴은 애초에 무시되고 있었다 — infra가 이미 표준 이름 환경변수로 다섯 개를 전부 주입하고 있었기 때문이다. `ConfigurationContractTests`는 이제 반대로 이 키들이 **재선언되지 않았는지**를 감시합니다.
 
 > Redis는 캐시·세션 전용이라 재시작하면 비워집니다. 유실되면 안 되는 데이터를 넣어야 하면 사전에 인프라와 협의합니다.
 

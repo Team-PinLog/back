@@ -1,7 +1,7 @@
 # datasource·redis 설정은 여기 두지 않는다. infra/apps/prod/back/values.yaml이
 # SPRING_DATASOURCE_URL/USERNAME/PASSWORD, SPRING_DATA_REDIS_HOST/PORT를 Spring Boot
 # 표준 이름으로 주입하고, OS 환경변수가 이 파일보다 우선순위가 높아 여기 뭘 적어도
-# 무시된다(BD-46). 계약 원본: https://github.com/Team-PinLog/docs/blob/main/static/12_배포_변수_및_Secret_표준.md
+# 무시된다(BD-50). 계약 원본: https://github.com/Team-PinLog/docs/blob/main/static/12_배포_변수_및_Secret_표준.md
 
 # 운영에서는 API 문서를 노출하지 않는다. 로컬·개발(무프로파일)에서는 기본값(on)이 적용된다.
 springdoc:
