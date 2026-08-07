@@ -193,6 +193,16 @@ public class ContextKeywordRepository {
 	 * 으로 뒤집힌다(설계 문서 6.1 — 같은 크기 회원이 16ms와 49ms로 갈렸다). 지도 화면은 항상
 	 * bbox를 보내므로 실사용 경로는 아니며, 이 메서드가 존재하는 이유는 마커 조회와 계약을
 	 * 맞추기 위해서다. 성능을 다시 볼 일이 생기면 여기부터 본다.
+	 *
+	 * <p>이 SQL에는 {@code core.record} 조인이 없어 삭제 제외를 {@code ct.deleted_at IS NULL}
+	 * 하나가 단독으로 맡는다. {@link #COLLECTION_KEYWORDS_PUBLIC_SQL}은 같은 상황에서 {@code r}과
+	 * {@code ct} 양쪽에 삭제 조건을 걸어 이중으로 방어하는데, 여기서 조인을 뺀 것은 실수가 아니라
+	 * 의도된 선택이다 — {@code RecordDeletionService}와 회원 탈퇴 경로가 Record 삭제 시 그 Record의
+	 * Context를 반드시 연쇄 소프트 삭제하므로 현행 데이터에서는 {@code ct.deleted_at}만으로 새지
+	 * 않는다. 그럼에도 조인을 넣지 않는 진짜 이유는 위 문단의 성능이다 — bbox 없는 경로에 삭제
+	 * 방어 목적으로 {@code core.record} 조인을 넣으면 플래너가 그 테이블을 통째로 스캔한다(회원당
+	 * Context 3,000에서 73ms 대 17ms). 소유권 컬럼이 {@code ct.member_id}인 것도 같은 이유다 —
+	 * 조인이 없으니 {@code r.member_id}를 볼 수 없다.
 	 */
 	private static final String TOP_KEYWORDS_FOR_OWNER_SQL = """
 		SELECT kp.id AS keyword_id,
