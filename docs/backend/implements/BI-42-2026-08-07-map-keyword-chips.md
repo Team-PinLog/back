@@ -2,8 +2,8 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-08-07
-- **관련**: S15P11A705-388, [설계](../../../.claude/superpowers/specs/2026-08-07-map-keyword-chips-design.md),
-  [BD-13](../decisions/BD-13-public-boundary-query-dto-split.md)
+- **관련**: Jira S15P11A705-388(작업 내용·완료 조건·성능 근거 요약이 본문에 있다),
+  브랜치 `feat/S15P11A705-388-map-keyword-chips`, [BD-13](../decisions/BD-13-public-boundary-query-dto-split.md)
 
 ## 무엇을 만들었나
 
