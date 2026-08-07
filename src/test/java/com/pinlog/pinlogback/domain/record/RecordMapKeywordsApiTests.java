@@ -207,6 +207,56 @@ class RecordMapKeywordsApiTests extends IntegrationContainerSupport {
 			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
 	}
 
+	@Test
+	void otherMembersRecordsAreNotCounted() throws Exception {
+		long me = newMemberId();
+		long other = newMemberId();
+		int preset = insertPreset("남의키워드", "PUBLIC", true);
+		attachTo(newRecordInside(other, "kw-other-1"), other, preset);
+
+		getInBounds(me)
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items").isEmpty());
+	}
+
+	@Test
+	void memberWithoutKeywordsGetsEmptyArrayNot404() throws Exception {
+		long memberId = newMemberId();
+		newRecordInside(memberId, "kw-empty-1");
+
+		getInBounds(memberId)
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items").isArray())
+			.andExpect(jsonPath("$.data.items").isEmpty());
+	}
+
+	@Test
+	void fewerThanFiveKeywordsComeBackAsIs() throws Exception {
+		long memberId = newMemberId();
+		int one = insertPreset("하나", "PUBLIC", true);
+		int two = insertPreset("둘", "PUBLIC", true);
+		attachTo(newRecordInside(memberId, "kw-few-1"), memberId, one);
+		attachTo(newRecordInside(memberId, "kw-few-2"), memberId, two);
+
+		getInBounds(memberId)
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(2));
+	}
+
+	@Test
+	void softDeletedRecordsAreNotCounted() throws Exception {
+		long memberId = newMemberId();
+		int preset = insertPreset("지운기록", "PUBLIC", true);
+		long recordId = newRecordInside(memberId, "kw-deleted-1");
+		long contextId = newContext(recordId, memberId);
+		attachKeyword(contextId, preset);
+		jdbcTemplate.update("UPDATE core.context SET deleted_at = now() WHERE id = ?", contextId);
+
+		getInBounds(memberId)
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items").isEmpty());
+	}
+
 	private ResultActions getInBounds(long memberId) throws Exception {
 		return mockMvc.perform(get(URL).with(loginAs(memberId))
 			.param("swLat", "37.4").param("swLng", "126.9")
