@@ -159,6 +159,78 @@ class RecordCollectionApiTests extends CoreApiFixtures {
 			.andExpect(jsonPath("$.error.code").value("INVALID_INPUT"));
 	}
 
+	@Test
+	void cursorWalksEveryCollectionWithoutOverlapInBothDirections() throws Exception {
+		long me = newMemberId();
+		long recordId = createRecord(me, seed("rc-cursor"), "커서 검증용");
+		List<Long> created = new ArrayList<>();
+		for (int i = 0; i < 5; i++) {
+			created.add(createCollection(me, "책 " + i, List.of(recordId)));
+		}
+
+		assertThat(walk(me, recordId, "CREATED_AT_ASC")).isEqualTo(created);
+		assertThat(walk(me, recordId, "CREATED_AT_DESC")).isEqualTo(created.reversed());
+	}
+
+	@Test
+	void collectionsSharingCreatedAtAreBrokenByIdWithoutLossOrDuplication() throws Exception {
+		long me = newMemberId();
+		long recordId = createRecord(me, seed("rc-tie"), "동률 검증용");
+		List<Long> created = new ArrayList<>();
+		for (int i = 0; i < 4; i++) {
+			created.add(createCollection(me, "동시각 " + i, List.of(recordId)));
+		}
+		// created_at은 DB now()가 채우므로 한 트랜잭션 안에서 같은 값이 나올 수 있다. 그 상황을
+		// 확실히 만들어 커서가 id로 끊는지 본다.
+		created.forEach(id -> jdbcTemplate.update(
+			"UPDATE core.collection SET created_at = timestamptz '2026-08-01 00:00:00+00' WHERE id = ?",
+			id));
+
+		assertThat(walk(me, recordId, "CREATED_AT_ASC")).isEqualTo(created);
+		assertThat(walk(me, recordId, "CREATED_AT_DESC")).isEqualTo(created.reversed());
+	}
+
+	@Test
+	void sizeIsNormalizedRatherThanRejected() throws Exception {
+		long me = newMemberId();
+		long recordId = createRecord(me, seed("rc-size"), "크기 보정");
+		for (int i = 0; i < 3; i++) {
+			createCollection(me, "책 " + i, List.of(recordId));
+		}
+
+		assertThat(collectionIdsOf(list(me, recordId, "?size=0"))).hasSize(3);
+		assertThat(collectionIdsOf(list(me, recordId, "?size=-1"))).hasSize(3);
+		assertThat(collectionIdsOf(list(me, recordId, "?size=1000"))).hasSize(3);
+		assertThat(collectionIdsOf(list(me, recordId, "?size=2"))).hasSize(2);
+	}
+
+	@Test
+	void forgedCursorIs400() throws Exception {
+		long me = newMemberId();
+		long recordId = createRecord(me, seed("rc-badcur"), "위조 커서");
+		createCollection(me, "책", List.of(recordId));
+
+		mockMvc.perform(get("/v1/records/{recordId}/collections", recordId)
+				.param("cursor", "!!!not-base64!!!").with(loginAs(me)))
+			.andExpect(status().isBadRequest());
+	}
+
+	/** 마지막 페이지까지 커서를 따라가며 모은 collectionId. 페이지 크기 2로 경계를 여러 번 넘긴다. */
+	private List<Long> walk(long memberId, long recordId, String sort) throws Exception {
+		List<Long> seen = new ArrayList<>();
+		String cursor = null;
+		while (true) {
+			String query = "?size=2&sort=" + sort + (cursor == null ? "" : "&cursor=" + cursor);
+			JsonNode page = list(memberId, recordId, query);
+			seen.addAll(collectionIdsOf(page));
+			if (!page.at("/data/hasNext").asBoolean()) {
+				assertThat(page.at("/data/nextCursor").isNull()).isTrue();
+				return seen;
+			}
+			cursor = page.at("/data/nextCursor").asString();
+		}
+	}
+
 	private JsonNode list(long memberId, long recordId, String query) throws Exception {
 		return parse(mockMvc.perform(
 				get("/v1/records/" + recordId + "/collections" + query).with(loginAs(memberId)))

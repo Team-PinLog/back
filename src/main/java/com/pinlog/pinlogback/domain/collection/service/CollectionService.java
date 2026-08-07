@@ -133,9 +133,19 @@ public class CollectionService {
 		int pageSize = CursorPage.normalizeSize(size);
 		Pageable probe = PageRequest.of(0, pageSize + 1);
 
-		List<Collection> rows = sort.ascending()
-			? collectionRepository.findFirstPageByMemberIdAndRecordIdAsc(memberId, recordId, probe)
-			: collectionRepository.findFirstPageByMemberIdAndRecordIdDesc(memberId, recordId, probe);
+		List<Collection> rows;
+		if (cursor == null || cursor.isBlank()) {
+			rows = sort.ascending()
+				? collectionRepository.findFirstPageByMemberIdAndRecordIdAsc(memberId, recordId, probe)
+				: collectionRepository.findFirstPageByMemberIdAndRecordIdDesc(memberId, recordId, probe);
+		} else {
+			Cursor decoded = Cursor.decode(cursor);
+			rows = sort.ascending()
+				? collectionRepository.findPageByMemberIdAndRecordIdAfterAsc(
+					memberId, recordId, decoded.sortKeyAsInstant(), decoded.id(), probe)
+				: collectionRepository.findPageByMemberIdAndRecordIdAfterDesc(
+					memberId, recordId, decoded.sortKeyAsInstant(), decoded.id(), probe);
+		}
 		if (rows.isEmpty()) {
 			return CursorPage.empty();
 		}

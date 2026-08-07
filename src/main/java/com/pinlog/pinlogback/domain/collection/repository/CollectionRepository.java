@@ -102,4 +102,27 @@ public interface CollectionRepository extends JpaRepository<Collection, Long> {
 		+ " order by c.createdAt desc, c.id desc")
 	List<Collection> findFirstPageByMemberIdAndRecordIdDesc(@Param("memberId") Long memberId,
 		@Param("recordId") Long recordId, Pageable pageable);
+
+	/**
+	 * 커서 이후 페이지. <b>{@code order by}와 부등호가 짝이다</b> — 내림차순은 {@code <}(더 오래된
+	 * 것이 다음), 오름차순은 {@code >}(더 최신인 것이 다음)다. 한쪽만 뒤집으면 컴파일도 단순 조회
+	 * 테스트도 통과한 채 페이지 경계만 조용히 어긋난다(BD-46).
+	 */
+	@Query("select c from Collection c where c.memberId = :memberId"
+		+ " and exists (select 1 from CollectionRecord cr"
+		+ " where cr.collectionId = c.id and cr.recordId = :recordId)"
+		+ " and (c.createdAt > :createdAt or (c.createdAt = :createdAt and c.id > :id))"
+		+ " order by c.createdAt asc, c.id asc")
+	List<Collection> findPageByMemberIdAndRecordIdAfterAsc(@Param("memberId") Long memberId,
+		@Param("recordId") Long recordId, @Param("createdAt") Instant createdAt,
+		@Param("id") Long id, Pageable pageable);
+
+	@Query("select c from Collection c where c.memberId = :memberId"
+		+ " and exists (select 1 from CollectionRecord cr"
+		+ " where cr.collectionId = c.id and cr.recordId = :recordId)"
+		+ " and (c.createdAt < :createdAt or (c.createdAt = :createdAt and c.id < :id))"
+		+ " order by c.createdAt desc, c.id desc")
+	List<Collection> findPageByMemberIdAndRecordIdAfterDesc(@Param("memberId") Long memberId,
+		@Param("recordId") Long recordId, @Param("createdAt") Instant createdAt,
+		@Param("id") Long id, Pageable pageable);
 }
