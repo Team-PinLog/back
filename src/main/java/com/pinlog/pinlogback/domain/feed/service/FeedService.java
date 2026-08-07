@@ -172,17 +172,25 @@ public class FeedService {
 	}
 
 	/**
-	 * 세 채널의 합집합(feed-scoring 2.3). 중복은 페널티가 아니라 <b>신호</b>이므로 제거하되 출처는
-	 * 보존한다 — 팔로우 채널 출처 여부가 점수 공식의 {@code followSignal}이 된다.
+	 * 두 채널의 합집합(feed-scoring 2.3 변경, BD-51). 중복은 페널티가 아니라 <b>신호</b>이므로
+	 * 제거하되 출처는 보존한다.
 	 *
-	 * <p>삽입 순서가 곧 잘라내기 우선순위다(팔로우 → 최신 → 무작위). 현재 배분에서는 합이
-	 * {@code pool-size}와 같아 잘라내기가 발동하지 않지만, 배분을 올렸을 때의 방어선으로 남긴다.
+	 * <p><b>팔로우 채널({@code findFollowed})은 더 이상 합류하지 않는다.</b> 탐색 탭은 신규 발견이
+	 * 목적이므로 이미 팔로우한 회원의 Collection은 노출하지 않기로 했다(BD-51) — AI 파트 소유
+	 * 명세(feed-scoring 2.1)가 원래 의도한 "팔로우 = 최고 가중치 신호"와 반대 방향이며, 그 명세
+	 * 쪽에 상충 사실을 마킹해 두었다. 남은 두 채널(최신·무작위)의 WHERE 절이 팔로우한 회원의
+	 * Collection을 직접 제외한다({@code FeedCandidateRepository} 참고). 그 결과 어떤 후보도
+	 * {@code fromFollow=true}가 될 수 없으므로 {@link FeedScorer}의 {@code followSignal}은 항상
+	 * 0이 된다 — {@code wFollow} 가중치와 {@code findFollowed}/{@code FOLLOWED_SQL} 자체는 AI
+	 * 파트 소유 값이라 여기서 지우지 않았다.
+	 *
+	 * <p>삽입 순서가 곧 잘라내기 우선순위다(최신 → 무작위). 현재 배분에서는 합이
+	 * {@code pool-size}보다 작아 잘라내기가 발동하지 않지만, 배분을 올렸을 때의 방어선으로 남긴다.
 	 */
 	private List<FeedCandidate> collectCandidates(long memberId, long seed) {
 		FeedProperties.Candidate config = properties.candidate();
 		Map<Long, FeedCandidate> merged = new LinkedHashMap<>();
 		List.of(
-				candidateRepository.findFollowed(memberId, config.followLimit()),
 				candidateRepository.findRecent(memberId, config.recentLimit()),
 				candidateRepository.findRandomSample(memberId, config.randomLimit(), seed))
 			.forEach(channel -> channel.forEach(candidate ->

@@ -69,6 +69,8 @@ Profile 구성:
 
 본인 Collection과 이미 팔로우 관계가 아닌 탈퇴 User의 Collection은 후보에서 제외합니다.
 
+> **[BD-51 상충]** 위 문장과 반대로, 실제로는 **이미 팔로우 관계인** 회원의 Collection이 탐색 탭 후보에서 제외됩니다. 팔로우 채널은 더 이상 후보에 합류하지 않고, 최신·무작위 채널도 WHERE 절에서 팔로우한 회원의 Collection을 직접 걸러냅니다. 근거와 감수한 것은 [BD-51](../../backend/decisions/BD-51-explore-excludes-followed-members.md)에 있습니다.
+
 ### 3.3 Collection 특징 조회
 
 후보 id 목록으로 각 Collection의 특징을 **일괄** 조회합니다. Collection별 반복 조회를 하지 않습니다.

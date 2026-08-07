@@ -24,6 +24,15 @@ import com.pinlog.pinlogback.domain.feed.service.FeedCandidate;
  * 한 단계만 빠져도 삭제되었거나 비공개인 데이터가 타인에게 노출된다. 이 조건을 자바 코드가 아니라
  * <b>WHERE 절에</b> 두는 것이 규약이다(feed-recommendation 3.3).
  *
+ * <p><b>탐색 채널({@link #RECENT_SQL}·{@link #SAMPLE_FROM_PIVOT_SQL}·{@link #SAMPLE_WRAPPED_SQL})은
+ * 팔로우한 회원의 Collection도 추가로 제외한다.</b> 이 저장소가 소비하는 AI 파트 소유 명세
+ * ({@code docs/ai/spec/feed-scoring.md} 2.1, {@code followSignal})는 반대로 팔로우를 최고 가중치
+ * 신호로 다뤄 우선 노출한다 — 탐색 탭에서는 신규 발견을 위해 그 신호를 뒤집기로 한 백엔드 제품
+ * 결정이다({@code docs/backend/decisions/BD-51-explore-excludes-followed-members.md}). 그 명세
+ * 쪽에도 상충 사실을 마킹해 두었다. {@link #FOLLOWED_SQL}·{@link #findFollowed}는 삭제하지 않았다
+ * — SQL 자체는 여전히 유효하고 별도로 테스트되는 채널이며, {@code FeedService}가 더 이상 이
+ * 메서드를 호출하지 않을 뿐이다.
+ *
  * <p>최신성 기준 시각은 {@code published_at}을 그대로 쓴다. 발행된 행은 그 값을 반드시 가지므로
  * ({@code is_published = true} 필터 + V5 {@code ck_collection_published_at} CHECK, BD-33)
  * {@code COALESCE}로 감쌀 대상이 없다. 감싸면 정렬키가 표현식이 되어 {@code ix_collection_feed}의
@@ -54,6 +63,12 @@ public class FeedCandidateRepository {
 			AND c.record_count > 0
 			AND c.member_id <> :me
 			AND m.deleted_at IS NULL
+			AND NOT EXISTS (
+				SELECT 1 FROM core.follow f
+				WHERE f.follower_member_id = :me
+					AND f.followee_member_id = c.member_id
+					AND f.deleted_at IS NULL
+			)
 		ORDER BY c.published_at DESC, c.id DESC
 		LIMIT :limit
 		""";
@@ -97,6 +112,12 @@ public class FeedCandidateRepository {
 			AND c.record_count > 0
 			AND c.member_id <> :me
 			AND m.deleted_at IS NULL
+			AND NOT EXISTS (
+				SELECT 1 FROM core.follow f
+				WHERE f.follower_member_id = :me
+					AND f.followee_member_id = c.member_id
+					AND f.deleted_at IS NULL
+			)
 		ORDER BY c.id
 		LIMIT :limit
 		""";
@@ -112,6 +133,12 @@ public class FeedCandidateRepository {
 			AND c.record_count > 0
 			AND c.member_id <> :me
 			AND m.deleted_at IS NULL
+			AND NOT EXISTS (
+				SELECT 1 FROM core.follow f
+				WHERE f.follower_member_id = :me
+					AND f.followee_member_id = c.member_id
+					AND f.deleted_at IS NULL
+			)
 		ORDER BY c.id
 		LIMIT :limit
 		""";

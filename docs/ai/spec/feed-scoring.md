@@ -23,6 +23,8 @@
 | 팔로우 | 이미 관심을 표현한 Shelf | 80 |
 | 탐색용 무작위 | 필터 버블 이탈 | 20 |
 
+> **[BD-51 상충]** 백엔드는 탐색 탭(`GET /v1/feed/collections`)에서 팔로우 채널을 더 이상 후보에 합류시키지 않고, 최신·무작위 채널에서도 이미 팔로우한 회원의 Collection을 WHERE 절로 직접 제외합니다(제품 요구사항: 탐색은 신규 발견 목적이라 이미 관계를 맺은 회원의 책은 노출하지 않는다). 이 절이 말하는 "팔로우 = 80 배분·최우선 채널" 설계와 정면으로 상충합니다. 코드 쪽 결정과 감수한 것은 [BD-51](../../backend/decisions/BD-51-explore-excludes-followed-members.md)에 있습니다. 이 명세는 AI 파트 소유라 백엔드가 임의로 고치지 않았습니다 — 갱신 여부는 AI 파트가 판단합니다.
+
 최신 발행 채널의 배분을 60에서 100으로 올린 것은 [P42](../proposals/P42-feed-mvp-without-place-metadata.md)에서 Place region 항을 제거한 데 따른 조치입니다. 제거 이전에는 region이 Keyword와 달리 AI 완료 여부와 무관하게 계산돼, AI가 미완료인 Collection도 점수 항 하나를 확보했습니다. 그 경로가 사라진 만큼 최신 채널을 늘려 후보 진입 기회를 넓혔습니다.
 
 다만 이것은 **부분적인 보상입니다.** 채널 배분은 후보 풀 진입만 결정하고 점수에는 관여하지 않습니다. `keywordAffinity = 0`인 Collection은 후보에 들어온 뒤에도 `recency`(w=0.125) 하나로 경쟁하므로 점수 열세가 그대로 남습니다. 남는 한계는 P42의 "감수하는 것"에 적어둡니다.
@@ -93,6 +95,8 @@ score(c) =   w_follow   * followSignal(c)
 ```
 
 이분값입니다. 팔로우 횟수나 기간으로 세분하지 않습니다.
+
+> **[BD-51 상충]** 탐색 탭이 팔로우한 회원의 Collection을 후보 자체에서 제외하도록 바뀌어([BD-51](../../backend/decisions/BD-51-explore-excludes-followed-members.md)), 어떤 후보도 팔로우 채널에서 나올 수 없습니다. 그 결과 `followSignal`은 실질적으로 항상 0이고, `w_follow`(3.5)도 항상 곱해질 값이 없습니다. `w_follow`가 "가장 큰 가중치"라는 아래 3.5의 근거와 상충합니다.
 
 ### 3.2 keywordAffinity — weighted Jaccard
 

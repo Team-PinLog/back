@@ -126,6 +126,30 @@ class FeedCandidateChannelTests extends FeedFixtures {
 		assertThat(candidateRepository.findRecent(viewer, GENEROUS_LIMIT)).isNotEmpty();
 	}
 
+	/**
+	 * C10 — 탐색(최신·무작위) 채널은 팔로우한 사람의 Collection을 제외한다.
+	 *
+	 * <p>탐색 탭은 신규 발견이 목적이므로, 이미 팔로우해 관계를 맺은 사람의 Collection은 이 두
+	 * 채널로 새어 들어오면 안 된다. 팔로우하지 않은 타인의 Collection은 그대로 보여야 하므로
+	 * 함께 확인한다.
+	 */
+	@Test
+	void exploreChannelsExcludeFollowedMembersCollections() throws Exception {
+		long viewer = newMemberId();
+		long followedOwner = newMemberId();
+		long strangerOwner = newMemberId();
+		long followedCollection = publishedCollection(followedOwner, uniqueSeed("explore-followed"));
+		long strangerCollection = publishedCollection(strangerOwner, uniqueSeed("explore-stranger"));
+		follow(viewer, followedCollection);
+
+		List<Long> randomIds = candidateRepository.findRandomSample(viewer, GENEROUS_LIMIT, 555_555L).stream()
+			.map(FeedCandidate::collectionId)
+			.toList();
+
+		assertThat(recentIds(viewer)).doesNotContain(followedCollection).contains(strangerCollection);
+		assertThat(randomIds).doesNotContain(followedCollection).contains(strangerCollection);
+	}
+
 	/** C9 — 요청한 수보다 Collection이 적어도 있는 만큼 돌려주고 예외를 내지 않는다. */
 	@Test
 	void fewerCollectionsThanRequestedIsNotAnError() throws Exception {
