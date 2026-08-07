@@ -1,10 +1,12 @@
 package com.pinlog.pinlogback.domain.ai.repository;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -142,6 +144,84 @@ public class ContextKeywordRepository {
 		GROUP BY ct.record_id
 		""";
 
+	/**
+	 * bbox 안 Record를 대상으로 한 Keyword 상위 집계(S15P11A705-388).
+	 *
+	 * <p>가시성·상태 조건은 {@link #KEYWORDS_FOR_OWNER_SQL}과 같다. 같은 규칙을 두 SQL이 나눠
+	 * 갖는 것이 이 클래스를 한 곳으로 유지하는 이유다 — 다른 클래스로 흩어지면 visibility 값이
+	 * 추가될 때 한쪽만 고쳐진다(BD-13).
+	 *
+	 * <p><b>{@code core.record} 조인은 bbox 때문이지 삭제 필터 때문이 아니다.</b> Record를 지우면
+	 * {@code RecordDeletionService}가 그 Record의 Context를 전부 소프트 삭제하므로
+	 * {@code ct.deleted_at IS NULL}이 이미 삭제분을 거른다. 삭제 목적으로 이 조인을 bbox 없는
+	 * 경로에까지 넣으면 플래너가 {@code core.record}를 통째로 스캔한다(설계 문서 6.2 — 회원당
+	 * Context 3,000에서 73ms 대 17ms).
+	 *
+	 * <p>동점을 {@code kp.id}로 끊는다. {@code display_name}으로 끊으면 한글에 동순위 가중치를
+	 * 주는 collation에서 운영 DB와 테스트 컨테이너의 순서가 갈린다.
+	 */
+	private static final String TOP_KEYWORDS_IN_BOUNDS_SQL = """
+		SELECT kp.id AS keyword_id,
+			kp.display_name AS display_name,
+			COUNT(DISTINCT ct.record_id) AS record_count
+		FROM core.record r
+		JOIN core.place p ON p.id = r.place_id
+		JOIN core.context ct ON ct.record_id = r.id AND ct.deleted_at IS NULL
+		JOIN ai.context_ai_state st ON st.context_id = ct.id
+		JOIN ai.context_keyword  ck ON ck.context_id = ct.id
+		JOIN ai.keyword_preset   kp ON kp.id = ck.keyword_id
+		WHERE r.member_id = :memberId
+			AND r.deleted_at IS NULL
+			AND p.lat BETWEEN :swLat AND :neLat
+			AND p.lng BETWEEN :swLng AND :neLng
+			AND st.keyword_status = 'COMPLETED'
+			AND kp.visibility IN ('PUBLIC', 'PRIVATE_ONLY')
+			AND kp.is_active = true
+		GROUP BY kp.id, kp.display_name
+		ORDER BY record_count DESC, kp.id
+		LIMIT :limit
+		""";
+
+	/**
+	 * bbox 없는 전체 집계(S15P11A705-388).
+	 *
+	 * <p>{@code core.record}·{@code core.place} 조인이 없다. 삭제분은
+	 * {@code ct.deleted_at IS NULL}이 거르고 bbox가 없으니 {@code place}를 볼 이유도 없다.
+	 *
+	 * <p><b>이 경로는 회원 규모에 취약하다.</b> bbox가 없으면 플래너가 회원 슬라이스만으로
+	 * 판단하는데, 회원당 Context가 6,000 부근에 이르면 {@code ai.context_ai_state} 전체 Seq Scan
+	 * 으로 뒤집힌다(설계 문서 6.1 — 같은 크기 회원이 16ms와 49ms로 갈렸다). 지도 화면은 항상
+	 * bbox를 보내므로 실사용 경로는 아니며, 이 메서드가 존재하는 이유는 마커 조회와 계약을
+	 * 맞추기 위해서다. 성능을 다시 볼 일이 생기면 여기부터 본다.
+	 *
+	 * <p>이 SQL에는 {@code core.record} 조인이 없어 삭제 제외를 {@code ct.deleted_at IS NULL}
+	 * 하나가 단독으로 맡는다. {@link #COLLECTION_KEYWORDS_PUBLIC_SQL}은 같은 상황에서 {@code r}과
+	 * {@code ct} 양쪽에 삭제 조건을 걸어 이중으로 방어하는데, 여기서 조인을 뺀 것은 실수가 아니라
+	 * 의도된 선택이다 — {@code RecordDeletionService}와 회원 탈퇴 경로가 Record 삭제 시 그 Record의
+	 * Context를 반드시 연쇄 소프트 삭제하므로 현행 데이터에서는 {@code ct.deleted_at}만으로 새지
+	 * 않는다. 그럼에도 조인을 넣지 않는 진짜 이유는 위 문단의 성능이다 — bbox 없는 경로에 삭제
+	 * 방어 목적으로 {@code core.record} 조인을 넣으면 플래너가 그 테이블을 통째로 스캔한다(회원당
+	 * Context 3,000에서 73ms 대 17ms). 소유권 컬럼이 {@code ct.member_id}인 것도 같은 이유다 —
+	 * 조인이 없으니 {@code r.member_id}를 볼 수 없다.
+	 */
+	private static final String TOP_KEYWORDS_FOR_OWNER_SQL = """
+		SELECT kp.id AS keyword_id,
+			kp.display_name AS display_name,
+			COUNT(DISTINCT ct.record_id) AS record_count
+		FROM core.context ct
+		JOIN ai.context_ai_state st ON st.context_id = ct.id
+		JOIN ai.context_keyword  ck ON ck.context_id = ct.id
+		JOIN ai.keyword_preset   kp ON kp.id = ck.keyword_id
+		WHERE ct.member_id = :memberId
+			AND ct.deleted_at IS NULL
+			AND st.keyword_status = 'COMPLETED'
+			AND kp.visibility IN ('PUBLIC', 'PRIVATE_ONLY')
+			AND kp.is_active = true
+		GROUP BY kp.id, kp.display_name
+		ORDER BY record_count DESC, kp.id
+		LIMIT :limit
+		""";
+
 	private final NamedParameterJdbcTemplate jdbc;
 
 	public ContextKeywordRepository(NamedParameterJdbcTemplate jdbc) {
@@ -190,6 +270,33 @@ public class ContextKeywordRepository {
 				.add(rows.getString("display_name"));
 		});
 		return byRecord;
+	}
+
+	/**
+	 * bbox 안 Record의 Keyword 상위 {@code limit}건.
+	 *
+	 * <p>넷 다 있는 bbox를 전제한다. 호출부가 "넷 다 또는 전부 생략"을 검증한 뒤 부른다.
+	 */
+	public List<TopKeywordRow> findTopKeywordsInBounds(long memberId, BigDecimal swLat, BigDecimal swLng,
+		BigDecimal neLat, BigDecimal neLng, int limit) {
+		MapSqlParameterSource parameters = new MapSqlParameterSource()
+			.addValue("memberId", memberId)
+			.addValue("swLat", swLat)
+			.addValue("swLng", swLng)
+			.addValue("neLat", neLat)
+			.addValue("neLng", neLng)
+			.addValue("limit", limit);
+		return jdbc.query(TOP_KEYWORDS_IN_BOUNDS_SQL, parameters, (rows, rowNum) -> new TopKeywordRow(
+			rows.getInt("keyword_id"), rows.getString("display_name"), rows.getLong("record_count")));
+	}
+
+	/** bbox를 전부 생략했을 때의 전체 집계. 취약점은 SQL 주석 참조. */
+	public List<TopKeywordRow> findTopKeywordsForOwner(long memberId, int limit) {
+		MapSqlParameterSource parameters = new MapSqlParameterSource()
+			.addValue("memberId", memberId)
+			.addValue("limit", limit);
+		return jdbc.query(TOP_KEYWORDS_FOR_OWNER_SQL, parameters, (rows, rowNum) -> new TopKeywordRow(
+			rows.getInt("keyword_id"), rows.getString("display_name"), rows.getLong("record_count")));
 	}
 
 	/**
