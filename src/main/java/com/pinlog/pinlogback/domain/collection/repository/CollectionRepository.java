@@ -78,4 +78,20 @@ public interface CollectionRepository extends JpaRepository<Collection, Long> {
 		+ " order by c.createdAt asc, c.id asc")
 	List<Collection> findPublishedPageByMemberIdAfterAsc(@Param("memberId") Long memberId,
 		@Param("createdAt") Instant createdAt, @Param("id") Long id, Pageable pageable);
+
+	/**
+	 * 특정 Record가 담긴 내 Collection의 첫 페이지(명세 5.10). 정렬 기준은 7.2와 같은
+	 * {@code collection.created_at}이라 {@code ix_collection_member}를 순서대로 탈 수 있다 —
+	 * 담은 시각을 기준으로 삼으면 {@code ix_colrec_record}에 시각이 없어 매번 정렬해야 한다.
+	 *
+	 * <p>{@code exists} 서브쿼리에도 {@code @SQLRestriction}이 걸리므로 연결의 소프트 삭제 조건을
+	 * 적지 않는다. {@code c.memberId} 조건은 잉여다(Collection은 소유자 자기 Record만 담는다).
+	 * 그래도 남긴다 — 그 불변식이 깨지는 날 남의 Collection이 새는 것보다 조건 하나가 낫다.
+	 */
+	@Query("select c from Collection c where c.memberId = :memberId"
+		+ " and exists (select 1 from CollectionRecord cr"
+		+ " where cr.collectionId = c.id and cr.recordId = :recordId)"
+		+ " order by c.createdAt asc, c.id asc")
+	List<Collection> findFirstPageByMemberIdAndRecordIdAsc(@Param("memberId") Long memberId,
+		@Param("recordId") Long recordId, Pageable pageable);
 }
