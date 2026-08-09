@@ -432,6 +432,46 @@ class RecordSearchApiTests extends IntegrationContainerSupport {
 	}
 
 	/**
+	 * 관련도 재판정(4번째 신호)도 <b>기본값이 꺼짐</b>이다. 대역이 결과를 지우는 판정
+	 * ({@code NOT_RELEVANT})을 돌려주도록 프로그래밍해도, 플래그가 꺼져 있으면 판정 호출 자체가
+	 * 없어 그 판정이 응답에 아무 영향도 못 준다 — 이 테스트가 깨졌다면 기본값이 켜졌거나
+	 * 판정 호출이 게이트 없이 나가고 있는 것이다. 켠 상태의 계약은
+	 * {@link RelevanceJudgeSearchApiTests}가 맡는다.
+	 */
+	@Test
+	void relevanceJudgeIsOffByDefaultSoAStubbedNotRelevantJudgmentIsIgnored() throws Exception {
+		long me = newMemberId();
+		long onlyMatch = newRecord(me, "search-judgeoff", "37.5000000", "127.0000000");
+		long onlyMatchContext = newContext(onlyMatch, me, "벡터로만 잡히는 기록");
+		STUB.willReturn(new FastApiSearchStub.Match(onlyMatch, onlyMatchContext, 0.82));
+		STUB.willJudge(new FastApiSearchStub.Judgment(onlyMatchContext, "NOT_RELEVANT"));
+
+		search(me, "질의")
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(1))
+			.andExpect(jsonPath("$.data.items[0].recordId").value(onlyMatch));
+		assertThat(STUB.lastJudgeCall()).isNull();
+	}
+
+	/**
+	 * 결합 신뢰도 게이트(S15P11A705-400, BD-52)는 <b>기본값이 꺼짐</b>이고, 꺼진 상태의 응답은
+	 * 현행과 완전히 같아야 한다. 유사도가 매우 낮아도 게이트가 꺼져 있으면 지워지지 않는다 —
+	 * 켠 상태의 게이트 계약은 {@link ConfidenceGateApiTests}가 맡는다.
+	 */
+	@Test
+	void confidenceGateIsOffByDefaultSoAWeakResultIsStillReturned() throws Exception {
+		long me = newMemberId();
+		long weak = newRecord(me, "search-gateoff", "37.5000000", "127.0000000");
+		long weakContext = newContext(weak, me, "유사도가 매우 낮은 기록");
+		STUB.willReturn(new FastApiSearchStub.Match(weak, weakContext, 0.05));
+
+		search(me, "질의")
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.items.length()").value(1))
+			.andExpect(jsonPath("$.data.items[0].recordId").value(weak));
+	}
+
+	/**
 	 * {@code keywords}는 매칭 Context의 것이 아니라 <b>Record의 활성 Context 전체 집계</b>다
 	 * (API 명세 6.1). 매칭 Context만 보면 같은 Record의 다른 Context가 가진 Keyword가 사라진다.
 	 */

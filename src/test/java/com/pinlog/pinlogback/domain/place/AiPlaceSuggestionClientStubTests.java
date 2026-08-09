@@ -105,7 +105,8 @@ class AiPlaceSuggestionClientStubTests {
 			.build();
 		AiProperties.Timeouts existingTimeouts = new AiProperties.Timeouts(connectTimeout, readTimeout);
 		AiProperties properties = new AiProperties(
-			STUB.baseUrl(), INTERNAL_SECRET, "test-profile", existingTimeouts, existingTimeouts);
+			STUB.baseUrl(), INTERNAL_SECRET, "test-profile", existingTimeouts, existingTimeouts,
+			existingTimeouts);
 		AiPlaceSuggestionProperties placeProperties =
 			new AiPlaceSuggestionProperties(connectTimeout, readTimeout, 1);
 		return new AiPlaceSuggestionClient(

@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -15,12 +16,18 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.stereotype.Service;
 
 import com.pinlog.pinlogback.domain.ai.KeywordResponseStatus;
+import com.pinlog.pinlogback.domain.ai.client.AiRelevanceJudgeClient;
+import com.pinlog.pinlogback.domain.ai.client.AiRelevanceJudgeRequest;
+import com.pinlog.pinlogback.domain.ai.client.AiRelevanceJudgeResponse;
 import com.pinlog.pinlogback.domain.ai.client.AiSearchClient;
 import com.pinlog.pinlogback.domain.ai.client.AiSearchResponse;
+import com.pinlog.pinlogback.domain.ai.client.RelevanceLabel;
 import com.pinlog.pinlogback.domain.ai.repository.ContextKeywordRepository;
 import com.pinlog.pinlogback.domain.record.entity.Context;
 import com.pinlog.pinlogback.domain.record.repository.ContextRepository;
+import com.pinlog.pinlogback.domain.search.ConfidenceGateProperties;
 import com.pinlog.pinlogback.domain.search.LexicalSearchProperties;
+import com.pinlog.pinlogback.domain.search.RelevanceJudgeProperties;
 import com.pinlog.pinlogback.domain.search.dto.MatchedContextResponse;
 import com.pinlog.pinlogback.domain.search.dto.RecordSearchItemResponse;
 import com.pinlog.pinlogback.domain.search.dto.RecordSearchRequest;
@@ -34,14 +41,19 @@ import com.pinlog.pinlogback.global.response.BoundsResponse;
 /**
  * 개인 자연어 검색 유스케이스(API 명세 6.1, AI 설계 9장).
  *
- * <p>흐름은 다섯이다. <b>FastAPI가 준 것을 그대로 내보내는 단계가 없다는 점이 핵심이다.</b>
+ * <p>흐름은 일곱이다. <b>FastAPI가 준 것을 그대로 내보내는 단계가 없다는 점이 핵심이다.</b>
  *
  * <ol>
- *   <li>FastAPI 호출 — Record 단위로 집계된 {@code (recordId, contextId, similarity)} 목록을 받는다</li>
+ *   <li>FastAPI 호출 — Record 단위로 집계된
+ *       {@code (recordId, contextId, similarity, keywordMatched)} 목록을 받는다</li>
  *   <li>문자열 병합 — 단어형 질의면 본문 문자열 매치를 합쳐 RRF로 재정렬한다(P49 §4, 기본 꺼짐).
  *       꺼져 있거나 실패하면 이 단계는 없던 것과 같다</li>
+ *   <li>결합 신뢰도 게이트 — S1(벡터)·S2(문자열)·S3(키워드) 중 S1 하나뿐이고 유사도가 낮은 결과를
+ *       뺀다(S15P11A705-400, 기본 꺼짐). 문자열·키워드 재정렬과는 <b>독립된 마지막 판단</b>이다</li>
  *   <li>Core 재검증 — 소유권·삭제·활성 Context·Place를 Spring이 다시 본다(9.5). 문자열 후보도
  *       똑같이 지난다</li>
+ *   <li>관련도 재판정 — 게이트를 통과하고 Core 재검증된 후보만 LLM이 관련도 순으로 재정렬한다
+ *       (기본 꺼짐). 호출 실패는 게이트 적용 후 순서를 유지한다</li>
  *   <li>조립 — 본문·Keyword·판정 상태는 Core에서 조회해 붙인다. FastAPI는 본문을 주지 않는다</li>
  *   <li>bounds 계산 — <b>재검증을 통과한 것들</b>로만 계산한다</li>
  * </ol>
@@ -53,7 +65,11 @@ import com.pinlog.pinlogback.global.response.BoundsResponse;
  * 재검증</b>하는 일이라 한 스냅샷으로 묶는다고 더 정확해지지 않는다.
  */
 @Service
-@EnableConfigurationProperties(LexicalSearchProperties.class)
+@EnableConfigurationProperties({
+	LexicalSearchProperties.class,
+	ConfidenceGateProperties.class,
+	RelevanceJudgeProperties.class,
+})
 public class RecordSearchService {
 
 	private static final Logger log = LoggerFactory.getLogger(RecordSearchService.class);
@@ -70,21 +86,29 @@ public class RecordSearchService {
 	private static final double LEXICAL_ONLY_SIMILARITY = 0.0;
 
 	private final AiSearchClient aiSearchClient;
+	private final AiRelevanceJudgeClient aiRelevanceJudgeClient;
 	private final SearchRecordRepository searchRecordRepository;
 	private final ContextRepository contextRepository;
 	private final ContextKeywordRepository contextKeywordRepository;
 	private final LexicalContextRepository lexicalContextRepository;
 	private final LexicalSearchProperties lexicalProperties;
+	private final ConfidenceGateProperties gateProperties;
+	private final RelevanceJudgeProperties relevanceJudgeProperties;
 
-	public RecordSearchService(AiSearchClient aiSearchClient, SearchRecordRepository searchRecordRepository,
-		ContextRepository contextRepository, ContextKeywordRepository contextKeywordRepository,
-		LexicalContextRepository lexicalContextRepository, LexicalSearchProperties lexicalProperties) {
+	public RecordSearchService(AiSearchClient aiSearchClient, AiRelevanceJudgeClient aiRelevanceJudgeClient,
+		SearchRecordRepository searchRecordRepository, ContextRepository contextRepository,
+		ContextKeywordRepository contextKeywordRepository, LexicalContextRepository lexicalContextRepository,
+		LexicalSearchProperties lexicalProperties, ConfidenceGateProperties gateProperties,
+		RelevanceJudgeProperties relevanceJudgeProperties) {
 		this.aiSearchClient = aiSearchClient;
+		this.aiRelevanceJudgeClient = aiRelevanceJudgeClient;
 		this.searchRecordRepository = searchRecordRepository;
 		this.contextRepository = contextRepository;
 		this.contextKeywordRepository = contextKeywordRepository;
 		this.lexicalContextRepository = lexicalContextRepository;
 		this.lexicalProperties = lexicalProperties;
+		this.gateProperties = gateProperties;
+		this.relevanceJudgeProperties = relevanceJudgeProperties;
 	}
 
 	/**
@@ -93,8 +117,11 @@ public class RecordSearchService {
 	 *     <b>빈 결과로 바꾸지 않는다</b> — 그러면 장애가 "일치하는 기록이 없음"으로 보인다
 	 */
 	public RecordSearchResponse search(long memberId, RecordSearchRequest request) {
-		List<AiSearchResponse.Match> matches = mergeLexicalMatches(memberId, request,
-			distinctByRecord(aiSearchClient.search(memberId, request.query(), request.sizeOrDefault())));
+		List<AiSearchResponse.Match> vector =
+			distinctByRecord(aiSearchClient.search(memberId, request.query(), request.sizeOrDefault()));
+		LexicalMergeResult lexicalResult = mergeLexicalMatches(memberId, request, vector);
+		List<AiSearchResponse.Match> matches =
+			applyConfidenceGate(lexicalResult.matches(), lexicalResult.lexicalMatchedRecordIds());
 		if (matches.isEmpty()) {
 			return new RecordSearchResponse(null, List.of());
 		}
@@ -105,7 +132,11 @@ public class RecordSearchService {
 				matches.stream().map(AiSearchResponse.Match::contextId).toList(), memberId)
 			.stream()
 			.collect(Collectors.toMap(Context::getId, Function.identity()));
-		List<Long> verifiedRecordIds = List.copyOf(verified.keySet());
+
+		matches = judgeRelevance(matches, verified, matchedContexts, request.query());
+
+		List<Long> verifiedRecordIds =
+			matches.stream().map(AiSearchResponse.Match::recordId).distinct().toList();
 		Map<Long, List<String>> keywords =
 			contextKeywordRepository.findKeywordsForOwner(verifiedRecordIds, memberId);
 		Map<Long, KeywordResponseStatus> keywordStatuses =
@@ -119,6 +150,18 @@ public class RecordSearchService {
 	}
 
 	/**
+	 * {@link #mergeLexicalMatches}의 반환값. 병합된 목록과 함께 <b>어느 Record가 문자열로
+	 * 매치됐는지</b>(S2 신호)를 실어 보낸다 — {@link #rrfMerge}가 병합 도중에만 알고 버리던 정보를
+	 * 결합 신뢰도 게이트(S15P11A705-400)가 쓸 수 있게 한다.
+	 *
+	 * @param matches 병합된(또는 병합이 생략된) 목록
+	 * @param lexicalMatchedRecordIds 문자열 매치가 있었던 Record id. 병합이 생략된 모든 경로에서는
+	 *     빈 집합이다 — 그 경로들에서는 문자열 신호 자체가 계산되지 않았기 때문이다
+	 */
+	private record LexicalMergeResult(List<AiSearchResponse.Match> matches, Set<Long> lexicalMatchedRecordIds) {
+	}
+
+	/**
 	 * 문자열 검색을 벡터 결과에 병합한다(P49 §4, 규칙의 실측 근거는 ai 레포 I54).
 	 *
 	 * <p>이 메서드가 벡터 결과를 그대로 돌려주는 경로가 셋이다 — 플래그 꺼짐, 단어형이 아닌 질의
@@ -126,26 +169,129 @@ public class RecordSearchService {
 	 * 동작으로 되돌아간다</b>(P49 §4의 세 번째 원칙). 조회 실패를 오류로 올리지 않는 이유는 벡터
 	 * 검색이 이미 성공해 있기 때문이다 — 보조 신호의 장애가 주 결과를 지우면 안 된다.
 	 */
-	private List<AiSearchResponse.Match> mergeLexicalMatches(long memberId, RecordSearchRequest request,
+	private LexicalMergeResult mergeLexicalMatches(long memberId, RecordSearchRequest request,
 		List<AiSearchResponse.Match> vector) {
 		if (!lexicalProperties.enabled()) {
-			return vector;
+			return new LexicalMergeResult(vector, Set.of());
 		}
 		String query = stripSpaces(request.query());
 		if (!isWordQuery(query)) {
-			return vector;
+			return new LexicalMergeResult(vector, Set.of());
 		}
 		List<LexicalContextRepository.LexicalMatch> lexical;
 		try {
 			lexical = lexicalContextRepository.findMatches(memberId, query, request.sizeOrDefault());
 		} catch (RuntimeException e) {
 			log.warn("lexical search failed; returning vector-only results", e);
-			return vector;
+			return new LexicalMergeResult(vector, Set.of());
 		}
 		if (lexical.isEmpty()) {
-			return vector;
+			return new LexicalMergeResult(vector, Set.of());
 		}
-		return rrfMerge(vector, lexical, request.sizeOrDefault());
+		Set<Long> lexicalMatchedRecordIds = lexical.stream()
+			.map(LexicalContextRepository.LexicalMatch::recordId)
+			.collect(Collectors.toUnmodifiableSet());
+		return new LexicalMergeResult(
+			rrfMerge(vector, lexical, request.sizeOrDefault()), lexicalMatchedRecordIds);
+	}
+
+	/**
+	 * 결합 신뢰도 게이트(S15P11A705-400, {@code OFFTOPIC-CONFIDENCE-GATE-HANDOFF-DRAFT.md} §4).
+	 *
+	 * <p>S1(벡터)·S2(문자열)·S3(키워드) 세 신호 중 <b>S1 하나뿐이고</b> 그 유사도가
+	 * {@code similarityThreshold} 미만이면 결과에서 뺀다. S2·S3 중 하나라도 있으면 유사도와 무관하게
+	 * 남긴다 — 문자열이든 키워드든 벡터 유사도가 못 잡는 근거가 따로 있다는 뜻이기 때문이다.
+	 *
+	 * <p>문자열 단독 항목({@code similarity == 0.0})은 애초에 {@code lexicalMatchedRecordIds}에
+	 * 있으므로 이 규칙에서 자동으로 살아남는다 — 별도 분기가 필요 없다.
+	 *
+	 * <p>기존 재정렬·병합 계약(정렬은 후보를 추가·제거하지 않는다, P49 §4)은 이 게이트의 계약이
+	 * 아니다 — 그 계약은 {@link #rrfMerge} 이전 단계인 키워드 재정렬(ai 레포 소관)의 것이고, 이
+	 * 게이트는 그 뒤에 오는 <b>별도의 마지막 단계</b>다.
+	 */
+	private List<AiSearchResponse.Match> applyConfidenceGate(
+		List<AiSearchResponse.Match> matches, Set<Long> lexicalMatchedRecordIds) {
+		if (!gateProperties.enabled()) {
+			return matches;
+		}
+		double threshold = gateProperties.similarityThreshold();
+		return matches.stream()
+			.filter(match -> lexicalMatchedRecordIds.contains(match.recordId())
+				|| Boolean.TRUE.equals(match.keywordMatched())
+				|| match.similarity() >= threshold)
+			.toList();
+	}
+
+	/**
+	 * 검색 결과 LLM 관련도 재판정(4번째 신호). 문장형 질의에 포함된 고유명사처럼 재작성·문자열
+	 * 검색·재정렬 세 신호 모두의 사각지대를(예: "싸피 다녔던 헬스장"에서 본문에 "싸피"가 그대로
+	 * 있는 기록이 벡터 유사도만으로는 밀리는 경우) 이 신호가 메운다. 신호는 {@code matches}·
+	 * {@code verified}·{@code matchedContexts}가 전부 갖춰진 뒤 마지막에 붙는다 — 그래야
+	 * <b>3신호 병합까지 끝난 진짜 최종 후보</b>를 LLM이 본다.
+	 *
+	 * <p>실패 정책은 {@link #mergeLexicalMatches}와 같다: 플래그 꺼짐·판정할 후보 없음·판정 호출
+	 * 실패는 모두 원본 순서를 그대로 돌려준다. 이 신호는 보조 신호이고, 이 신호의 장애가 검색
+	 * 자체를 막으면 안 된다.
+	 *
+	 * <p>{@code NOT_RELEVANT}는 제거하고 나머지는 (등급 desc, 원 순서)로 안정 정렬한다. 판정이
+	 * 누락된 항목(ai가 응답에서 빠뜨렸거나 back이 알 수 없는 값이라 걸러졌을 때)은 제거하지 않고
+	 * {@code RELEVANT}와 같은 우선순위로 원 순서 근처에 남긴다 — 판정 실패 하나가 결과를 지우면
+	 * 안 된다는 원칙(§ {@link #assemble})을 이 신호에도 적용한다. 모든 후보가
+	 * {@code NOT_RELEVANT}면 빈 목록을 그대로 신뢰한다 — 근거 없는 결과를 내보내지 않는다는
+	 * 이 신호의 취지와 일치한다.
+	 */
+	private List<AiSearchResponse.Match> judgeRelevance(List<AiSearchResponse.Match> matches,
+		Map<Long, VerifiedSearchRecord> verified, Map<Long, Context> matchedContexts, String query) {
+		if (!relevanceJudgeProperties.enabled()) {
+			return matches;
+		}
+		List<AiRelevanceJudgeRequest.Candidate> candidates = new ArrayList<>();
+		for (AiSearchResponse.Match match : matches) {
+			VerifiedSearchRecord record = verified.get(match.recordId());
+			Context context = matchedContexts.get(match.contextId());
+			if (record == null || context == null) {
+				continue;
+			}
+			candidates.add(new AiRelevanceJudgeRequest.Candidate(
+				match.contextId(), record.placeName(), context.getBody()));
+		}
+		if (candidates.isEmpty()) {
+			return matches;
+		}
+		List<AiRelevanceJudgeResponse.Judgment> judgments;
+		try {
+			judgments = aiRelevanceJudgeClient.judge(query, candidates);
+		} catch (RuntimeException e) {
+			log.warn("relevance judge failed; returning pre-judge results", e);
+			return matches;
+		}
+		Map<Long, RelevanceLabel> byContext = new HashMap<>();
+		for (AiRelevanceJudgeResponse.Judgment judgment : judgments) {
+			if (judgment != null && judgment.contextId() != null && judgment.relevance() != null) {
+				byContext.put(judgment.contextId(), judgment.relevance());
+			}
+		}
+		List<AiSearchResponse.Match> kept = new ArrayList<>();
+		for (AiSearchResponse.Match match : matches) {
+			if (byContext.get(match.contextId()) != RelevanceLabel.NOT_RELEVANT) {
+				kept.add(match);
+			}
+		}
+		kept.sort(Comparator.comparingInt(m -> relevanceRank(byContext.get(m.contextId()))));
+		return List.copyOf(kept);
+	}
+
+	/** 판정 누락(다른 판정도 실을 게 없는 {@code null})은 {@code RELEVANT}와 동급으로 취급한다. */
+	private static int relevanceRank(RelevanceLabel label) {
+		if (label == null) {
+			return 1;
+		}
+		return switch (label) {
+			case VERY_RELEVANT -> 0;
+			case RELEVANT -> 1;
+			case WEAKLY_RELEVANT -> 2;
+			case NOT_RELEVANT -> 3;
+		};
 	}
 
 	/**
@@ -239,7 +385,7 @@ public class RecordSearchService {
 		for (Ranked entry : ranked.subList(0, Math.min(limit, ranked.size()))) {
 			AiSearchResponse.Match fromVector = vectorByRecord.get(entry.recordId());
 			merged.add(fromVector != null ? fromVector : new AiSearchResponse.Match(
-				entry.recordId(), lexicalContexts.get(entry.recordId()), LEXICAL_ONLY_SIMILARITY));
+				entry.recordId(), lexicalContexts.get(entry.recordId()), LEXICAL_ONLY_SIMILARITY, false));
 		}
 		return List.copyOf(merged);
 	}
