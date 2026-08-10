@@ -31,8 +31,8 @@ import com.pinlog.pinlogback.integration.IntegrationContainerSupport;
 
 /**
  * 검색 결과 LLM 관련도 재판정(4번째 신호)의 계약을 고정한다. 배포 후 사용자가 보고한 실사례
- * ("싸피 다녔던 헬스장" 질의에서 본문에 "싸피"가 있는 기록이 없는 기록보다 낮은 순위로 나온 것)를
- * 이 신호가 교정한다는 것이 목적이다.
+ * ("부트캠프 다녔던 헬스장" 질의에서 본문에 "부트캠프"가 있는 기록이 없는 기록보다 낮은 순위로
+ * 나온 것)를 이 신호가 교정한다는 것이 목적이다.
  *
  * <p>이 클래스는 플래그를 <b>켠</b> 컨텍스트에서 돈다. 기본값(끔)에서 현행과 동일하다는 계약은
  * {@link RecordSearchApiTests}가 기본값 컨텍스트에서 고정한다.
@@ -81,7 +81,7 @@ class RelevanceJudgeSearchApiTests extends IntegrationContainerSupport {
 	}
 
 	/**
-	 * 사용자 보고 실사례와 같은 모양이다 — 벡터 유사도로는 뒤진 기록("싸피"가 본문에 그대로
+	 * 사용자 보고 실사례와 같은 모양이다 — 벡터 유사도로는 뒤진 기록("부트캠프"가 본문에 그대로
 	 * 있는 쪽)이 판정에서 {@code VERY_RELEVANT}를 받아 1위로 올라온다.
 	 */
 	@Test
@@ -90,7 +90,7 @@ class RelevanceJudgeSearchApiTests extends IntegrationContainerSupport {
 		long higherSimilarity = newRecord(me, "judge-a", "37.5000000", "127.0000000");
 		long higherSimilarityContext = newContext(higherSimilarity, me, "군대 전역하고 다닌 헬스장");
 		long literalMatch = newRecord(me, "judge-b", "37.6000000", "127.1000000");
-		long literalMatchContext = newContext(literalMatch, me, "싸피 2학기 동안 다니던 헬스장");
+		long literalMatchContext = newContext(literalMatch, me, "부트캠프 다닐 때 1년 동안 다니던 헬스장");
 		STUB.willReturn(
 			new FastApiSearchStub.Match(higherSimilarity, higherSimilarityContext, 0.85),
 			new FastApiSearchStub.Match(literalMatch, literalMatchContext, 0.70));
@@ -98,7 +98,7 @@ class RelevanceJudgeSearchApiTests extends IntegrationContainerSupport {
 			new FastApiSearchStub.Judgment(higherSimilarityContext, "WEAKLY_RELEVANT"),
 			new FastApiSearchStub.Judgment(literalMatchContext, "VERY_RELEVANT"));
 
-		search(me, "싸피 다녔던 헬스장")
+		search(me, "부트캠프 다녔던 헬스장")
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data.items.length()").value(2))
 			.andExpect(jsonPath("$.data.items[0].recordId").value(literalMatch))
