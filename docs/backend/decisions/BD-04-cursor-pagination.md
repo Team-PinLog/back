@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-27
-- **관련**: S15P11A705-42 (`377d006`, `14888f2`, `72b2899`), [BI-04](../implements/BI-04-2026-07-27-cursor-pagination.md)
+- **관련**: Jira 작업 (`377d006`, `14888f2`, `72b2899`), [BI-04](../implements/BI-04-2026-07-27-cursor-pagination.md)
 
 ## 맥락
 

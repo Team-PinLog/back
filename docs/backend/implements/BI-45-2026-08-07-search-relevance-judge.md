@@ -2,14 +2,14 @@
 
 - **상태**: ✅ 구현 완료. 기능 플래그는 꺼진 상태로 두었다. 켜는 결정은 별도다.
 - **날짜**: 2026-08-07
-- **추적**: S15P11A705-403([AI] 검색 결과 신뢰도 개선). 사용자가 실배포에서 발견한 검색 순위 오류를 직접 지시해 시작한 작업이다.
-- **관련**: ai 레포 `S15P11A705-relevance-judge` 브랜치(`app/client/relevance_client.py` 등, `POST /internal/v1/search/judge` 신설) · `docs/backend/implements/BI-43-2026-08-06-search-lexical-merge.md`(같은 서비스의 앞선 신호)
+- **추적**: Jira 작업([AI] 검색 결과 신뢰도 개선). 사용자가 실배포에서 발견한 검색 순위 오류를 직접 지시해 시작한 작업이다.
+- **관련**: ai 레포 `Jira-relevance-judge` 브랜치(`app/client/relevance_client.py` 등, `POST /internal/v1/search/judge` 신설) · `docs/backend/implements/BI-43-2026-08-06-search-lexical-merge.md`(같은 서비스의 앞선 신호)
 
 ## 배경
 
-배포 직후 사용자가 검색 결과 오류를 보고했다. 질의 "예전에 싸피 때 다녔던 헬스장 어디였지?"에서, 본문에 "싸피"가 그대로 있는 기록이 2위로 밀리고 그 단어가 없는 기록이 1위에 올랐다.
+배포 직후 사용자가 검색 결과 오류를 보고했다. 질의 "예전에 부트캠프 때 다녔던 헬스장 어디였지?"에서, 본문에 "부트캠프"가 그대로 있는 기록이 2위로 밀리고 그 단어가 없는 기록이 1위에 올랐다.
 
-원인은 기존 세 신호(재작성·문자열 검색·키워드 재정렬) 모두의 사각지대다. 이 질의는 문장형이라 재작성(6자 이하만 대상)과 문자열 검색(단어형만 대상)이 적용되지 않고, "싸피"는 키워드 목록에 없는 고유명사라 재정렬도 잡지 못한다. 남는 것은 순수 벡터 유사도뿐이고, 임베딩은 "본문에 그 단어가 정확히 있는가"보다 전체적인 의미 유사도를 본다.
+원인은 기존 세 신호(재작성·문자열 검색·키워드 재정렬) 모두의 사각지대다. 이 질의는 문장형이라 재작성(6자 이하만 대상)과 문자열 검색(단어형만 대상)이 적용되지 않고, "부트캠프"는 키워드 목록에 없는 고유명사라 재정렬도 잡지 못한다. 남는 것은 순수 벡터 유사도뿐이고, 임베딩은 "본문에 그 단어가 정확히 있는가"보다 전체적인 의미 유사도를 본다.
 
 사용자가 4번째 신호를 직접 제안했다. 기존 파이프라인의 최종 후보를 LLM에게 질의와 함께 보여주고 관련도 4단계(`VERY_RELEVANT`~`NOT_RELEVANT`)로 재판정해, 무관한 것은 제거하고 나머지를 재정렬한다. RAG 분야의 "LLM reranker" 패턴이다. 검색 신호 3종 동결(ai 레포 P49) 위에 얹는 4번째 신호이므로 동결의 재론이 아니라 소유자(사용자)의 확장 결정으로 처리했다.
 
@@ -21,7 +21,7 @@ back이 직접 LLM을 호출하는 대안은 검토 후 배제했다. back에는
 
 ## 산출
 
-- **ai 레포**: `POST /internal/v1/search/judge` 신설. 요청 `{query, candidates: [{contextId, placeName, body}]}` → 응답 `{results: [{contextId, relevance}]}`. 기본 꺼짐(`SEARCH_RELEVANCE_JUDGE_ENABLED`). 상세는 그 레포 커밋(`S15P11A705-relevance-judge` 브랜치).
+- **ai 레포**: `POST /internal/v1/search/judge` 신설. 요청 `{query, candidates: [{contextId, placeName, body}]}` → 응답 `{results: [{contextId, relevance}]}`. 기본 꺼짐(`SEARCH_RELEVANCE_JUDGE_ENABLED`). 상세는 그 레포 커밋(`Jira-relevance-judge` 브랜치).
 - **`AiRelevanceJudgeClient`** 신설(`domain/ai/client`). `AiSearchClient`를 본떴지만 실패 정책은 반대다 — 이 클라이언트는 보조 신호라 실패를 흡수하지 않고 그대로 던진다. 흡수는 호출부의 책임이다.
 - **`RelevanceJudgeProperties`** 신설. `pinlog.search.relevance-judge.enabled`, 기본값 꺼짐.
 - **`AiProperties`**에 `judge` 타임아웃 필드 추가(`connect-timeout: 1s`, `read-timeout: 10s`). 후보 최대 10건의 본문을 한 번의 LLM 호출로 판정하는 동기 경로라 `search`(5s)보다 길게 잡았다.

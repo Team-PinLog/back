@@ -1,7 +1,7 @@
-# 피드 후보 채널의 정렬키 표현식을 걷어냈다(S15P11A705-303)
+# 피드 후보 채널의 정렬키 표현식을 걷어냈다(Jira 작업)
 
 - **날짜**: 2026-08-04
-- **추적**: S15P11A705-303
+- **추적**: Jira 작업
 - **관련**: [BI-38](../implements/BI-38-2026-08-03-massive-scale-plan-observation.md)(근거) · [BD-33](../decisions/BD-33-published-at-invariant.md)
 
 BI-38이 1순위로 지목한 것을 고쳤다. `FeedCandidateRepository`의 최신·팔로우 채널이 `ORDER BY COALESCE(published_at, created_at)`를 써서 `ix_collection_feed (is_published, published_at DESC)`의 정렬 순서를 쓸 수 없었고, 상위 100건만 필요한데도 활성 발행 66만 행 전부를 Sort로 넘기고 있었다. 정렬키를 `c.published_at DESC, c.id DESC`로 바꾸고 SELECT의 `COALESCE`도 네 쿼리에서 모두 걷어냈다 — `is_published = true` 필터 안에서는 V5 `ck_collection_published_at` CHECK가 NOT NULL을 보장하므로(BD-33) 감쌀 대상이 없고, 따라서 `FeedScorer.recency()`와 `ScoredCandidate` 타이브레이커가 받는 값도 그대로다.
@@ -12,4 +12,4 @@ BI-38이 1순위로 지목한 것을 고쳤다. `FeedCandidateRepository`의 최
 
 측정 중 함정 둘. 앱이 죽은 상태에서 잰 "2.2초"는 응답 시간이 아니라 curl 연결 실패 시간이었다(종료 코드 7) — 폐기하고 수정된 jar로 다시 띄워 쟀다. 그리고 postgres만 재기동하면 Redis가 빠져 health가 DOWN으로 남는다.
 
-**남은 197ms의 정체를 찾았다 — `PROFILE_KEYWORDS_SQL`이 163ms다.** `ai.context_keyword`(213,290행)를 Index Only Scan으로 전수 훑고 Merge Join한다. 벤치 데이터에 AI 파생 행이 없어 결과가 0건인데도 그렇다. 이 쿼리는 이 티켓 범위 밖이고 Feed 추천·AI 클라이언트 경계에 걸리므로 후속 후보로만 남긴다 (S15P11A705-303)
+**남은 197ms의 정체를 찾았다 — `PROFILE_KEYWORDS_SQL`이 163ms다.** `ai.context_keyword`(213,290행)를 Index Only Scan으로 전수 훑고 Merge Join한다. 벤치 데이터에 AI 파생 행이 없어 결과가 0건인데도 그렇다. 이 쿼리는 이 티켓 범위 밖이고 Feed 추천·AI 클라이언트 경계에 걸리므로 후속 후보로만 남긴다 (Jira 작업)

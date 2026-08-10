@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-31
-- **관련**: S15P11A705-206, [back#85](https://github.com/Team-PinLog/back/issues/85),
+- **관련**: Jira 작업, [back#85](https://github.com/Team-PinLog/back/issues/85),
   [BD-43](../decisions/BD-43-shelf-in-follow-domain-under-collections-path.md)(도메인·경로 결정),
   [BI-30](BI-30-2026-07-31-me-summary.md)(미구현 둘 중 나머지 하나를 채운 곳)
 
@@ -20,7 +20,7 @@
 [BI-30](BI-30-2026-07-31-me-summary.md)이 "명세 대비 미구현은 둘뿐"이라고 적었고, 그 둘 중 나머지가 이것이다. 명세 §13.6의 탐색 흐름에서 가운데 한 칸이 비어 있었다.
 
 ```
-GET  /feed/collections            ✅ (S15P11A705-120)
+GET  /feed/collections            ✅ (Jira 작업)
 → GET  /collections/{id}          ✅
 → GET  /feed/collections/{id}/shelf  ← 이번
 → POST /follows { collectionId }  ✅

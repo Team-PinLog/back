@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-29
-- **관련**: S15P11A705-131, [back#78](https://github.com/Team-PinLog/back/issues/78),
+- **관련**: Jira 작업, [back#78](https://github.com/Team-PinLog/back/issues/78),
   [BD-35](../decisions/BD-35-refresh-reuse-family-revocation.md)(이 구현의 결정),
   [BD-32](../decisions/BD-32-refresh-reuse-no-family-revocation.md)(대체된 결정),
   [BI-18](BI-18-2026-07-28-jwt-cookie-session.md)(세션 JWT 도입)
@@ -60,7 +60,7 @@ expected: 401
 
 ## 남은 것
 
-- **회원 탈퇴([S15P11A705-65](https://ssafy.atlassian.net/browse/S15P11A705-65))가 같은 `revokeAll`을 쓴다.** BD-32가 "두 작업을 같이 하는 것이 자연스럽다"고 적어 둔 이유이고, 이번에 그 연산이 준비됐다.
+- **회원 탈퇴(Jira 작업)가 같은 `revokeAll`을 쓴다.** BD-32가 "두 작업을 같이 하는 것이 자연스럽다"고 적어 둔 이유이고, 이번에 그 연산이 준비됐다.
 - **오탐 관측 경로가 없다.** 재사용 감지 시 WARN은 남지만, 그것이 유출인지 클라이언트 버그인지 구별할 정보는 로그에 없다. 오탐이 문의로 올라오면 [BD-35](../decisions/BD-35-refresh-reuse-family-revocation.md)의 재검토 트리거를 따른다.
 - 공용 계약([08 §3.3](https://github.com/Team-PinLog/docs/blob/main/static/08_API_명세.md))에 이 동작을 적을지는 별도 판단으로 남겼다. 명세는 "재사용: 401"까지만 정의하고 거짓을 말하지 않으며, 클라이언트가 취할 행동이 달라지지 않는다.
 - **경합을 재현하는 테스트는 없다.** 원자성은 구조로 보장되는 성질(Lua 한 번의 호출)이라 단언으로 고정할 대상이 아니고, 스레드를 겹쳐 짜면 통과가 타이밍에 걸리는 테스트가 된다. 대신 `revokeAll`의 계약(전부 삭제 · 인덱스 삭제 · 회원 간 격리 · 반환 수)을 고정했다.

@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-29
-- **관련**: S15P11A705-124, [back#61](https://github.com/Team-PinLog/back/issues/61),
+- **관련**: Jira 작업, [back#61](https://github.com/Team-PinLog/back/issues/61),
   [BI-23](../implements/BI-23-2026-07-29-ai-derived-invalidation-on-delete.md),
   공용 계약 `Team-PinLog/docs` `static/06_데이터모델_및_무결성.md` §1.3·§6.4~6.9,
   `static/08_API_명세.md` "AI 파생 데이터"

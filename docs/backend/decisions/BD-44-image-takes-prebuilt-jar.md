@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-08-01
-- **관련**: [S15P11A705-238](https://ssafy.atlassian.net/browse/S15P11A705-238) · [BD-42](BD-42-ci-skip-inside-job-not-paths-ignore.md) · [BI-32](../implements/BI-32-2026-07-31-ci-pipeline-speedup.md)
+- **관련**: Jira 작업 · [BD-42](BD-42-ci-skip-inside-job-not-paths-ignore.md) · [BI-32](../implements/BI-32-2026-07-31-ci-pipeline-speedup.md)
 
 ## 맥락
 

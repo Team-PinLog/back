@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-08-04
-- **관련**: S15P11A705-285, [back#176](https://github.com/Team-PinLog/back/issues/176),
+- **관련**: Jira 작업, [back#176](https://github.com/Team-PinLog/back/issues/176),
   [BD-48](../decisions/BD-48-unlink-before-withdrawal.md)(순서·수단·어휘 결정),
   [BD-41](../decisions/BD-41-withdrawn-member-check-in-authentication-filter.md)(Refresh 폐기를 커밋 이후로 둔 반대 방향),
   공용 계약 08 §3.6 · 06 §6.9

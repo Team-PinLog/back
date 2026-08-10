@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-31
-- **관련**: S15P11A705-192,
+- **관련**: Jira 작업,
   [BD-03](../decisions/BD-03-api-response-envelope.md)·[BD-04](../decisions/BD-04-cursor-pagination.md)(검사 대상 계약),
   [BD-07](../decisions/BD-07-context-immutability.md)·[BD-08](../decisions/BD-08-soft-delete-no-restore.md)·[BD-11](../decisions/BD-11-minimum-holding-invariants.md)·[BD-12](../decisions/BD-12-duplicate-record-idempotent.md)·[BD-20](../decisions/BD-20-selective-denormalization.md)·[BD-25](../decisions/BD-25-context-origin-created-at.md)·[BD-33](../decisions/BD-33-published-at-database-invariant.md)·[BD-37](../decisions/BD-37-ai-derived-invalidation-inside-deletion-transaction.md)(검사하는 불변식),
   [BI-12](BI-12-2026-07-28-deletion-cascade.md)(삭제 파급)·[BI-29](BI-29-2026-07-30-member-withdrawal.md)(탈퇴 파급)

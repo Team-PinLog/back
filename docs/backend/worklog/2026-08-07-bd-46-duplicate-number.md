@@ -27,7 +27,7 @@
 - `docs/development/configuration.md` 2곳(살아 있는 문서)
 - `src/main/resources/application-prod.yml` 1곳
 - `src/test/java/.../ConfigurationContractTests.java` 3곳
-- `docs/backend/worklog/2026-08-03-S15P11A705-282-drop-dead-datasource-literal.md` 2곳
+- `docs/backend/worklog/2026-08-03-drop-dead-datasource-literal.md` 2곳
 
 **마지막 항목은 판단이 필요했다.** 작업 로그는 보존 구역이고 `worklog/README.md`는 갱신하지 말고 새
 항목을 더하라고 한다. 그런데 파일을 옮기면 그 항목의 링크가 죽는다. 기록의 서술은 한 글자도 건드리지

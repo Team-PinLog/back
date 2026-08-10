@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-29
-- **관련**: S15P11A705-131 · [back#78](https://github.com/Team-PinLog/back/issues/78) · [BD-32](BD-32-refresh-reuse-no-family-revocation.md)(이 결정이 대체) · [BD-21](BD-21-auth-token-model.md)(토큰 모델) · [BI-21](../implements/BI-21-2026-07-29-refresh-reuse-family-revocation.md)
+- **관련**: Jira 작업 · [back#78](https://github.com/Team-PinLog/back/issues/78) · [BD-32](BD-32-refresh-reuse-no-family-revocation.md)(이 결정이 대체) · [BD-21](BD-21-auth-token-model.md)(토큰 모델) · [BI-21](../implements/BI-21-2026-07-29-refresh-reuse-family-revocation.md)
 
 ## 맥락
 
@@ -46,7 +46,7 @@ BD-32가 감수 사항으로 적어 둔 구멍은 그대로였다 — Refresh가
 **재검토 트리거**
 
 - 오탐이 실제로 관측되면(정상 사용자가 이유 없이 전체 로그아웃되는 문의) (c)를 다시 본다. 그때는 계열 id의 비용을 낼 가치가 생긴다.
-- 회원 탈퇴([S15P11A705-65](https://ssafy.atlassian.net/browse/S15P11A705-65))가 같은 `revokeAll`을 쓴다. 두 호출자가 생기면 이 연산의 위치(`RefreshTokenStore`)가 맞는지 다시 본다.
+- 회원 탈퇴(Jira 작업)가 같은 `revokeAll`을 쓴다. 두 호출자가 생기면 이 연산의 위치(`RefreshTokenStore`)가 맞는지 다시 본다.
 - 다중 기기 세션 관리 UI("다른 기기에서 로그아웃")가 생기면 인덱스를 조회용으로도 쓰게 된다. 지금은 폐기 전용이다.
 - **Redis Cluster로 옮기면 폐기 스크립트를 먼저 손봐야 한다.** 토큰 키를 `ARGV`로 조립하므로 클러스터가 요구하는 키 선언 규약과 맞지 않는다. 지금 운영은 단일 인스턴스다.
 - Access 무효화가 요구되면(위 30분 창을 닫아야 하면) 검증 경로에 폐기 목록 조회가 생긴다 — 모든 요청에 Redis 왕복이 붙는 큰 변경이라 별도 결정이 필요하다.

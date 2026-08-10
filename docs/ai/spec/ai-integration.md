@@ -57,9 +57,9 @@ Spring은 이 값을 검색 요청에 실어 보내는 역할만 하며 해석�
 
 `@ConfigurationProperties`로 바인딩합니다.
 
-> **정정 기록 (S15P11A705-135, 2026-07-29).** 이 절은 원래 다음 둘이 현재 구현·상위 계약과 어긋나 있었습니다. 백엔드가 발견해 `CLAUDE.md` 9번대로 표시만 남겼고, **AI 파트(중앙)가 그 판정을 받아 수정 권한을 위임해** 같은 PR에서 고쳤습니다.
+> **정정 기록 (Jira 작업, 2026-07-29).** 이 절은 원래 다음 둘이 현재 구현·상위 계약과 어긋나 있었습니다. 백엔드가 발견해 `CLAUDE.md` 9번대로 표시만 남겼고, **AI 파트(중앙)가 그 판정을 받아 수정 권한을 위임해** 같은 PR에서 고쳤습니다.
 >
-> 1. **`internal-token: ${PINLOG_AI_INTERNAL_TOKEN}`** → `internal-secret: ${PINLOG_AI_INTERNAL_SECRET:}`. 구현과 `ai` 레포는 처음부터 `secret` 이름을 썼습니다. §7의 헤더 표기는 back#83(S15P11A705-96)이 이미 고쳤으나 **이 설정 키가 남아 있었습니다.** 당시 전수 검색이 `X-Internal[-_]?(Token|Secret)` 패턴이라 헤더만 잡고 설정 키를 놓쳤습니다. `internal.token|INTERNAL_TOKEN|internal-token`으로 넓혀 `back`·`docs`·`ai` 세 레포를 다시 훑었고, 이 줄 외 잔존은 없습니다(`docs/ai/WORKLOG.md`의 back#83 기술은 이력 기록이므로 그대로 둡니다).
+> 1. **`internal-token: ${PINLOG_AI_INTERNAL_TOKEN}`** → `internal-secret: ${PINLOG_AI_INTERNAL_SECRET:}`. 구현과 `ai` 레포는 처음부터 `secret` 이름을 썼습니다. §7의 헤더 표기는 back#83(Jira 작업)이 이미 고쳤으나 **이 설정 키가 남아 있었습니다.** 당시 전수 검색이 `X-Internal[-_]?(Token|Secret)` 패턴이라 헤더만 잡고 설정 키를 놓쳤습니다. `internal.token|INTERNAL_TOKEN|internal-token`으로 넓혀 `back`·`docs`·`ai` 세 레포를 다시 훑었고, 이 줄 외 잔존은 없습니다(`docs/ai/WORKLOG.md`의 back#83 기술은 이력 기록이므로 그대로 둡니다).
 > 2. **"배포 환경의 단일 설정에서 주입합니다" · "값 자체는 코드에 상수로 두지 않습니다"** → 위 본문. 상위 계약 `Team-PinLog/docs` `static/05_AI_설계.md` §7.1이 **2026-07-29에 이 규칙을 뒤집었습니다**(정본이 배포 설정 → 코드, 환경변수는 필수 → 덮어쓰기).
 >
 > 함께 고친 것: `base-url`도 리터럴로 적혀 있어 실제 형태(`${PINLOG_AI_BASE_URL:...}`)로 맞췄습니다. 같은 블록에 알면서 틀린 줄을 남기면 back#83의 불완전한 정정을 되풀이하게 됩니다.

@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료 (일부 범위 후속)
 - **날짜**: 2026-07-29
-- **관련**: S15P11A705-120, [back#58](https://github.com/Team-PinLog/back/issues/58),
+- **관련**: Jira 작업, [back#58](https://github.com/Team-PinLog/back/issues/58),
   [BD-34](../decisions/BD-34-feed-deterministic-pagination-without-session-cache.md),
   AI 파트 명세 `docs/ai/spec/feed-*.md`, [P42](../../ai/proposals/P42-feed-mvp-without-place-metadata.md)
 
@@ -58,7 +58,7 @@ Redis Session Cache 대신 `requestId`를 무작위 채널의 seed로 삼아 페
 재계산한다. 근거와 감수하는 점은 [BD-34](../decisions/BD-34-feed-deterministic-pagination-without-session-cache.md).
 
 커서는 공통 `Cursor`(`Base64(정렬키,id)`)를 재사용해 정렬키에 `requestId`, id에 offset을 넣는다.
-Feed 전용 커서 형식도, Feed 전용 `size` 상한도 만들지 않았다 — 후자는 S15P11A705-117의
+Feed 전용 커서 형식도, Feed 전용 `size` 상한도 만들지 않았다 — 후자는 Jira 작업의
 "서버 방어 상한의 답은 하나" 규약이다.
 
 `requestId`는 `data` 안의 **별도 필드**다. 커서에 인코딩하면 클라이언트가 이벤트 보고에 쓸 값을

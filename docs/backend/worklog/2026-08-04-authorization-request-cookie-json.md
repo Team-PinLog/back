@@ -1,7 +1,7 @@
 # 인가 요청 쿠키를 Java 직렬화에서 JSON으로 바꿨다
 
 - **날짜**: 2026-08-04
-- **추적**: S15P11A705-132
+- **추적**: Jira 작업
 - **관련**: [BD-49](../decisions/BD-49-authorization-request-cookie-json.md) · [BD-30](../decisions/BD-30-authorization-request-in-cookie.md)(대체된 결정) · [back#175](https://github.com/Team-PinLog/back/issues/175)
 
 BD-30이 고른 Java 직렬화를 걷어내고 Spring Security의 공식 Jackson 모듈로 바꿨다. 형식만 바뀌고 쿠키에 담는다는 결정과 속성은 그대로다.

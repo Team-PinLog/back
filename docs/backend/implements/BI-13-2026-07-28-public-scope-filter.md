@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-28
-- **관련**: S15P11A705-71, [BD-13](../decisions/BD-13-public-boundary-query-dto-split.md), [BD-14](../decisions/BD-14-identifier-concealment.md)
+- **관련**: Jira 작업, [BD-13](../decisions/BD-13-public-boundary-query-dto-split.md), [BD-14](../decisions/BD-14-identifier-concealment.md)
 
 ## 산출
 

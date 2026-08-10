@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-29
-- **관련**: S15P11A705-135, [back#61](https://github.com/Team-PinLog/back/issues/61),
+- **관련**: Jira 작업, [back#61](https://github.com/Team-PinLog/back/issues/61),
   [BD-39](../decisions/BD-39-embedding-profile-in-application-config.md),
   [BD-36](../decisions/BD-36-pending-insert-in-transaction-process-call-after-commit.md)(back#82, 데이터 생성 선행),
   [BD-37](../decisions/BD-37-ai-derived-invalidation-inside-deletion-transaction.md)(back#80, 삭제분 제외 선행),
@@ -216,7 +216,7 @@ checkstyle(main·test)·jacoco 커버리지 검증 포함. `RecordSearchApiTests
   "값 자체는 코드에 상수로 두지 않습니다" → 개정된 §7.1과 BD-39에 맞춘 본문. `base-url`도 리터럴로
   적혀 있어 함께 맞췄다 — 같은 블록에 알면서 틀린 줄을 남기면 아래 불완전 정정을 되풀이하게 된다.
 
-  > **`internal-token` 재검색.** §7의 헤더 표기는 back#83(S15P11A705-96)이 이미 고쳤는데 이 설정 키만
+  > **`internal-token` 재검색.** §7의 헤더 표기는 back#83(Jira 작업)이 이미 고쳤는데 이 설정 키만
   > 남은 이유는 **당시 전수 검색이 `X-Internal[-_]?(Token|Secret)` 패턴이라 헤더만 잡고 설정 키를
   > 놓쳤기 때문**이다(그 PR 본문의 "잔존 0건"은 사실과 달랐다). 패턴을 `internal.token|INTERNAL_TOKEN|
   > internal-token`으로 넓혀 `back`·`docs`·`ai` 세 레포를 다시 훑었다 — `docs` 0건, `ai` 0건,

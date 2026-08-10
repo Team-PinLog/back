@@ -16,7 +16,7 @@ YYYY-MM-DD-<추적키>-<슬러그>.md
 
 | 상황 | 예 |
 |---|---|
-| Jira 티켓이 있을 때 | `2026-07-31-S15P11A705-238-single-stage-image.md` |
+| Jira 작업이 있을 때 | `2026-07-31-single-stage-image.md` |
 | GitHub 이슈만 있을 때 | `2026-07-28-back58-published-at-invariant.md` |
 | 추적 키가 없을 때 | `2026-07-31-configuration-drift.md` |
 
@@ -30,7 +30,7 @@ YYYY-MM-DD-<추적키>-<슬러그>.md
 # 한 줄 요약
 
 - **날짜**: 2026-08-01
-- **추적**: S15P11A705-238
+- **추적**: Jira 작업
 - **관련**: [BD-45](../decisions/BD-45-worklog-per-entry-files.md) · `abc1234` · [back#133](https://github.com/Team-PinLog/back/issues/133)
 
 본문 — 무엇을 왜 했는지, 그때 내린 판단.
@@ -42,7 +42,7 @@ YYYY-MM-DD-<추적키>-<슬러그>.md
 
 ```bash
 find docs/backend/worklog -maxdepth 1 -name '20*.md' | sort                             # 시간순 전체 (README.md 제외)
-find docs/backend/worklog -maxdepth 1 -name '20*S15P11A705-238*.md' | sort              # 티켓 하나
+find docs/backend/worklog -maxdepth 1 -name '20*Jira 작업*.md' | sort              # 티켓 하나
 find docs/backend/worklog -maxdepth 1 -name '20*.md' -exec grep -h '^# ' {} +           # 요약만
 ```
 

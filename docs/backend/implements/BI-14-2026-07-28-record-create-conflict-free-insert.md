@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-28
-- **관련**: S15P11A705-105, [BD-12](../decisions/BD-12-duplicate-record-idempotent.md), [BD-19](../decisions/BD-19-place-snapshot.md)
+- **관련**: Jira 작업, [BD-12](../decisions/BD-12-duplicate-record-idempotent.md), [BD-19](../decisions/BD-19-place-snapshot.md)
 
 ## 증상
 
@@ -43,4 +43,4 @@ JPA에서 제약 위반이 나면 그 트랜잭션은 rollback-only로 표시되
 
 ## 남은 것
 
-`POST /v1/follows`의 같은 성격의 경합(`uq_follow_active` 위반 → 500, 409 `DUPLICATE_FOLLOW`가 있는데도)은 별도 티켓 S15P11A705-104다. Follow는 되돌릴 Record가 없어 이 패턴이 그대로 적용되지 않는다 — 중복이면 기존 Follow를 돌려주는 게 아니라 409로 거절해야 하므로, 그쪽은 예외를 잡아 변환하는 편이 맞다.
+`POST /v1/follows`의 같은 성격의 경합(`uq_follow_active` 위반 → 500, 409 `DUPLICATE_FOLLOW`가 있는데도)은 별도 티켓 Jira 작업다. Follow는 되돌릴 Record가 없어 이 패턴이 그대로 적용되지 않는다 — 중복이면 기존 Follow를 돌려주는 게 아니라 409로 거절해야 하므로, 그쪽은 예외를 잡아 변환하는 편이 맞다.

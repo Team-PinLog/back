@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-08-04
-- **관련**: [S15P11A705-132](https://ssafy.atlassian.net/browse/S15P11A705-132) · [back#175](https://github.com/Team-PinLog/back/issues/175) ·
+- **관련**: Jira 작업 · [back#175](https://github.com/Team-PinLog/back/issues/175) ·
   [BD-30](BD-30-authorization-request-in-cookie.md)(대체하는 결정) · [BD-48](BD-48-unlink-before-withdrawal.md)(이 쿠키에 탈퇴 판정을 실은 결정)
 - **범위**: 직렬화 **형식**만 바꾼다. 쿠키에 담는다는 BD-30의 결정과 쿠키 속성(`HttpOnly`·`SameSite=Lax`·`Path`·수명)은 그대로다.
 

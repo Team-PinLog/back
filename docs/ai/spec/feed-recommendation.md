@@ -156,7 +156,7 @@ Collection이 Record 1~5건 규모이고 Context 하나가 Keyword를 평균 2�
 
 빈도가 갈리는 Collection에서 축이 뒤로 밀리는 것은 잃는 것이 아닙니다. 빈도가 갈렸다는 것은 「우연히 쏠린 것」이 아니라 「실제로 그 축에 쏠린 Collection」이라는 뜻입니다.
 
-- **`preset.id`로 푸는 것**은 표시값이 언제든 바뀌기 때문입니다. `display_name` 사전순으로 두면 라벨 한 글자를 고친 날 카드의 Keyword 구성 자체가 바뀝니다(`S15P11A705-252`가 같은 이유로 점수 계산의 키를 `code`로 못 박았습니다). `GROUP BY` 결과 순서는 DB가 보장하지 않으므로 후보가 아닙니다.
+- **`preset.id`로 푸는 것**은 표시값이 언제든 바뀌기 때문입니다. `display_name` 사전순으로 두면 라벨 한 글자를 고친 날 카드의 Keyword 구성 자체가 바뀝니다(`Jira 작업`가 같은 이유로 점수 계산의 키를 `code`로 못 박았습니다). `GROUP BY` 결과 순서는 DB가 보장하지 않으므로 후보가 아닙니다.
 - **축을 그 앞에 두는 것**은 같은 자리를 어떻게 채울지의 문제입니다. 프리셋은 `COMPANION`(누구와)·`ACTIVITY`(무엇을)·`ATMOSPHERE`(어떤 분위기)·`SITUATION`(어떤 상황) 네 축이고, 동점 무리 안에서 한 바퀴 돌리면 카드가 한 문장으로 읽힙니다. `preset.id`만 쓰면 같은 축이 앞자리를 독점할 수 있습니다. `preset.id`만으로 동점을 푸는 경우와 비교하면 상위 3개의 축 커버리지가 **16건 중 5건에서 늘고 한 건도 줄지 않습니다**(다섯 건 모두 2축 → 3축).
 - **엄격한 「축당 1개」는 쓰지 않습니다.** 3축 이상을 가진 Collection이 10/16이고 나머지 6건은 3축 미만입니다(1축 1건·2축 5건). 못 박으면 그 6건이 가진 것보다 적게 나갑니다. 라운드로빈이라 축이 하나뿐이어도 3칸이 찹니다.
 
@@ -190,7 +190,7 @@ GET  /api/core/v1/feed/collections?cursor={opaqueCursor}&size=20
 POST /api/core/v1/feed/events
 ```
 
-- 한 페이지는 기본 20건입니다. `size`는 공통 커서 계약을 그대로 따릅니다. 기본값은 `CursorPage.DEFAULT_SIZE`(20), 서버 방어 상한은 `CursorPage.MAX_SIZE`(100)이며, 범위 밖 값은 `CursorPage.normalizeSize`가 보정합니다. Feed 전용 상한을 따로 두지 않습니다(S15P11A705-117이 세운 "서버 방어 상한의 답은 하나" 규약).
+- 한 페이지는 기본 20건입니다. `size`는 공통 커서 계약을 그대로 따릅니다. 기본값은 `CursorPage.DEFAULT_SIZE`(20), 서버 방어 상한은 `CursorPage.MAX_SIZE`(100)이며, 범위 밖 값은 `CursorPage.normalizeSize`가 보정합니다. Feed 전용 상한을 따로 두지 않습니다(Jira 작업이 세운 "서버 방어 상한의 답은 하나" 규약).
 - `requestId`는 Feed Session 식별자이며 응답 본문과 CLICK·SAVE 이벤트 payload의 별도 필드입니다.
 - `cursor`는 내부 구조를 노출하지 않는 opaque 문자열입니다. 서버는 cursor로 같은 Session의 다음 위치를 복원해 페이지 간 중복·누락을 방지합니다.
 - 후보 풀 자체는 Session 단위로 Redis에 짧게 보관합니다. 매 페이지마다 후보를 다시 생성하면 정렬이 흔들립니다.

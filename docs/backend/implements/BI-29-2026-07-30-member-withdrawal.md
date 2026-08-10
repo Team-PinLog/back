@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-30
-- **관련**: S15P11A705-65, [back#34](https://github.com/Team-PinLog/back/issues/34),
+- **관련**: Jira 작업, [back#34](https://github.com/Team-PinLog/back/issues/34),
   [BD-41](../decisions/BD-41-withdrawn-member-check-in-authentication-filter.md)(Access 창을 필터에서 닫은 결정),
   [BD-37](../decisions/BD-37-ai-derived-invalidation-inside-deletion-transaction.md)(AI 무효화를 삭제 트랜잭션 안에),
   [BI-23](BI-23-2026-07-29-ai-derived-invalidation-on-delete.md)(나머지 삭제 경로 셋)
@@ -19,8 +19,8 @@
 
 탈퇴 경로가 없어서 **완료된 작업 둘이 미충족 상태였다.**
 
-- `S15P11A705-124`가 요구한 AI 파생 무효화 네 지점 중 **탈퇴만 비어 있었다.** [#80](https://github.com/Team-PinLog/back/pull/80)이 나머지 셋에 적용했지만 붙일 서비스가 없어 제외했다.
-- `S15P11A705-147`이 미탈퇴 판정을 `MemberRepository.isActive` 하나로 모아 뒀는데, **`member.deleted_at`을 세팅하는 주체가 없어 그 코드가 한 번도 발동하지 않았다.** 이제 공개 조회 세 경로(Collection 상세 404·팔로우 404·팔로우한 책장 빈 목록)가 새 코드 없이 동작한다.
+- `Jira 작업`가 요구한 AI 파생 무효화 네 지점 중 **탈퇴만 비어 있었다.** [#80](https://github.com/Team-PinLog/back/pull/80)이 나머지 셋에 적용했지만 붙일 서비스가 없어 제외했다.
+- `Jira 작업`이 미탈퇴 판정을 `MemberRepository.isActive` 하나로 모아 뒀는데, **`member.deleted_at`을 세팅하는 주체가 없어 그 코드가 한 번도 발동하지 않았다.** 이제 공개 조회 세 경로(Collection 상세 404·팔로우 404·팔로우한 책장 빈 목록)가 새 코드 없이 동작한다.
 
 ## 이슈 본문에서 따르지 않은 것
 

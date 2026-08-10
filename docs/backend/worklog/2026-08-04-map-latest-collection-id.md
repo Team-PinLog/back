@@ -1,7 +1,7 @@
 # 지도 마커 응답에 가장 최근에 담긴 컬렉션 id를 더한다
 
 - **날짜**: 2026-08-04
-- **추적**: S15P11A705-308
+- **추적**: Jira 작업
 - **관련**: [docs#48](https://github.com/Team-PinLog/docs/pull/48) (08 §4.2 계약 선행 개정)
 
 프론트가 지도 마커 색상을 레코드가 담긴 컬렉션 기준으로 구분하기로 해서, `GET /v1/records/map` 응답 `items`의 각 마커에 `latestCollectionId`를 실었다. 값은 그 Record가 담긴 활성 연결(`collection_record`) 중 **담은 시각 최신**(`created_at DESC`, 동시각이면 `id DESC`) 기준 Collection id — 컬렉션 내부 정렬(데이터모델 2.7)과 같은 기준이라 "컬렉션에서 보이는 최신"과 "마커 색"이 어긋나지 않는다. 어느 컬렉션에도 담기지 않은 Record는 `null`이고, 컬렉션에서 뺀(소프트 삭제) 연결은 판단에서 제외된다.

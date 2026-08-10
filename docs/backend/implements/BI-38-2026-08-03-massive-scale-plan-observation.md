@@ -2,8 +2,8 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-08-03
-- **관련**: S15P11A705-284,
-  S15P11A705-283(벤치 환경 — 이 위에서 측정했다),
+- **관련**: Jira 작업,
+  Jira 작업(벤치 환경 — 이 위에서 측정했다),
   [BI-37](BI-37-2026-08-02-load-profiles-report.md)(부하 관측 — 규모 축이 아니라 동시성 축),
   [BD-04](../decisions/BD-04-cursor-pagination.md)(커서 설계 — 이번에 규모로 검증),
   [BD-20](../decisions/BD-20-selective-denormalization.md)·[BD-33](../decisions/BD-33-published-at-invariant.md)
@@ -11,7 +11,7 @@
 ## 무엇을 쟀나
 
 record 117k에서는 플래너가 Seq Scan을 골라도 손해가 없어 인덱스 설계가 판별되지 않았다.
-S15P11A705-283이 만든 **record 1,000만 · collection 667k** 볼륨 위에서 주요 읽기 경로 4종을
+Jira 작업이 만든 **record 1,000만 · collection 667k** 볼륨 위에서 주요 읽기 경로 4종을
 `EXPLAIN (ANALYZE, BUFFERS)`로 수집하고, 벤치 이전 상태(117,022건)와 대조했다.
 
 **측정 방법.** 벤치 데이터는 전부 기존 최대 id 뒤에 이어 붙었으므로, `id <= 기준점` 행만
@@ -126,7 +126,7 @@ warm에서는 배수가 1~3으로 내려간다. 구조적으로 규모에 비례
 이 보고서는 보존 구역이라 본문 수치를 고치지 않는다. 대신 측정 이후 대상 코드가 바뀐 사실을
 여기에 덧붙인다.
 
-**2026-08-04, dev #180(S15P11A705-301)이 지도 마커 API에 `keyword` 검색과 이름순 정렬을 더했다.**
+**2026-08-04, dev #180(Jira 작업)이 지도 마커 API에 `keyword` 검색과 이름순 정렬을 더했다.**
 따라서 위 판정 4·5의 지도 수치는 **그 변경 이전 쿼리**를 잰 것이다. 바뀐 점은 셋이다.
 
 - `findMarkers`·`findMarkersWithinBounds` 양쪽 WHERE에

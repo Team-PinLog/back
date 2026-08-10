@@ -21,7 +21,7 @@ Jira 티켓 발급
 
 ## 0. 시작 전 — Jira 티켓을 먼저 만든다
 
-일반 개발 작업은 **Jira가 작업 단위**입니다. 코드를 만지기 전에 티켓을 발급하고 키(`S15P11A705-123` 형식)를 확보합니다. 자연어로 티켓만 빠르게 만들고 싶으면 [`Team-PinLog/cowork`](https://github.com/Team-PinLog/cowork)("할 일 올리기")를 사용합니다.
+일반 개발 작업은 **Jira가 작업 단위**입니다. 코드를 만지기 전에 티켓을 발급하고 키(`Jira 작업` 형식)를 확보합니다. 자연어로 티켓만 빠르게 만들고 싶으면 [`Team-PinLog/cowork`](https://github.com/Team-PinLog/cowork)("할 일 올리기")를 사용합니다.
 
 > **예외**: 이번 backend foundation reset은 Jira 없이 [Issue #9](https://github.com/Team-PinLog/back/issues/9)로 단독 추적합니다. 이 예외는 일반 작업에 적용하지 않습니다.
 
@@ -33,7 +33,7 @@ Jira 티켓 발급
 git fetch origin dev
 git switch dev
 git merge --ff-only origin/dev
-git switch -c feat/S15P11A705-123-member-search
+git switch -c feat/{jira-key}-member-search
 ```
 
 브랜치 이름은 `{type}/{jira-key}-{summary}`, `type`은 `feat` `fix` `docs` `refactor` `chore` `test` `perf` 중 하나입니다.
@@ -74,7 +74,7 @@ Docker가 없다고 DB 테스트를 건너뛰지 않습니다. Docker를 켜고 
 
 ```bash
 git add <파일>
-git commit -m "feat(S15P11A705-123): add member search"
+git commit -m "feat(Jira 작업): add member search"
 ```
 
 ## 6. push하고 PR을 연다

@@ -1,10 +1,10 @@
-# Feed 표시 Keyword의 동점 규칙과 상한 3 (S15P11A705-278)
+# Feed 표시 Keyword의 동점 규칙과 상한 3 (Jira 작업)
 
 - **상태**: ✅ 완료
-- **관련**: S15P11A705-278 · [ai#93](https://github.com/Team-PinLog/ai/issues/93)(제기 — 프론트) ·
-  [front#88](https://github.com/Team-PinLog/front/issues/88)(S15P11A705-279 책장 레이아웃) ·
+- **관련**: Jira 작업 · [ai#93](https://github.com/Team-PinLog/ai/issues/93)(제기 — 프론트) ·
+  [front#88](https://github.com/Team-PinLog/front/issues/88)(Jira 작업 책장 레이아웃) ·
   [P46](../proposals/P46-feed-keyword-display-order.md)(결정) ·
-  [S15P11A705-252](2026-08-03-feed-keyword-display-name.md)(선행 — 표시값 경계)
+  [Jira 작업](2026-08-03-feed-keyword-display-name.md)(선행 — 표시값 경계)
 
 ## 무엇을 만들었나
 
@@ -22,8 +22,8 @@ FeedCollectionItemResponse          KEYWORD_LIMIT = 3 (설정값 아님)
 ## 실측 — 조사가 설계를 바꾼 지점
 
 티켓의 전제 하나가 사실과 달랐다. **현재 순서는 `GROUP BY` 결과 순서가 아니었다.**
-`FeedService.RankedFeed.keywordsOf`는 `S15P11A705-120`(back#77) 때부터 `.sorted()`를 걸고 있었고,
-`S15P11A705-252` 이후로는 **표시값 가나다순**이었다. 즉 순서는 이미 결정적이었다.
+`FeedService.RankedFeed.keywordsOf`는 `Jira 작업`(back#77) 때부터 `.sorted()`를 걸고 있었고,
+`Jira 작업` 이후로는 **표시값 가나다순**이었다. 즉 순서는 이미 결정적이었다.
 
 그래서 문제는 결정성이 아니라 **기준에 의미가 없다**는 것으로 바뀌었다. 「가족과」가 「활기찬」보다
 앞에 올 이유가 없고, 더 나쁜 것은 **표시 라벨을 한 글자 고치면 카드에 뜨는 Keyword 구성 자체가

@@ -2,10 +2,10 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-08-03
-- **관련**: S15P11A705-278,
+- **관련**: Jira 작업,
   [ai#93](https://github.com/Team-PinLog/ai/issues/93)(제기 — 프론트),
-  [front#88](https://github.com/Team-PinLog/front/issues/88)(S15P11A705-279 책장 레이아웃),
-  S15P11A705-252([back#146](https://github.com/Team-PinLog/back/pull/146) — 표시값 경계)
+  [front#88](https://github.com/Team-PinLog/front/issues/88)(Jira 작업 책장 레이아웃),
+  Jira 작업([back#146](https://github.com/Team-PinLog/back/pull/146) — 표시값 경계)
 - **주도(Driver)**: AI 파트 (개수·정렬은 프론트 합의, 동점 규칙만 이 문서의 결정)
 
 ## 무엇이 이 문서의 결정이고 무엇이 아닌가
@@ -29,8 +29,8 @@
 명세 어디에도 없었다.
 
 **티켓의 전제 하나는 사실과 달랐다.** 티켓은 현재 순서를 "SQL `GROUP BY` 결과 순서"로 적었으나,
-`FeedService.RankedFeed.keywordsOf`는 `S15P11A705-120`(back#77) 때부터 `.sorted()`를 걸고 있었고
-`S15P11A705-252`(back#146) 이후로는 **표시값(한글) 가나다순**이었다. 순서는 이미 결정적이었다.
+`FeedService.RankedFeed.keywordsOf`는 `Jira 작업`(back#77) 때부터 `.sorted()`를 걸고 있었고
+`Jira 작업`(back#146) 이후로는 **표시값(한글) 가나다순**이었다. 순서는 이미 결정적이었다.
 
 그래서 실제 문제는 결정성이 아니었다. **표시 라벨을 한 글자 고치면 카드에 뜨는 Keyword 구성 자체가
 바뀐다**는 것이었고, 이것이 동점 규칙을 `preset.id`에 거는 직접적인 근거가 됐다.
@@ -110,7 +110,7 @@ Record 1~5건 규모이고 Context 하나가 Keyword를 평균 2개 받아 같�
 | 최근 부여순 | 기각. `ai.context_keyword`에 시각 컬럼이 없다 |
 | 프리셋 정의 순서 | 채택안과 같다. `id`가 곧 정의 순서다(yaml의 1xx~4xx 블록) |
 
-`display_name`을 기각한 것이 이 결정의 핵심이다. `S15P11A705-252`(back#146)가 같은 이유로 점수
+`display_name`을 기각한 것이 이 결정의 핵심이다. `Jira 작업`(back#146)가 같은 이유로 점수
 계산의 키를 `code`로 못 박았다. 표시값을 기준으로 쓰면 오류도 안 나고 테스트도 안 깨지는데
 **라벨을 고친 날 결과만 조용히 바뀐다.** 순서에도 같은 이유가 그대로 적용되며, RED에서 실제로
 재현됐다.

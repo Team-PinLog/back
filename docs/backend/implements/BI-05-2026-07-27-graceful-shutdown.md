@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-27
-- **관련**: S15P11A705-51, [BD-05](../decisions/BD-05-graceful-shutdown-timing.md)
+- **관련**: Jira 작업, [BD-05](../decisions/BD-05-graceful-shutdown-timing.md)
 
 ## 산출
 
@@ -14,7 +14,7 @@
   - `shutdownTimeoutFitsInsideKubernetesTerminationGracePeriod` — `timeout-per-shutdown-phase == 20s`
   - `livenessProbeIsAvailableForKubernetes` — `/api/core/actuator/health/liveness` 200 + `"status":"UP"`
   - `readinessProbeIsAvailableForKubernetes` — `/api/core/actuator/health/readiness` 200 + `"status":"UP"`
-- `docs/development/database-conventions.md` — "무중단 배포와 backward-compatible migration" 절 신설. S15P11A705-51의 "Flyway migration을 backward-compatible하게 작성하고 기존 테이블·컬럼의 즉시 삭제를 금지한다"를 규약으로 옮겼다.
+- `docs/development/database-conventions.md` — "무중단 배포와 backward-compatible migration" 절 신설. Jira 작업의 "Flyway migration을 backward-compatible하게 작성하고 기존 테이블·컬럼의 즉시 삭제를 금지한다"를 규약으로 옮겼다.
 
 ## 검증
 
@@ -33,11 +33,11 @@ o.s.boot.tomcat.GracefulShutdown : Graceful shutdown complete
 
 설정 전에는 이 두 줄이 나오지 않는다. 컨텍스트 종료 시 `GracefulShutdown`이 실제로 실행됨을 확인했다.
 
-**이 검증의 한계**: 진행 중인 요청이 실제로 *완료되는지*는 확인하지 못했다. 아직 도메인 엔드포인트가 없어서(`global/`만 존재) 배수를 관찰할 만큼 오래 걸리는 요청을 만들 수 없다. 위 로그는 "배수 절차가 실행된다"까지만 증명하고, "진행 중 요청이 잘리지 않는다"는 증명하지 않는다. Record API(S15P11A705-67)가 들어온 뒤 느린 요청 하나로 실제 배수를 확인하는 것이 남는다.
+**이 검증의 한계**: 진행 중인 요청이 실제로 *완료되는지*는 확인하지 못했다. 아직 도메인 엔드포인트가 없어서(`global/`만 존재) 배수를 관찰할 만큼 오래 걸리는 요청을 만들 수 없다. 위 로그는 "배수 절차가 실행된다"까지만 증명하고, "진행 중 요청이 잘리지 않는다"는 증명하지 않는다. Record API(Jira 작업)가 들어온 뒤 느린 요청 하나로 실제 배수를 확인하는 것이 남는다.
 
 ### probe 경로
 
-`health.probes.enabled: true`는 이미 있었지만 liveness/readiness 경로를 검증하는 테스트가 없었다. Infra(S15P11A705-47)가 이 경로를 probe로 박을 예정이라, 경로가 바뀌면 CrashLoop로 이어진다. 회귀 감시로 테스트를 추가했다.
+`health.probes.enabled: true`는 이미 있었지만 liveness/readiness 경로를 검증하는 테스트가 없었다. Infra(Jira 작업)가 이 경로를 probe로 박을 예정이라, 경로가 바뀌면 CrashLoop로 이어진다. 회귀 감시로 테스트를 추가했다.
 
 ## 반복될 함정 (다음 사람에게)
 
@@ -56,8 +56,8 @@ Docker Desktop 실행 상태에서 PostgreSQL/pgvector Testcontainers 포함 전
 
 ## 남은 것
 
-S15P11A705-51은 단발 작업이 아니라 상시 계약이라 이 커밋으로 닫히지 않는다. 남은 항목:
+Jira 작업은 단발 작업이 아니라 상시 계약이라 이 커밋으로 닫히지 않는다. 남은 항목:
 
 - Infra 쪽 짝(`preStop`, `terminationGracePeriodSeconds`) 반영 — Infra 레포 이슈로 전달
-- 진행 중 요청의 실제 배수 검증 — 도메인 엔드포인트(S15P11A705-67) 이후
-- S15P11A705-48(최초 내부 배포)에서 probe·metrics 계약이 실제 클러스터에서 통하는지 확인
+- 진행 중 요청의 실제 배수 검증 — 도메인 엔드포인트(Jira 작업) 이후
+- Jira 작업(최초 내부 배포)에서 probe·metrics 계약이 실제 클러스터에서 통하는지 확인

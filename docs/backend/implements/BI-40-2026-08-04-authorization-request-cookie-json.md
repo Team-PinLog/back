@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-08-04
-- **관련**: S15P11A705-132, [back#175](https://github.com/Team-PinLog/back/issues/175),
+- **관련**: Jira 작업, [back#175](https://github.com/Team-PinLog/back/issues/175),
   [BD-49](../decisions/BD-49-authorization-request-cookie-json.md)(결정),
   [BD-30](../decisions/BD-30-authorization-request-in-cookie.md)(대체된 결정),
   [BD-48](../decisions/BD-48-unlink-before-withdrawal.md)(이 쿠키에 탈퇴 판정을 실은 결정)

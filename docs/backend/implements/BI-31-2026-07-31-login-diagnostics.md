@@ -2,8 +2,8 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-31
-- **관련**: S15P11A705-186, [back#134](https://github.com/Team-PinLog/back/issues/134),
-  후속 [S15P11A705-187](https://ssafy.atlassian.net/browse/S15P11A705-187)(이 로그로 하위 원인을 특정한다)
+- **관련**: Jira 작업, [back#134](https://github.com/Team-PinLog/back/issues/134),
+  후속 Jira 작업(이 로그로 하위 원인을 특정한다)
 
 ## 산출
 

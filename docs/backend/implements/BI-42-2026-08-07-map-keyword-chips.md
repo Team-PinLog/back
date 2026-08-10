@@ -2,8 +2,8 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-08-07
-- **관련**: Jira S15P11A705-388(작업 내용·완료 조건·성능 근거 요약이 본문에 있다),
-  브랜치 `feat/S15P11A705-388-map-keyword-chips`, [BD-13](../decisions/BD-13-public-boundary-query-dto-split.md)
+- **관련**: Jira 작업(작업 내용·완료 조건·성능 근거 요약이 본문에 있다),
+  브랜치 `feat/{jira-key}-map-keyword-chips`, [BD-13](../decisions/BD-13-public-boundary-query-dto-split.md)
 
 ## 무엇을 만들었나
 
@@ -15,7 +15,7 @@
 { "items": [{ "keywordId": 12, "displayName": "카페", "recordCount": 12 }] }
 ```
 
-`keywordId`를 반드시 싣는다. 칩을 눌러 지도 필터로 넘길 때(S15P11A705-390) 쓸 값이라, 표시 이름으로
+`keywordId`를 반드시 싣는다. 칩을 눌러 지도 필터로 넘길 때(Jira 작업) 쓸 값이라, 표시 이름으로
 넘기면 동명 프리셋과 표기 변경에 깨진다.
 
 bbox 파라미터(`swLat`·`swLng`·`neLat`·`neLng`)는 `GET /v1/records/map`과 같은 규칙을 쓴다 — 넷 다
@@ -69,7 +69,7 @@ bbox 기준 집계는 화면 정합성(칩 숫자와 핀 수가 일치해야 한
 
 ## 남은 것
 
-- 지도 필터(`GET /v1/records/map`에 `keywordId` 추가) — S15P11A705-390
+- 지도 필터(`GET /v1/records/map`에 `keywordId` 추가) — Jira 작업
 - 공개 API 명세 반영 — [docs#52](https://github.com/Team-PinLog/docs/pull/52)로 올라감(머지 대기).
   `08_API_명세.md` 2.2·4.2·4.3에 지도 키워드 칩 조회 API와 마커 키워드 필터가 반영돼 있다.
 

@@ -1,7 +1,7 @@
 # 목록 정렬 기본을 오래된순으로 뒤집고 방향 파라미터를 연다
 
 - **날짜**: 2026-08-03
-- **추적**: S15P11A705-265
+- **추적**: Jira 작업
 - **관련**: [BD-46](../decisions/BD-46-list-sort-default-asc-with-params.md) · [docs#42](https://github.com/Team-PinLog/docs/pull/42) · [docs#37](https://github.com/Team-PinLog/docs/pull/37) (계승됨)
 
 Collection 목록·Collection 내부 Record·Record 상세 contexts의 기본 정렬을 최신순에서

@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-29
-- **관련**: S15P11A705-154, [infra#78](https://github.com/Team-PinLog/infra/pull/78)
+- **관련**: Jira 작업, [infra#78](https://github.com/Team-PinLog/infra/pull/78)
 
 ## 산출
 
@@ -33,4 +33,4 @@ PINLOG_INFRA_SECRET_PR_TOKEN       ← bridge token
 
 근거는 `.github/workflows/seal-runtime-secrets.yml` 22~31행과 `RuntimeSecretWorkflowContractTests`의 `containsExactlyElementsOf` 단언이다. 후자가 9개를 그대로 열거하므로, 숫자가 6이었다면 이 기록과 통과하는 테스트가 서로 어긋난 상태였다.
 
-봉인 정책(`infra/policy/sealedsecrets/back-prod.yaml`)의 **현행 owner runtime key는 8개**다. 위 목록에서 bridge token만 뺀 집합이며 `PINLOG_AI_INTERNAL_SECRET`도 포함한다([back#105](https://github.com/Team-PinLog/back/issues/105)). 이 문단은 처음에 해당 키를 누락해 7개로 기록했으나 S15P11A705-154에서 정책 원문과 workflow/test의 8-key 집합에 맞게 정정했다. 따라서 구분해야 할 숫자는 runtime 8개와 bridge를 포함한 workflow 참조 9개다.
+봉인 정책(`infra/policy/sealedsecrets/back-prod.yaml`)의 **현행 owner runtime key는 8개**다. 위 목록에서 bridge token만 뺀 집합이며 `PINLOG_AI_INTERNAL_SECRET`도 포함한다([back#105](https://github.com/Team-PinLog/back/issues/105)). 이 문단은 처음에 해당 키를 누락해 7개로 기록했으나 Jira 작업에서 정책 원문과 workflow/test의 8-key 집합에 맞게 정정했다. 따라서 구분해야 할 숫자는 runtime 8개와 bridge를 포함한 workflow 참조 9개다.

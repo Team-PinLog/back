@@ -8,13 +8,13 @@
 
 - 일반 개발 작업의 **작업 단위는 Jira 티켓**입니다. GitHub Issue 연결은 선택입니다.
 - 코드를 만지기 전에 티켓을 발급하고 **키를 확보**한 뒤, 브랜치·커밋·PR에 같은 키를 사용합니다.
-- 프로젝트 키: **`S15P11A705`**. 티켓 키는 `S15P11A705-<번호>` 형식입니다.
+- 프로젝트 키: **`Jira`**. 티켓 키는 `Jira-<번호>` 형식입니다.
 
 > **예외**: backend foundation reset은 Jira 없이 [Issue #9](https://github.com/Team-PinLog/back/issues/9)로 단독 추적합니다. 이 예외는 일반 작업에 적용하지 않습니다.
 
 ## 티켓 발급
 
-Jira에서 직접 만들거나, 자연어로 빠르게 만들고 싶으면 [`Team-PinLog/cowork`](https://github.com/Team-PinLog/cowork)("할 일 올리기")를 사용합니다. cowork는 로그인 사용자의 Jira 계정으로 `S15P11A705` 프로젝트에 **Task**를 생성합니다.
+Jira에서 직접 만들거나, 자연어로 빠르게 만들고 싶으면 [`Team-PinLog/cowork`](https://github.com/Team-PinLog/cowork)("할 일 올리기")를 사용합니다. cowork는 로그인 사용자의 Jira 계정으로 `Jira` 프로젝트에 **Task**를 생성합니다.
 
 현재 팀 운영 기준(확정):
 
@@ -35,9 +35,9 @@ Jira에서 직접 만들거나, 자연어로 빠르게 만들고 싶으면 [`Tea
 
 | 위치 | 형식 | 예시 |
 | --- | --- | --- |
-| 브랜치 | `{type}/{jira-key}-{summary}` | `feat/S15P11A705-14-member-search` |
-| 커밋 | `{type}({jira-key}): {summary}` | `feat(S15P11A705-14): add member search` |
-| PR 본문 | "Jira (필수)" 항목에 키/URL | `S15P11A705-14` |
+| 브랜치 | `{type}/{jira-key}-{summary}` | `feat/{jira-key}-member-search` |
+| 커밋 | `{type}({jira-key}): {summary}` | `feat(Jira 작업): add member search` |
+| PR 본문 | "Jira (필수)" 항목에 키/URL | `Jira 작업` |
 
 `type`은 `feat` `fix` `docs` `refactor` `chore` `test` `perf` 중 하나입니다([CONTRIBUTING.md](../../CONTRIBUTING.md)). PR은 [PR 템플릿](../../.github/pull_request_template.md)의 "Jira (필수)" 항목을 채워야 하며, 관련 GitHub Issue는 있을 때만 선택적으로 연결합니다.
 
@@ -63,9 +63,9 @@ To Do  →  In Progress  (PR 생성)
 
 **전제 — GitHub for Jira 연동.** Jira가 PR 이벤트를 받으려면 조직에 GitHub for Jira 연동이 연결돼 있어야 합니다. 이슈 화면 우측 **개발(Development) 패널**이 보이면 연결된 것입니다. 없으면 Jira → **Apps → GitHub for Jira**에서 `Team-PinLog` 저장소를 연결합니다.
 
-**매칭 근거.** 자동화는 브랜치·커밋·PR에 담긴 티켓 키(`S15P11A705-<번호>`)로 이슈를 찾습니다. [키가 흐르는 곳](#키가-흐르는-곳) 규약을 지키면 자동으로 매칭됩니다.
+**매칭 근거.** 자동화는 브랜치·커밋·PR에 담긴 티켓 키(`Jira-<번호>`)로 이슈를 찾습니다. [키가 흐르는 곳](#키가-흐르는-곳) 규약을 지키면 자동으로 매칭됩니다.
 
-**규칙 2개** (Jira → 프로젝트 `S15P11A705` → **프로젝트 설정 → Automation → 규칙 만들기**):
+**규칙 2개** (Jira → 프로젝트 `Jira` → **프로젝트 설정 → Automation → 규칙 만들기**):
 
 | # | 트리거(When) | 동작(Then) |
 | --- | --- | --- |

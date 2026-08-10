@@ -2,11 +2,11 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-28
-- **관련**: S15P11A705-106, [infra#33](https://github.com/Team-PinLog/infra/issues/33), [BT-03](../troubleshooting/BT-03-health-endpoint-blocks-on-redis-outage.md)
+- **관련**: Jira 작업, [infra#33](https://github.com/Team-PinLog/infra/issues/33), [BT-03](../troubleshooting/BT-03-health-endpoint-blocks-on-redis-outage.md)
 
 ## 맥락
 
-배포 계약(S15P11A705-51)을 검증하면서 probe 경로를 실측한 결과, `/health/liveness`·`/health/readiness`는 외부 의존성이 죽어도 항상 `200 UP`이었다.
+배포 계약(Jira 작업)을 검증하면서 probe 경로를 실측한 결과, `/health/liveness`·`/health/readiness`는 외부 의존성이 죽어도 항상 `200 UP`이었다.
 
 | endpoint | 정상 | PostgreSQL·Redis 정지 |
 |---|---|---|

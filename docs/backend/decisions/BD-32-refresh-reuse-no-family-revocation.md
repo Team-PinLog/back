@@ -1,8 +1,8 @@
 # BD-32. Refresh 재사용을 감지해도 세션 계열을 폐기하지 않는다 (당분간)
 
-- **상태**: **Superseded by [BD-35](BD-35-refresh-reuse-family-revocation.md)** (2026-07-29) — 아래 재검토 트리거대로 [back#73](https://github.com/Team-PinLog/back/pull/73) 병합 직후 계열 폐기를 구현했다([S15P11A705-131](https://ssafy.atlassian.net/browse/S15P11A705-131)). 이 문서가 기록한 "감수하는 것"은 **더 이상 유효하지 않다.**
+- **상태**: **Superseded by [BD-35](BD-35-refresh-reuse-family-revocation.md)** (2026-07-29) — 아래 재검토 트리거대로 [back#73](https://github.com/Team-PinLog/back/pull/73) 병합 직후 계열 폐기를 구현했다(Jira 작업). 이 문서가 기록한 "감수하는 것"은 **더 이상 유효하지 않다.**
 - **날짜**: 2026-07-29
-- **관련**: S15P11A705-63 · [BD-21](BD-21-auth-token-model.md)(토큰 모델) · [BI-18](../implements/BI-18-2026-07-28-jwt-cookie-session.md)
+- **관련**: Jira 작업 · [BD-21](BD-21-auth-token-model.md)(토큰 모델) · [BI-18](../implements/BI-18-2026-07-28-jwt-cookie-session.md)
 - **작성 시점**: 2026-07-29 — 코드 리뷰에서 지적받아 정리
 
 ## 맥락
@@ -44,5 +44,5 @@
 **재검토 트리거**
 
 - **이 PR이 병합되는 즉시** 후속 티켓으로 올린다. 미루는 결정이지 포기하는 결정이 아니다.
-- 회원 탈퇴(S15P11A705-65)를 구현할 때 — 그쪽도 `auth:refresh:<memberId>:*`를 한 번에 지워야 하므로 같은 자료구조가 필요하다. **두 작업을 같이 하는 것이 자연스럽다.**
+- 회원 탈퇴(Jira 작업)를 구현할 때 — 그쪽도 `auth:refresh:<memberId>:*`를 한 번에 지워야 하므로 같은 자료구조가 필요하다. **두 작업을 같이 하는 것이 자연스럽다.**
 - 재사용 감지 `WARN`이 실제로 관측되기 시작하면 우선순위를 올린다.

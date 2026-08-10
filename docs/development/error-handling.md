@@ -16,7 +16,7 @@
 
 `success`/`error` envelope는 `global/response/ApiResponse.fail(...)`이 생성하며, `global/exception/GlobalExceptionHandler`의 각 분기가 이를 반환합니다.
 
-> `Team-PinLog/docs`의 `static/08_API_명세.md` §5.6·§5.7이 규정한 `error.impact`는 `S15P11A705-70`(Record 삭제)에서 구현했습니다. `ErrorResponse.Impact(recordDeleted, collectionIds)`이며 지금은 `DELETE_CONFIRMATION_REQUIRED`에만 실립니다. 다른 `code`에서는 `null`이라 `@JsonInclude(NON_NULL)`로 응답에서 빠집니다.
+> `Team-PinLog/docs`의 `static/08_API_명세.md` §5.6·§5.7이 규정한 `error.impact`는 `Jira 작업`(Record 삭제)에서 구현했습니다. `ErrorResponse.Impact(recordDeleted, collectionIds)`이며 지금은 `DELETE_CONFIRMATION_REQUIRED`에만 실립니다. 다른 `code`에서는 `null`이라 `@JsonInclude(NON_NULL)`로 응답에서 빠집니다.
 
 이 문서는 이 계약을 **한 곳에서 일관되게** 생성하는 방법을 정의합니다. 컨트롤러마다 제각각 오류 응답을 만들지 않습니다.
 

@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-28
-- **관련**: S15P11A705-66, [BD-25](../decisions/BD-25-context-origin-created-at.md), [BD-08](../decisions/BD-08-soft-delete-no-restore.md), [BD-14](../decisions/BD-14-identifier-concealment.md)
+- **관련**: Jira 작업, [BD-25](../decisions/BD-25-context-origin-created-at.md), [BD-08](../decisions/BD-08-soft-delete-no-restore.md), [BD-14](../decisions/BD-14-identifier-concealment.md)
 
 ## 산출
 
@@ -25,7 +25,7 @@
   구 Context의 값을 승계한다(BD-25). `Collection`도 같은 방식으로 `published_at`을 생성 시각과 같은
   값으로 채운다(BD-23 생성 즉시 자동 발행).
 - 인증 스텁·컨트롤러·서비스는 내지 않았다(티켓 명시). back#28에서 합의한 `@LoginMember` 스텁 계약은
-  첫 컨트롤러가 나오는 S15P11A705-67에서 도입한다.
+  첫 컨트롤러가 나오는 Jira 작업에서 도입한다.
 
 ## 검증
 

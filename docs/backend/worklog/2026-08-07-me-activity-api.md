@@ -1,8 +1,8 @@
 # 나의 활동 기록 집계 API를 더했다 — 날짜 경계를 KST로 고정한다
 
 - **날짜**: 2026-08-07
-- **추적**: S15P11A705-397
-- **관련**: `GET /v1/me/activity` · [S15P11A705-388](https://ssafy.atlassian.net/browse/S15P11A705-388)(한글 정렬 함정의 출처)
+- **추적**: Jira 작업
+- **관련**: `GET /v1/me/activity` · Jira 작업(한글 정렬 함정의 출처)
 
 발표 시연에서 화면을 채울 "나의 활동 기록" 페이지를 붙이려는데, 내 기록을 집계해 내려주는 경로가 없었다. 지금까지는 단건·목록 조회뿐이라 프론트가 기록을 전부 받아 직접 세야 했다. `GET /v1/me/activity` 하나로 다섯 덩어리(`totals`·`months`·`areas`·`counts`·`highlights`)를 내려준다.
 
@@ -32,7 +32,7 @@
 
 ## 동점 정렬에 `COLLATE "C"`를 명시한다
 
-`areas`의 건수 동점은 지역명으로 끊는다. 그런데 한글 이름을 DB 기본 collation으로 정렬하면 **운영 DB와 테스트 컨테이너의 locale이 달라 순서가 갈린다** — S15P11A705-388이 같은 함정을 만나 그때는 이름 정렬 자체를 피했다(`keywordId`로 끊었다). 여기서는 파생 문자열이라 이름 말고 끊을 키가 없으므로, 피하는 대신 `ORDER BY count(*) DESC, district COLLATE "C" ASC`로 collation을 명시해 고정했다.
+`areas`의 건수 동점은 지역명으로 끊는다. 그런데 한글 이름을 DB 기본 collation으로 정렬하면 **운영 DB와 테스트 컨테이너의 locale이 달라 순서가 갈린다** — Jira 작업이 같은 함정을 만나 그때는 이름 정렬 자체를 피했다(`keywordId`로 끊었다). 여기서는 파생 문자열이라 이름 말고 끊을 키가 없으므로, 피하는 대신 `ORDER BY count(*) DESC, district COLLATE "C" ASC`로 collation을 명시해 고정했다.
 
 ## 집계를 한 쿼리로 묶지 않았다
 
@@ -40,7 +40,7 @@
 
 대신 대상 집합의 정의는 한 곳에 뒀다 — `MY_RECORDS` CTE(내 활성 Record + 장소 + KST 벽시계 + 시·구)를 네 쿼리가 공유한다.
 
-**엔티티를 거치지 않으므로 `@SQLRestriction`이 걸리지 않는다.** JPA 리포지토리에서는 삭제 조건을 적지 않는 것이 규약인데(S15P11A705-200), 이 SQL에서는 정반대로 `deleted_at IS NULL`을 직접 적어야 한다. 맥락 메모·컬렉션 카운트는 JPA 파생 쿼리를 쓰므로 그쪽은 조건을 적지 않는다.
+**엔티티를 거치지 않으므로 `@SQLRestriction`이 걸리지 않는다.** JPA 리포지토리에서는 삭제 조건을 적지 않는 것이 규약인데(Jira 작업), 이 SQL에서는 정반대로 `deleted_at IS NULL`을 직접 적어야 한다. 맥락 메모·컬렉션 카운트는 JPA 파생 쿼리를 쓰므로 그쪽은 조건을 적지 않는다.
 
 ## 범위 밖
 

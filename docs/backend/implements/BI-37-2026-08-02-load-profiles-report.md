@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-08-02
-- **관련**: S15P11A705-239,
+- **관련**: Jira 작업,
   [BI-33](BI-33-2026-07-31-api-verification-harness.md)(1단계 하네스 — 이 위에 얹었다),
   [BD-11](../decisions/BD-11-minimum-holding-invariants.md)(경합 시나리오의 판정 대상),
   [BD-20](../decisions/BD-20-selective-denormalization.md)·[BD-37](../decisions/BD-37-ai-derived-invalidation-inside-deletion-transaction.md)(부하 중 정합 검증 대상)

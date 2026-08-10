@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-28
-- **관련**: S15P11A705-125, S15P11A705-119(Feed 정책·계약),
+- **관련**: Jira 작업(Feed 정책·계약),
   [back#58](https://github.com/Team-PinLog/back/issues/58)
 
 ## 맥락

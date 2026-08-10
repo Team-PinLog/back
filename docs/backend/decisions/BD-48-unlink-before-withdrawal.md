@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-08-04
-- **관련**: [S15P11A705-285](https://ssafy.atlassian.net/browse/S15P11A705-285) · [S15P11A705-214](https://ssafy.atlassian.net/browse/S15P11A705-214) ·
+- **관련**: Jira 작업 ·
   [back#176](https://github.com/Team-PinLog/back/issues/176) · [back#139](https://github.com/Team-PinLog/back/issues/139) ·
   [docs#44](https://github.com/Team-PinLog/docs/pull/44) ·
   [BD-41](BD-41-withdrawn-member-check-in-authentication-filter.md)(순서 판단의 대비) · [BD-30](BD-30-authorization-request-in-cookie.md)(인가 요청 쿠키)
@@ -69,7 +69,7 @@ DB 트랜잭션과 외부 HTTP는 원자적일 수 없으므로 실현 형태는
 >
 > **`200`이 무엇의 성공인지 확인하지 않은 것이 이 문서의 오류다.** 폐기의 연쇄는 access → refresh 방향이고 승인은 refresh token 쪽에 달려 있는데, 우리는 `access_type=offline`을 붙이지 않아 refresh token 자체를 받지 않았다. 연쇄할 대상이 없으니 토큰만 죽었다.
 >
-> S15P11A705-309가 **탈퇴 왕복의 Google 인가 요청에만** `access_type=offline`·`prompt=consent`를 붙여 refresh token을 받고 그것을 폐기하도록 고쳤다. 로그인 진입은 그대로다 — 붙이면 매 로그인마다 동의 화면이 뜬다. 보관 원칙도 그대로다: refresh token은 토큰 교환 응답으로 와서 같은 요청 안에서 `/revoke`로 나가고 사라진다.
+> Jira 작업가 **탈퇴 왕복의 Google 인가 요청에만** `access_type=offline`·`prompt=consent`를 붙여 refresh token을 받고 그것을 폐기하도록 고쳤다. 로그인 진입은 그대로다 — 붙이면 매 로그인마다 동의 화면이 뜬다. 보관 원칙도 그대로다: refresh token은 토큰 교환 응답으로 와서 같은 요청 안에서 `/revoke`로 나가고 사라진다.
 
 | 공급자 | 엔드포인트 | 해제 단위 | 폐기 대상 | 이미 폐기된 토큰 |
 |---|---|---|---|---|
@@ -216,5 +216,5 @@ DB 트랜잭션과 외부 HTTP는 원자적일 수 없으므로 실현 형태는
   - **이미 탈퇴한 회원은 소급 해제가 불가능하다.** `provider_user_id`가 이미 마스킹돼 지목할 수단이 없다.
 - **재검토 트리거**
   - 인가 왕복 이탈률이 높아 해제되지 않는 탈퇴가 유의미하게 쌓일 때 — Kakao에 한해 어드민 키 폴백을 검토한다.
-  - [S15P11A705-132](https://ssafy.atlassian.net/browse/S15P11A705-132)에서 인가 요청 쿠키를 JSON으로 전환할 때 — `memberId`가 실리는 지금, 서명을 붙일지 함께 판단한다.
+  - Jira 작업에서 인가 요청 쿠키를 JSON으로 전환할 때 — `memberId`가 실리는 지금, 서명을 붙일지 함께 판단한다.
   - 공급자가 연결 해제 API의 인증 방식을 바꿀 때.

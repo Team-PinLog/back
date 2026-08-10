@@ -1,7 +1,7 @@
 # BT-06. 재발급 401이 무한히 반복됨 — 전 세션 폐기가 동시 회전에서 새고, 실패 경로가 쿠키를 남겼다
 
 - **상태**: 해결됨
-- **발견**: 2026-08-03, 프론트 제보 (S15P11A705-267, [back#165](https://github.com/Team-PinLog/back/issues/165))
+- **발견**: 2026-08-03, 프론트 제보 (Jira 작업, [back#165](https://github.com/Team-PinLog/back/issues/165))
 - **관련**: [BD-35](../decisions/BD-35-refresh-reuse-family-revocation.md) · [BD-21](../decisions/BD-21-auth-token-model.md)
 
 ## 증상

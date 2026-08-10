@@ -4,7 +4,7 @@
 
 ## 지원 데이터베이스
 
-PostgreSQL만 지원합니다. 로컬 실행, 통합 테스트와 CI는 `pgvector/pgvector:0.8.5-pg16` PostgreSQL을 기준으로 합니다. 운영 이미지(S15P11A705-46)와 같은 버전으로 맞춥니다. H2를 추가하거나 PostgreSQL 전용 migration의 대체 검증으로 사용하지 않습니다.
+PostgreSQL만 지원합니다. 로컬 실행, 통합 테스트와 CI는 `pgvector/pgvector:0.8.5-pg16` PostgreSQL을 기준으로 합니다. 운영 이미지(Jira 작업)와 같은 버전으로 맞춥니다. H2를 추가하거나 PostgreSQL 전용 migration의 대체 검증으로 사용하지 않습니다.
 
 `compose.yaml`은 digest까지 고정하고, Testcontainers(`PostgresContainerSupport`)는 같은 태그를 씁니다.
 
@@ -66,7 +66,7 @@ RollingUpdate 중에는 **구 버전 Pod와 신 버전 Pod가 같은 DB를 동�
 2. 배포 — 구 Pod가 모두 교체될 때까지 기다린다
 3. 제거 — **다음 릴리스의 새 migration**에서 구 컬럼을 지우고 `NOT NULL`을 건다
 
-CI의 `FlywayMigrationTests`는 **빈 DB에 전체 migration을 적용하는 것까지만** 검증합니다. 구 Pod 호환성은 자동으로 잡히지 않으므로 이 규약과 리뷰로 지킵니다. 근거: `S15P11A705-51`.
+CI의 `FlywayMigrationTests`는 **빈 DB에 전체 migration을 적용하는 것까지만** 검증합니다. 구 Pod 호환성은 자동으로 잡히지 않으므로 이 규약과 리뷰로 지킵니다. 근거: `Jira 작업`.
 
 기존 DB에 migration을 추가하는 경로는 `FlywayOutOfOrderTests`가 별도로 검증합니다 — AI 구간만 적용된 DB를 재현해 백엔드 migration이 적용되는지 확인합니다. 두 테스트의 역할이 다르므로 **둘 다 유지합니다**: 하나는 최초 배포, 하나는 그 이후를 지킵니다.
 

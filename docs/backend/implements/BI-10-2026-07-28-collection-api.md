@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-28
-- **관련**: S15P11A705-68, [BD-11](../decisions/BD-11-minimum-holding-invariants.md), [BD-23](../decisions/BD-23-collection-auto-publish.md), [BD-04](../decisions/BD-04-cursor-pagination.md)
+- **관련**: Jira 작업, [BD-11](../decisions/BD-11-minimum-holding-invariants.md), [BD-23](../decisions/BD-23-collection-auto-publish.md), [BD-04](../decisions/BD-04-cursor-pagination.md)
 
 ## 산출
 
@@ -19,7 +19,7 @@
 - `POST /v1/collections/{collectionId}/records` — **멱등 추가**(명세 7.5): 이미 담긴 Record는
   건너뛰고 나머지만 담는다. `findByIdForUpdate`(PESSIMISTIC_WRITE)로 Collection을 잠근 뒤 활성 연결
   판단과 `record_count` 갱신을 같은 트랜잭션에서 수행(데이터모델 6.7과 같은 경합 구조).
-- 타인 조회·수정은 전부 404 은닉. 타인용 공개 응답은 S15P11A705-71에서 붙는다.
+- 타인 조회·수정은 전부 404 은닉. 타인용 공개 응답은 Jira 작업에서 붙는다.
 
 ## 티켓과 정본 스펙의 충돌 (Jira 댓글로 기록)
 

@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-29
-- **관련**: S15P11A705-102, [back#61](https://github.com/Team-PinLog/back/issues/61),
+- **관련**: Jira 작업, [back#61](https://github.com/Team-PinLog/back/issues/61),
   [BI-22](../implements/BI-22-2026-07-29-context-ai-enqueue.md),
   [BD-35](BD-35-ai-derived-invalidation-inside-deletion-transaction.md)(back#80, 삭제 방향),
   AI 파트 소유 명세 `docs/ai/spec/context-state-sync.md` §2·§3·§5·§8,

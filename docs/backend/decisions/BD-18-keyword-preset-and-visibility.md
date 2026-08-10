@@ -3,7 +3,7 @@
 - **상태**: Accepted
 - **날짜**: 2026-07-22 (AI 설계·데이터 모델 확립 시점. 단일 커밋으로 특정 불가)
 - **작성 시점**: 2026-07-27 — 결정 이후에 정리
-- **관련**: S15P11A705-76
+- **관련**: Jira 작업
 - **공용 계약**: [02_정책_정의서 §6](https://github.com/Team-PinLog/docs/blob/main/static/02_정책_정의서.md) · [06_데이터모델_및_무결성 §2.9·§5.4](https://github.com/Team-PinLog/docs/blob/main/static/06_데이터모델_및_무결성.md) · [05_AI_설계 §4.4](https://github.com/Team-PinLog/docs/blob/main/static/05_AI_설계.md)
 
 ## 맥락

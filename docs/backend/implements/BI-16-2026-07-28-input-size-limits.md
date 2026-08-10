@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-28
-- **관련**: S15P11A705-117, [BD-04](../decisions/BD-04-cursor-pagination.md)(`CursorPage.MAX_SIZE` 방어 상한 선례), [docs#19](https://github.com/Team-PinLog/docs/pull/19)
+- **관련**: Jira 작업, [BD-04](../decisions/BD-04-cursor-pagination.md)(`CursorPage.MAX_SIZE` 방어 상한 선례), [docs#19](https://github.com/Team-PinLog/docs/pull/19)
 
 ## 증상
 
@@ -34,7 +34,7 @@
 
 ## 왜 상수를 한 곳에 모았나
 
-500이 세 DTO에, 100이 두 DTO에 들어간다. 리터럴로 흩뿌리면 한 곳만 바뀌어 **엔드포인트마다 상한이 달라지는** 상태가 조용히 생긴다. 이 레포에서 같은 성격의 사고가 이미 있었다 — envelope 판정이 런타임 advice와 문서 생성기 두 곳에 각자 있어서 결론이 갈렸다(S15P11A705-85).
+500이 세 DTO에, 100이 두 DTO에 들어간다. 리터럴로 흩뿌리면 한 곳만 바뀌어 **엔드포인트마다 상한이 달라지는** 상태가 조용히 생긴다. 이 레포에서 같은 성격의 사고가 이미 있었다 — envelope 판정이 런타임 advice와 문서 생성기 두 곳에 각자 있어서 결론이 갈렸다(Jira 작업).
 
 `recordIds` 상한은 `CursorPage.MAX_SIZE`와 같은 값으로 정했다. **코드로 묶지는 않았다** — `global/common`이 `global/response`를 참조하는 방향이 되고, 두 값이 같아야 할 본질적 이유가 있는 것은 아니라서다. 대신 javadoc에 근거를 적었다. 감수하는 것: 한쪽만 바뀌면 두 기준이 갈린다.
 

@@ -4,7 +4,7 @@
 - **날짜**: 2026-08-07
 - **관련**: `OFFTOPIC-CONFIDENCE-GATE-HANDOFF-DRAFT.md`(중앙 조정 세션 인계 문서) §4 · ai 레포
   [P49](../../ai/proposals/P49-multi-signal-search.md) §4-5(similarity 비노출 계약) · 오프라인
-  재측정 [S15P11A705-401](../../ai/implements/2026-08-07-gate-threshold-remeasure.md)
+  재측정 [Jira 작업](../../ai/implements/2026-08-07-gate-threshold-remeasure.md)
 - **번호**: [BD-45](BD-45-worklog-per-entry-files.md)의 규칙대로 `dev` 머지 순서가 번호를 확정한다.
   머지 시점에 52가 이미 다른 결정에 쓰였다면 [BD-50](BD-50-datasource-redis-config-follows-infra-env-vars.md)의
   선례대로 번호만 옮기고 내용은 그대로 둔다.
@@ -22,7 +22,7 @@
 - S1(벡터 유사도)은 FastAPI 응답에 항상 있다.
 - S2(문자열 매치)는 `mergeLexicalMatches`가 병합하는 순간 결정된다 — 그 이전엔 아직 문자열
   후보 목록조차 없다.
-- S3(키워드 매치)는 ai 레포가 이미 응답 필드(`keywordMatched`, S15P11A705-399)로 실어 보낸다 —
+- S3(키워드 매치)는 ai 레포가 이미 응답 필드(`keywordMatched`, Jira 작업)로 실어 보낸다 —
   Spring이 계산하지 않는다.
 
 ## 선택지

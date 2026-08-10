@@ -1,7 +1,7 @@
 # 인증 필터의 DB 실패를 401이 아니라 503으로 말하게 했다
 
 - **날짜**: 2026-08-03
-- **추적**: S15P11A705-188
+- **추적**: Jira 작업
 - **관련**: [BD-47](../decisions/BD-47-auth-filter-infra-failure-is-503.md) · [BD-41](../decisions/BD-41-withdrawn-member-access-token.md) · [BD-28](../decisions/BD-28-readiness-includes-db.md) · [back#171](https://github.com/Team-PinLog/back/issues/171)
 
 BD-41이 "어떻게 다룰지는 별도 티켓에서 정한다"로 남겨 둔 건이다. 결정 근거는 [BD-47](../decisions/BD-47-auth-filter-infra-failure-is-503.md)에 있고, 여기에는 고르면서 내린 판단만 적는다.

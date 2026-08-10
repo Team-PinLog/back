@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-28
-- **관련**: S15P11A705-67, back#28(인증 스텁 계약), [BD-12](../decisions/BD-12-duplicate-record-idempotent.md), [BD-14](../decisions/BD-14-identifier-concealment.md), [BD-07](../decisions/BD-07-context-immutability.md), [BD-25](../decisions/BD-25-context-origin-created-at.md)
+- **관련**: Jira 작업, back#28(인증 스텁 계약), [BD-12](../decisions/BD-12-duplicate-record-idempotent.md), [BD-14](../decisions/BD-14-identifier-concealment.md), [BD-07](../decisions/BD-07-context-immutability.md), [BD-25](../decisions/BD-25-context-origin-created-at.md)
 
 ## 산출
 

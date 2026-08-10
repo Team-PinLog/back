@@ -1,7 +1,7 @@
 # BT-05. `.env`의 빈 값이 `application.yml` 기본값을 덮어 기동이 실패한다
 
 - **상태**: 해결됨
-- **발견**: 2026-07-29, Kakao·Naver 등록정보를 추가하고 테스트를 돌리다가 (S15P11A705-64)
+- **발견**: 2026-07-29, Kakao·Naver 등록정보를 추가하고 테스트를 돌리다가 (Jira 작업)
 - **관련**: [설정 규약](../../development/configuration.md) · [BI-24](../implements/BI-24-2026-07-29-kakao-naver-login.md)
 
 ## 증상
@@ -17,7 +17,7 @@ Caused by: java.lang.IllegalStateException:
 
 ## 원인
 
-`application.yml`이 `.env`를 **프로퍼티 소스로 올린다.** Spring Boot가 `.env`를 자동으로 읽어 주지는 않아서 S15P11A705-63에서 명시적으로 넣은 설정이다(`1ed1dbe`).
+`application.yml`이 `.env`를 **프로퍼티 소스로 올린다.** Spring Boot가 `.env`를 자동으로 읽어 주지는 않아서 Jira 작업에서 명시적으로 넣은 설정이다(`1ed1dbe`).
 
 ```yaml
 config:

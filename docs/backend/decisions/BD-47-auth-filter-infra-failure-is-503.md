@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-08-03
-- **관련**: [S15P11A705-188](https://ssafy.atlassian.net/browse/S15P11A705-188) · [back#171](https://github.com/Team-PinLog/back/issues/171) ·
+- **관련**: Jira 작업 · [back#171](https://github.com/Team-PinLog/back/issues/171) ·
   [BD-41](BD-41-withdrawn-member-access-token.md)(이 문제를 남긴 결정) · [BD-28](BD-28-readiness-includes-db.md)(readiness에 `db`) ·
   [BT-06](../troubleshooting/BT-06-refresh-revocation-leak-under-concurrent-rotation.md) ·
   [11_인증_설계 §4.4](https://github.com/Team-PinLog/docs/blob/main/static/11_인증_설계.md)(401 → 재발급이 클라이언트 계약)
@@ -39,7 +39,7 @@ BD-28로 readiness에 `db`가 들어 있어 DB가 끊기면 파드가 트래픽�
 
 따라서 인프라 실패를 401로 내보내면 **계약을 지키는 클라이언트일수록 반드시 재발급을 시도한다.** 클라이언트 버그를 가정한 시나리오가 아니다.
 
-여기에 [S15P11A705-267](https://ssafy.atlassian.net/browse/S15P11A705-267)에서 넣은 *"재발급이 401이면 인증 쿠키를 지운다"*가 맞물린다.
+여기에 Jira 작업에서 넣은 *"재발급이 401이면 인증 쿠키를 지운다"*가 맞물린다.
 
 ```
 DB 순단 → isActive 던짐 → 삼킴 → 컨텍스트 빔 → 보호 경로 401

@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-08-03
-- **관련**: S15P11A705-265 · [docs#42](https://github.com/Team-PinLog/docs/pull/42) · [docs#37](https://github.com/Team-PinLog/docs/pull/37) (계승됨)
+- **관련**: Jira 작업 · [docs#42](https://github.com/Team-PinLog/docs/pull/42) · [docs#37](https://github.com/Team-PinLog/docs/pull/37) (계승됨)
 
 ## 맥락
 

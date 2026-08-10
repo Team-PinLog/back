@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-30
-- **관련**: S15P11A705-152, [back#97](https://github.com/Team-PinLog/back/issues/97),
+- **관련**: Jira 작업, [back#97](https://github.com/Team-PinLog/back/issues/97),
   [docs#28](https://github.com/Team-PinLog/docs/pull/28)(공용 계약 개정 — 선행),
   [BI-24](BI-24-2026-07-29-kakao-naver-login.md)(이메일 `null` 허용을 계약으로 고정했던 기록)
 
@@ -45,7 +45,7 @@
 
 ## 남은 것
 
-- **탈퇴 구현([S15P11A705-65](https://ssafy.atlassian.net/browse/S15P11A705-65))이 마스킹 치환값을 정한다.** 계약이 정한 것은 `NULL`이 아니라는 것과 원본을 되돌릴 수 없어야 한다는 것까지다. 치환값이 회원끼리 겹쳐도 무해하다(유니크가 활성행만 대상이고 마스킹 시점엔 `deleted_at`이 채워져 인덱스 밖이다).
+- **탈퇴 구현(Jira 작업)이 마스킹 치환값을 정한다.** 계약이 정한 것은 `NULL`이 아니라는 것과 원본을 되돌릴 수 없어야 한다는 것까지다. 치환값이 회원끼리 겹쳐도 무해하다(유니크가 활성행만 대상이고 마스킹 시점엔 `deleted_at`이 채워져 인덱스 밖이다).
 - **번호가 `BI-25`에서 `BI-27`로 두 칸 밀렸다.** 세 PR이 `BI-25`를 동시에 선점했고 머지 순서대로 확정됐다 — [#98](https://github.com/Team-PinLog/back/pull/98)이 `BI-25`, [#100](https://github.com/Team-PinLog/back/pull/100)이 `BI-26`, 이 기록이 `BI-27`이다. `#100`이 머지되기 전에 `BI-27`을 미리 배정해 재번호를 한 번만 했다. 규약대로 "미머지 브랜치의 파일명 선점은 예약이 아니다"가 실제로 세 번 적용된 사례다.
 
 ## 검증
