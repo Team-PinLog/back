@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-29
-- **관련**: S15P11A705-64, [back#33](https://github.com/Team-PinLog/back/issues/33),
+- **관련**: Jira 작업, [back#33](https://github.com/Team-PinLog/back/issues/33),
   [BI-18](BI-18-2026-07-28-jwt-cookie-session.md)(인증 골격),
   [BT-05](../troubleshooting/BT-05-dotenv-empty-value-overrides-default.md)(작업 중 발견)
 

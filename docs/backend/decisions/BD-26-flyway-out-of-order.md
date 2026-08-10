@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-28
-- **관련**: S15P11A705-86 · [BT-02](../troubleshooting/BT-02-flyway-out-of-order-version-ranges.md)
+- **관련**: Jira 작업 · [BT-02](../troubleshooting/BT-02-flyway-out-of-order-version-ranges.md)
 
 ## 맥락
 

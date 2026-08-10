@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-08-05
-- **관련**: S15P11A705-309, [back#190](https://github.com/Team-PinLog/back/issues/190),
+- **관련**: Jira 작업, [back#190](https://github.com/Team-PinLog/back/issues/190),
   [BD-48](../decisions/BD-48-unlink-before-withdrawal.md)(§① 정정),
   [BI-38](BI-38-2026-08-04-unlink-before-withdrawal.md)(탈퇴 왕복 구현)
 

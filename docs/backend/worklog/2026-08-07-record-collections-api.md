@@ -1,7 +1,7 @@
 # Record가 담긴 내 Collection 목록 조회 API를 쿼리 수 실측과 함께 마감했다
 
 - **날짜**: 2026-08-07
-- **추적**: S15P11A705-391
+- **추적**: Jira 작업
 - **관련**: [BI-43](../implements/BI-43-2026-08-07-record-collections-api.md) ·
   `f44fea2..00f09ab`(Task 1~4, 정정 — 원래 `d8d0514`(Task 1~3)로 적었으나 실제 커밋은
   `f44fea2`·`55b26de`·`d8d0514`·`00f09ab` 네 개다) · [BI-38](../implements/BI-38-2026-08-03-massive-scale-plan-observation.md)

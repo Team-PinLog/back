@@ -129,7 +129,7 @@ POST /api/core/v1/feed/events
 
 - `member_id`는 요청 본문에서 받지 않습니다. 인증 컨텍스트에서 가져옵니다. 본문으로 받으면 타인 이벤트를 위조할 수 있습니다.
 - `IMPRESSION`은 이 엔드포인트로 받지 않습니다. 서버가 기록하는 값이므로 클라이언트가 보내면 400으로 거부합니다.
-- 배열로 받아 batch INSERT합니다. 이벤트마다 요청을 보내지 않습니다. 배열 크기 상한은 S15P11A705-117이 세운 규약을 따라 `global/common/InputLimits`에 **`FEED_EVENTS_MAX`**라는 이름의 상수로 두고, 값은 `RECORD_IDS_MAX`·`CursorPage.MAX_SIZE`와 같은 **100**입니다. 요청 배열마다 상한을 따로 정하면 "서버 방어 상한이 얼마인가"에 답이 여러 개가 되기 때문입니다. 이름은 기존 `RECORD_IDS_MAX` 관례(`<대상 배열>_MAX`)를 그대로 따릅니다.
+- 배열로 받아 batch INSERT합니다. 이벤트마다 요청을 보내지 않습니다. 배열 크기 상한은 Jira 작업이 세운 규약을 따라 `global/common/InputLimits`에 **`FEED_EVENTS_MAX`**라는 이름의 상수로 두고, 값은 `RECORD_IDS_MAX`·`CursorPage.MAX_SIZE`와 같은 **100**입니다. 요청 배열마다 상한을 따로 정하면 "서버 방어 상한이 얼마인가"에 답이 여러 개가 되기 때문입니다. 이름은 기존 `RECORD_IDS_MAX` 관례(`<대상 배열>_MAX`)를 그대로 따릅니다.
 - 상한을 초과한 요청은 `400 INVALID_INPUT`으로 거부합니다. 초과분만 잘라내 저장하지 않습니다. 잘라내 저장하면 클라이언트가 조용한 유실을 인지할 방법이 없기 때문입니다.
 - `requestId`가 실재하는 Feed Session인지 검증하지 않습니다. 관측 로그이므로 엄격한 검증보다 수집 성공률이 중요합니다. 다만 UUID 형식은 검증합니다.
 - `collectionId`가 유효하지 않거나 삭제된 Collection이면 해당 이벤트만 조용히 버리고 나머지는 저장합니다. 부분 실패로 전체를 실패시키지 않습니다.

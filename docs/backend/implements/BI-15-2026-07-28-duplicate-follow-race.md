@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-28
-- **관련**: S15P11A705-104, [BI-14](BI-14-2026-07-28-record-create-conflict-free-insert.md)(같은 성격의 Record 쪽 경합)
+- **관련**: Jira 작업, [BI-14](BI-14-2026-07-28-record-create-conflict-free-insert.md)(같은 성격의 Record 쪽 경합)
 
 ## 증상
 
@@ -22,7 +22,7 @@
 
 같은 "확인 후 저장" 경합이지만 처방이 갈린다.
 
-| | S15P11A705-105 (Record) | S15P11A705-104 (Follow) |
+| | Jira 작업 (Record) | Jira 작업 (Follow) |
 |---|---|---|
 | 원하는 결과 | 기존 Record에 Context 추가(멱등) | **거절**(409) |
 | 위반 뒤 DB 작업 | 필요함 — 재조회 + Context INSERT | 없음 — 예외만 바꿔 던짐 |

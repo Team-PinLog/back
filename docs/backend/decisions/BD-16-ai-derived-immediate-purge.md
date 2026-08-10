@@ -3,7 +3,7 @@
 - **상태**: Accepted
 - **날짜**: 2026-07-27 (`Team-PinLog/docs` `a0c20c2` AI 계약 정합성 정정)
 - **작성 시점**: 2026-07-27 — 결정 이후에 정리
-- **관련**: S15P11A705-76
+- **관련**: Jira 작업
 - **공용 계약**: [06_데이터모델_및_무결성 §1.1·§1.3·§6.6](https://github.com/Team-PinLog/docs/blob/main/static/06_데이터모델_및_무결성.md) · [05_AI_설계 §6.5~6.6·§9.4·§11](https://github.com/Team-PinLog/docs/blob/main/static/05_AI_설계.md)
 
 ## 맥락

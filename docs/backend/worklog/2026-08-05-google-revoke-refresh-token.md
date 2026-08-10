@@ -1,7 +1,7 @@
 # Google 탈퇴가 승인을 남기던 것을 refresh token 폐기로 고쳤다
 
 - **날짜**: 2026-08-05
-- **추적**: S15P11A705-309
+- **추적**: Jira 작업
 - **관련**: [BD-48](../decisions/BD-48-unlink-before-withdrawal.md)(§① 정정) · [BI-41](../implements/BI-41-2026-08-05-google-revoke-refresh-token.md) · [back#190](https://github.com/Team-PinLog/back/issues/190) · [front#97](https://github.com/Team-PinLog/front/pull/97)
 
 Google로 가입한 회원이 탈퇴해도 Google 계정의 「서드파티 앱 및 서비스」에 앱이 남았다. Kakao·Naver는 정상이었다.

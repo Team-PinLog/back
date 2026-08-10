@@ -1,7 +1,7 @@
 # Collection이 소유자 자기 Record만 담는다는 불변식을 addRecords 경로에도 고정
 
 - **날짜**: 2026-08-03
-- **추적**: S15P11A705-190
+- **추적**: Jira 작업
 - **관련**: `CollectionService.requireAllOwnedActiveRecords` · `CollectionRecordRepository.findByCollectionIdIn`
 
 `collection_record` 링크를 만드는 프로덕션 경로는 `CollectionService.create`와

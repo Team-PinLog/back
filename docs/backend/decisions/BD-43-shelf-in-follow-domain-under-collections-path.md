@@ -2,19 +2,19 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-31
-- **관련**: [S15P11A705-206](https://ssafy.atlassian.net/browse/S15P11A705-206) · [back#85](https://github.com/Team-PinLog/back/issues/85) · [back#58](https://github.com/Team-PinLog/back/issues/58) · [back#140](https://github.com/Team-PinLog/back/pull/140) · [docs#35](https://github.com/Team-PinLog/docs/issues/35)
+- **관련**: Jira 작업 · [back#85](https://github.com/Team-PinLog/back/issues/85) · [back#58](https://github.com/Team-PinLog/back/issues/58) · [back#140](https://github.com/Team-PinLog/back/pull/140) · [docs#35](https://github.com/Team-PinLog/docs/issues/35)
 
 > **파일명 주의**: 파일명에 `under-collections-path`가 남아 있으나 결정은 그 반대다(경로 유지). 초안 단계에서 경로 이동을 채택했다가 아래 근거로 뒤집었고, 보존 구역 규칙에 따라 파일명을 바꾸지 않는다.
 
 ## 맥락
 
-작성자 공개 책장 탐색([08 §8.1](https://github.com/Team-PinLog/docs/blob/main/static/08_API_명세.md))이 구현되지 않아 프론트 호출이 운영에서 404였다. Feed 추천 MVP(S15P11A705-120, `[AI]` 티켓)가 범위에서 제외했고 후속 티켓이 없어 생긴 공백이다.
+작성자 공개 책장 탐색([08 §8.1](https://github.com/Team-PinLog/docs/blob/main/static/08_API_명세.md))이 구현되지 않아 프론트 호출이 운영에서 404였다. Feed 추천 MVP(Jira 작업, `[AI]` 티켓)가 범위에서 제외했고 후속 티켓이 없어 생긴 공백이다.
 
 착수하면서 두 가지가 정해져 있지 않았다.
 
 **하나, 어느 도메인에 두는가.** 공용 계약의 경로가 `/feed/collections/{collectionId}/shelf`여서 Feed 도메인이 자연스러운 후보였다. 그런데 이 Endpoint는 추천 점수·Profile·`core.feed_event` 어느 것도 타지 않는다. 하는 일은 `collectionId`로 작성자를 찾아 그 작성자의 발행 Collection을 커서로 나열하고 요청자 기준 팔로우 상태를 얹는 것뿐이며, §9.3 `GET /follows/{followId}/collections`와 **같은 데이터를 다른 진입 키로 읽는다**.
 
-Feed 런타임 담당자는 이정헌이고 AI 파트가 Feed 정책·계약을 소유한다(에픽 S15P11A705-111). back#58에서 AI 파트가 "shelf는 `-120` 범위 밖이고 AI 의존이 없으니 백엔드에서 먼저 끊어도 된다"고 명시적으로 넘겼다.
+Feed 런타임 담당자는 이정헌이고 AI 파트가 Feed 정책·계약을 소유한다(에픽 Jira 작업). back#58에서 AI 파트가 "shelf는 `-120` 범위 밖이고 AI 의존이 없으니 백엔드에서 먼저 끊어도 된다"고 명시적으로 넘겼다.
 
 **둘, 경로를 옮길 것인가.** 명세 안에서 이 Endpoint의 귀속이 엇갈려 있다.
 

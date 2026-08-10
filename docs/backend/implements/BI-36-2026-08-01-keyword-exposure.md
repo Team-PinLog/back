@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-08-01
-- **관련**: S15P11A705-240, [back#145](https://github.com/Team-PinLog/back/issues/145),
+- **관련**: Jira 작업, [back#145](https://github.com/Team-PinLog/back/issues/145),
   [BD-18](../decisions/BD-18-keyword-preset-and-visibility.md)(원본은 Context Keyword·상위는 읽기 집계),
   [BI-35](BI-35-2026-07-31-shelf-browse.md)(빈 배열을 "남긴 것"으로 기록한 곳)
 

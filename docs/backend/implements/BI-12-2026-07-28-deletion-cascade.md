@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-28
-- **관련**: S15P11A705-70, [BD-11](../decisions/BD-11-minimum-holding-invariants.md), [BD-08](../decisions/BD-08-soft-delete-no-restore.md), [BD-09](../decisions/BD-09-no-record-update-path.md)
+- **관련**: Jira 작업, [BD-11](../decisions/BD-11-minimum-holding-invariants.md), [BD-08](../decisions/BD-08-soft-delete-no-restore.md), [BD-09](../decisions/BD-09-no-record-update-path.md)
 
 ## 산출
 
@@ -23,7 +23,7 @@
   Record 삭제가 Collection의 record_count를 만질 때는 해당 Collection도 잠근다(6.7과 같은 경합).
   잠금 순서는 Record → Collection 단방향이라 교착이 없다(addRecords는 Collection만 잠근다).
 
-  > **정정 (2026-07-31, S15P11A705-201).** 위 마지막 문장의 근거가 불완전하다. "Record → Collection
+  > **정정 (2026-07-31, Jira 작업).** 위 마지막 문장의 근거가 불완전하다. "Record → Collection
   > 단방향"은 **타입 사이의 순서만** 논증하고 **Collection 사이의 순서는 다루지 않는다.** 서로 다른
   > Record를 지우는 두 트랜잭션이 같은 Collection 둘을 반대 순서로 잡으면 교착이 날 수 있고, 그
   > 순서를 정하는 것은 `cascadeDelete`가 부르는 역조회 쿼리다.

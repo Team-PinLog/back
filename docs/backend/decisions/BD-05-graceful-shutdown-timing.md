@@ -2,11 +2,11 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-27
-- **관련**: S15P11A705-51, [BI-05](../implements/BI-05-2026-07-27-graceful-shutdown.md), Infra 연계 S15P11A705-47
+- **관련**: Jira 작업, [BI-05](../implements/BI-05-2026-07-27-graceful-shutdown.md), Infra 연계 Jira 작업
 
 ## 맥락
 
-S15P11A705-51이 "SIGTERM graceful shutdown과 진행 중 요청 종료를 보장한다"를 요구한다. 확인해보니 `application.yml`에 `server.shutdown` 설정이 없어 기본값 `immediate`로 동작하고 있었다 — SIGTERM을 받으면 진행 중인 요청을 버리고 즉시 종료한다.
+Jira 작업이 "SIGTERM graceful shutdown과 진행 중 요청 종료를 보장한다"를 요구한다. 확인해보니 `application.yml`에 `server.shutdown` 설정이 없어 기본값 `immediate`로 동작하고 있었다 — SIGTERM을 받으면 진행 중인 요청을 버리고 즉시 종료한다.
 
 문제는 이게 애플리케이션 설정만으로 완결되지 않는다는 점이다. 무중단이 성립하려면 네 값이 맞물려야 한다.
 
@@ -17,7 +17,7 @@ S15P11A705-51이 "SIGTERM graceful shutdown과 진행 중 요청 종료를 보�
 | `terminationGracePeriodSeconds` | Deployment 매니페스트 | Infra |
 | `preStop` hook | Deployment 매니페스트 | Infra |
 
-S15P11A705-51의 제외 범위가 "Kubernetes·Argo CD·Secret delivery·Ingress 구현은 Infra 소유"라고 명시하므로, 백엔드는 앞 두 값만 정하고 뒤 두 값은 숫자를 제안해 넘긴다.
+Jira 작업의 제외 범위가 "Kubernetes·Argo CD·Secret delivery·Ingress 구현은 Infra 소유"라고 명시하므로, 백엔드는 앞 두 값만 정하고 뒤 두 값은 숫자를 제안해 넘긴다.
 
 `preStop`이 왜 필요한지도 함께 기록한다. Kubernetes는 Pod 종료 시 Endpoints 갱신과 SIGTERM 전송을 **동시에** 시작한다. 두 작업은 순서가 보장되지 않으므로, `preStop` 지연이 없으면 이미 종료를 시작한 Pod로 트래픽이 계속 들어온다. graceful shutdown이 켜져 있어도 새 요청은 거부되므로 502가 난다.
 

@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-28
-- **관련**: S15P11A705-125, [back#58](https://github.com/Team-PinLog/back/issues/58),
+- **관련**: Jira 작업, [back#58](https://github.com/Team-PinLog/back/issues/58),
   [BD-33](../decisions/BD-33-published-at-database-invariant.md)
 
 ## 산출

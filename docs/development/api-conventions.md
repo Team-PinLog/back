@@ -28,7 +28,7 @@
 
   **구분이 필요한 리소스가 생기면 그 PR에서 도입하고 이 항목을 갱신합니다.** 필드가 여러 개인 PATCH가 등장하는 시점이 그 신호입니다.
 
-  적용 예: `PATCH /v1/follows/{followId}`의 `alias` — `{}`와 `{"alias": null}`이 모두 별칭 제거입니다([08 §8.3](https://github.com/Team-PinLog/docs/blob/main/static/08_API_%EB%AA%85%EC%84%B8.md), S15P11A705-116).
+  적용 예: `PATCH /v1/follows/{followId}`의 `alias` — `{}`와 `{"alias": null}`이 모두 별칭 제거입니다([08 §8.3](https://github.com/Team-PinLog/docs/blob/main/static/08_API_%EB%AA%85%EC%84%B8.md), Jira 작업).
 
 ### 공통 응답 envelope
 

@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-27
-- **관련**: S15P11A705-53 (`a45475a`, `93f4ad6`, `fe52533`, `86b0dd6`, `a1cd90f`), [BD-03](../decisions/BD-03-api-response-envelope.md)
+- **관련**: Jira 작업 (`a45475a`, `93f4ad6`, `fe52533`, `86b0dd6`, `a1cd90f`), [BD-03](../decisions/BD-03-api-response-envelope.md)
 
 > 번호 참고: 열린 PR #25가 BI-02를 점유 중이라 이 문서는 BI-03부터 시작한다.
 

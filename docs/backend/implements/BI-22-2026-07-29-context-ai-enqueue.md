@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-29
-- **관련**: S15P11A705-102, [back#61](https://github.com/Team-PinLog/back/issues/61),
+- **관련**: Jira 작업, [back#61](https://github.com/Team-PinLog/back/issues/61),
   [BD-36](../decisions/BD-36-pending-insert-in-transaction-process-call-after-commit.md),
   [BI-21](BI-21-2026-07-29-ai-derived-invalidation-on-delete.md)(back#80, 삭제 방향),
   AI 파트 소유 명세 `docs/ai/spec/context-state-sync.md`·`docs/ai/spec/ai-integration.md`,
@@ -110,7 +110,7 @@ pinlog:
 ```
 
 검색용 키(`search`·`embedding-profile`)는 명세에 있지만 두지 않았다. 소비자가 생기는 티켓
-(S15P11A705-135)에서 함께 들어와야 "설정은 있는데 아무도 안 읽는" 구간이 생기지 않는다.
+(Jira 작업)에서 함께 들어와야 "설정은 있는데 아무도 안 읽는" 구간이 생기지 않는다.
 
 ## 검증
 
@@ -169,7 +169,7 @@ pinlog:
 
 - **재스캔 Scheduler와 재시도 소진 Finalizer**(별건). 큐 포화·호출 실패로 남은 PENDING을 실제로
   복구하는 주체다. 붙기 전까지 버려진 호출은 실질적으로 유실이다.
-- **검색 연동**(S15P11A705-135). `AiSearchClient`와 `pinlog.ai.search`·`embedding-profile` 설정.
+- **검색 연동**(Jira 작업). `AiSearchClient`와 `pinlog.ai.search`·`embedding-profile` 설정.
 - **관찰 지표**(`ai-integration.md` §8). 호출 성공·실패 건수와 상태별 State 건수는 아직 없다.
 - **`docs/ai/spec/ai-integration.md` §7의 헤더 이름 불일치.** 위 "산출" 참조. 정본이 아니므로
   고치지 않고 표시만 남겼다.

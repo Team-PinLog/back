@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-08-07
-- **관련**: S15P11A705-391, 명세 §5.10([Team-PinLog/docs#53](https://github.com/Team-PinLog/docs/pull/53) 선행 병합 필요),
+- **관련**: Jira 작업, 명세 §5.10([Team-PinLog/docs#53](https://github.com/Team-PinLog/docs/pull/53) 선행 병합 필요),
   [BD-46](../decisions/BD-46-list-sort-default-asc-with-params.md)(정렬 방향·커서 부등호 짝),
   [BI-38](BI-38-2026-08-03-massive-scale-plan-observation.md)(이 실측이 미룬 `ix_colrec_collection` vs `uq_colrec_active` 판별을 여기서 채운다)
 

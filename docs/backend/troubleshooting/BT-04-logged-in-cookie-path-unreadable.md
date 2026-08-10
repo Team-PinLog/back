@@ -1,7 +1,7 @@
 # BT-04. `logged_in` 쿠키가 프론트에서 읽히지 않음 — `Path`가 API 경로로 좁혀져 있었다
 
 - **상태**: 해결됨
-- **발견**: 2026-07-28, 실제 Google 로그인 수동 검증 중 (S15P11A705-63)
+- **발견**: 2026-07-28, 실제 Google 로그인 수동 검증 중 (Jira 작업)
 - **관련**: [BD-21](../decisions/BD-21-auth-token-model.md) · [BI-18](../implements/BI-18-2026-07-28-jwt-cookie-session.md)
 
 ## 증상

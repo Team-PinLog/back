@@ -2,8 +2,8 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-28
-- **관련**: [back#58](https://github.com/Team-PinLog/back/issues/58), S15P11A705-125,
-  S15P11A705-119(Feed 정책·계약) · S15P11A705-120(Spring 구현)
+- **관련**: [back#58](https://github.com/Team-PinLog/back/issues/58), Jira 작업,
+  Jira 작업(Feed 정책·계약) · Jira 작업(Spring 구현)
 - **주도(Driver)**: AI 파트
 
 ## 맥락

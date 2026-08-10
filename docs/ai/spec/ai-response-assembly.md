@@ -187,8 +187,8 @@ Record 단위 접기 규칙입니다. 한 Record에는 활성 Context가 여럿�
 근거는 *"내부 처리 상태는 사용자 관심사가 아니다"*였고, 그것은 **처리가 짧게 끝난다는 가정** 위에 서 있었습니다. 실측이 그 가정을 벗어났습니다.
 
 ```text
-S15P11A705-121·-197   GMS 판정이 분당 약 2건만 통과한다 (429)
-S15P11A705-198        PROCESSING 잔류 + PROCESSING_EXPIRY_SEC 600초로
+Jira 작업·-197   GMS 판정이 분당 약 2건만 통과한다 (429)
+Jira 작업        PROCESSING 잔류 + PROCESSING_EXPIRY_SEC 600초로
                       Context 하나가 10분 얼린 사례
 ```
 

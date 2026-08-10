@@ -3,13 +3,13 @@
 - **상태**: Accepted
 - **날짜**: 2026-07-23 (`7fb4e7e`, `fa6abf1`)
 - **작성 시점**: 2026-07-27 — 결정 이후에 정리
-- **관련**: S15P11A705-76 · back Issue #9 · PR #10~#13
+- **관련**: Jira 작업 · back Issue #9 · PR #10~#13
 
 ## 맥락
 
 초기 백엔드 설정에 **잘못된 성공 신호**가 여러 개 있었다.
 
-- 임시 `ssafy/ssafy` 계정과 `SecurityConfig`가 살아 있어, 인증 기능이 없는데도 인증 장벽이 존재했다. 실제로 보호되는 것이 없는데 보호되는 것처럼 보였다.
+- 임시 `demo/demo` 계정과 `SecurityConfig`가 살아 있어, 인증 기능이 없는데도 인증 장벽이 존재했다. 실제로 보호되는 것이 없는데 보호되는 것처럼 보였다.
 - 테스트 런타임이 H2여서 "운영과 같은 DB로 검증한다"는 착시가 있었다. `V1`의 `CREATE EXTENSION vector`와 `VECTOR(1536)` 컬럼은 H2에서 검증 자체가 불가능했다([BD-01](BD-01-h2-removal-testcontainers.md)).
 - Gradle Wrapper 실행 권한이 `100755`가 아니어서 `./gradlew`를 직접 실행할 수 없었다.
 - 존재하지 않는 `docs/feed/` 링크와 낡은 migration 주석이 남아 있었다.
@@ -44,7 +44,7 @@
 
 이 결정에서 나온 제약들이 [`CLAUDE.md`](../../../CLAUDE.md)의 상시 규칙으로 굳었다 — H2 금지, 빈 패키지·`.gitkeep` 금지, 투기적 도메인 계층 금지, 인증 PR 전 Security 금지. 그 규칙 중 하나를 되돌리려 할 때 먼저 이 문서를 본다.
 
-> 2026-07-29 갱신: 네 제약 중 셋이 `CLAUDE.md`를 떠났다. H2 금지는 [데이터베이스 개발 규약](../../development/database-conventions.md)으로, 빈 패키지·`.gitkeep`·투기적 계층 금지는 [`CONTRIBUTING.md`](../../../CONTRIBUTING.md)와 [패키지 구조](../../development/package-structure.md)로 옮겼다. Security 보류는 인증 PR(S15P11A705-63, [BI-18](../implements/BI-18-2026-07-28-jwt-cookie-session.md)) 병합으로 아래 재검토 트리거가 예고한 대로 소멸했다. 제약이 풀린 것이 아니라 규약 층으로 내려간 것이고, 결정 자체는 유효하다.
+> 2026-07-29 갱신: 네 제약 중 셋이 `CLAUDE.md`를 떠났다. H2 금지는 [데이터베이스 개발 규약](../../development/database-conventions.md)으로, 빈 패키지·`.gitkeep`·투기적 계층 금지는 [`CONTRIBUTING.md`](../../../CONTRIBUTING.md)와 [패키지 구조](../../development/package-structure.md)로 옮겼다. Security 보류는 인증 PR(Jira 작업, [BI-18](../implements/BI-18-2026-07-28-jwt-cookie-session.md)) 병합으로 아래 재검토 트리거가 예고한 대로 소멸했다. 제약이 풀린 것이 아니라 규약 층으로 내려간 것이고, 결정 자체는 유효하다.
 
 **재검토 트리거**
 

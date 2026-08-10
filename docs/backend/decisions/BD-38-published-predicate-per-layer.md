@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-29
-- **관련**: S15P11A705-148, S15P11A705-147([back#93](https://github.com/Team-PinLog/back/pull/93)),
+- **관련**: Jira 작업([back#93](https://github.com/Team-PinLog/back/pull/93)),
   [back#84](https://github.com/Team-PinLog/back/issues/84),
   [BI-11](../implements/BI-11-2026-07-28-follow-library-api.md),
   [BI-13](../implements/BI-13-2026-07-28-public-scope-filter.md),
@@ -16,7 +16,7 @@
 > `is_published`의 MVP 활용 여부 — 비공개 전환을 제공하면 Feed·타인 Shelf 조회·Collection 상세
 > 세 경로에 필터 필요
 
-앞선 S15P11A705-147은 같은 성격의 중복인 **작성자 미탈퇴** 판정을 `MemberRepository.isActive`
+앞선 Jira 작업은 같은 성격의 중복인 **작성자 미탈퇴** 판정을 `MemberRepository.isActive`
 한 곳으로 모았다. 그 티켓은 "세 곳의 코드가 동일해 구현 방식을 정할 것 없다"는 전제가 성립했다.
 발행 여부는 그렇지 않아서 방식을 정해야 했다.
 
@@ -55,7 +55,7 @@ core 경로에는 `record_count > 0`이 없다. **빈 Collection은 Feed 후보�
 ### Java 2곳은 이미 한 곳이다
 
 두 경로 모두 `Collection.isPublished()`를 부른다. `!x`와 `filter(x)`는 판정의 갈림이 아니라 호출
-문법의 차이다. S15P11A705-148의 본문은 "Java 2곳의 판정을 하나로 모은다"고 적었지만 그 전제가
+문법의 차이다. Jira 작업의 본문은 "Java 2곳의 판정을 하나로 모은다"고 적었지만 그 전제가
 사실과 다르다. 여기서 새 술어를 뽑으면 간접층만 늘어난다.
 
 ## 선택지

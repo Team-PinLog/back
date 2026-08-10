@@ -1,7 +1,7 @@
-# Feed keywords를 code에서 display_name으로 교체 (S15P11A705-252)
+# Feed keywords를 code에서 display_name으로 교체 (Jira 작업)
 
 - **상태**: ✅ 완료
-- **관련**: back#146(정본) · back#145(선행 조건, CLOSED) · S15P11A705-252
+- **관련**: back#146(정본) · back#145(선행 조건, CLOSED) · Jira 작업
 
 ## 무엇을 만들었나
 

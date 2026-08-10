@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료 (적용 지점 4 중 3 — 회원 탈퇴는 경로 미구현, 아래 "적용하지 못한 지점")
 - **날짜**: 2026-07-29
-- **관련**: S15P11A705-124, [back#61](https://github.com/Team-PinLog/back/issues/61),
+- **관련**: Jira 작업, [back#61](https://github.com/Team-PinLog/back/issues/61),
   [BD-37](../decisions/BD-37-ai-derived-invalidation-inside-deletion-transaction.md),
   공용 계약 `Team-PinLog/docs` `static/06_데이터모델_및_무결성.md` §1.3·§6.4~6.9,
   `static/08_API_명세.md` "AI 파생 데이터"
@@ -19,7 +19,7 @@
 소유이고, 백엔드가 엔티티를 들면 소유하지 않은 스키마의 형상을 코드에 고정하게 된다.
 
 **배치 기준은 호출부가 아니라 닿는 외부 경계다.** `ai` 스키마에 닿는 코드를 `domain/ai` 한곳에
-모은다 — 같은 패키지의 `ContextAiStateRepository`(S15P11A705-102, back#82)와 짝이다. 호출부
+모은다 — 같은 패키지의 `ContextAiStateRepository`(Jira 작업, back#82)와 짝이다. 호출부
 둘(`RecordDeletionService`·`RecordService`)은 `domain/record/service`지만, 소비 도메인별로 흩으면
 회원 탈퇴(6.9)가 붙을 때 세 번째 위치가 생기고 **`ai` 스키마 접근이 세 패키지로 갈린다.**
 

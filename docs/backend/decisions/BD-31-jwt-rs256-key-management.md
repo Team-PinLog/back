@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-28
-- **관련**: S15P11A705-63
+- **관련**: Jira 작업
 - **관련 결정**: [BD-21](BD-21-auth-token-model.md)(토큰 모델의 원본) · [BD-30](BD-30-authorization-request-in-cookie.md)
 
 ## 맥락
@@ -11,7 +11,7 @@
 
 먼저 확인한 것은 **외부 규범이 이 선택을 정해 주는지**였다. 결론은 "정해 주지 않는다"이고, 근처 문서가 하는 말의 적용 범위가 우리와 다르다.
 
-- [RFC 9068](https://www.rfc-editor.org/rfc/rfc9068.html) §4는 JWT access token에 대해 *"use of asymmetric cryptography is RECOMMENDED **as it simplifies the process of acquiring validation information for resource servers**"* 라고 하고 `RS256` 지원을 MUST로 건다. 그러나 **권고 이유가 발급자(AS)와 검증자(RS)의 분리를 전제한다.** 우리는 BFF와 리소스 서버가 한 프로세스라(S15P11A705-63 티켓) 이 이유가 성립하지 않는다. 애초에 이 프로파일이 규정하는 "OAuth access token"도 우리 세션 쿠키와 다른 물건이다.
+- [RFC 9068](https://www.rfc-editor.org/rfc/rfc9068.html) §4는 JWT access token에 대해 *"use of asymmetric cryptography is RECOMMENDED **as it simplifies the process of acquiring validation information for resource servers**"* 라고 하고 `RS256` 지원을 MUST로 건다. 그러나 **권고 이유가 발급자(AS)와 검증자(RS)의 분리를 전제한다.** 우리는 BFF와 리소스 서버가 한 프로세스라(Jira 작업 티켓) 이 이유가 성립하지 않는다. 애초에 이 프로파일이 규정하는 "OAuth access token"도 우리 세션 쿠키와 다른 물건이다.
 - [RFC 8725](https://www.rfc-editor.org/rfc/rfc8725.html)(BCP 225)는 대칭/비대칭에 **중립**이다. 알고리즘 *선택*이 아니라 *다루는 방법*을 규정한다.
 - `draft-ietf-oauth-browser-based-apps`(현재 -27, 아직 RFC 아님)는 BFF + 쿠키 세션을 우리와 같은 구조로 다루지만 세션 토큰의 서명 알고리즘은 규정하지 않는다. BD-21이 인용한 것도 이 문서의 *토큰 보관 위치* 권고지 서명 얘기가 아니었다.
 

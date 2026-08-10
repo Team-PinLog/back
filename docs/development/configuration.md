@@ -82,16 +82,16 @@ env:
 
 ### 애플리케이션이 추가로 요구하는 비밀값
 
-`DB_PASSWORD` 외에 아래가 필요합니다. 위 §5의 datasource 계약과 별개로, 이들은 **`back-owner-secrets`에 봉인돼 `envFrom`으로 주입됩니다**(S15P11A705-154). 허용 키 집합은 `infra/policy/sealedsecrets/back-prod.yaml`이 규정하므로, 새 키가 필요하면 저장소에 넣지 말고 인프라 담당자에게 요청해 그 집합에 더합니다.
+`DB_PASSWORD` 외에 아래가 필요합니다. 위 §5의 datasource 계약과 별개로, 이들은 **`back-owner-secrets`에 봉인돼 `envFrom`으로 주입됩니다**(Jira 작업). 허용 키 집합은 `infra/policy/sealedsecrets/back-prod.yaml`이 규정하므로, 새 키가 필요하면 저장소에 넣지 말고 인프라 담당자에게 요청해 그 집합에 더합니다.
 
 | 변수 | 필수 여부 | 없으면 |
 | --- | --- | --- |
 | `JWT_PRIVATE_KEY` | **운영 필수** | 운영 프로파일은 **기동 실패**. 로컬·테스트는 임시 키쌍 생성 |
 | `PINLOG_AI_INTERNAL_SECRET` | **운영 필수** | 운영 프로파일은 **기동 실패**. 그 외는 경고 후 기동하고 AI 호출이 전부 401로 거절됨 |
-| `GOOGLE_CLIENT_ID` | 로그인에 필요 | `unset`으로 기동은 되고 인가 요청 URL 생성까지만 동작 (S15P11A705-63) |
-| `GOOGLE_CLIENT_SECRET` | 로그인에 필요 | 위와 같음 (S15P11A705-63) |
-| `KAKAO_CLIENT_ID` · `KAKAO_CLIENT_SECRET` | Kakao 로그인에 필요 | 위와 같음 (S15P11A705-64) |
-| `NAVER_CLIENT_ID` · `NAVER_CLIENT_SECRET` | Naver 로그인에 필요 | 위와 같음 (S15P11A705-64) |
+| `GOOGLE_CLIENT_ID` | 로그인에 필요 | `unset`으로 기동은 되고 인가 요청 URL 생성까지만 동작 (Jira 작업) |
+| `GOOGLE_CLIENT_SECRET` | 로그인에 필요 | 위와 같음 (Jira 작업) |
+| `KAKAO_CLIENT_ID` · `KAKAO_CLIENT_SECRET` | Kakao 로그인에 필요 | 위와 같음 (Jira 작업) |
+| `NAVER_CLIENT_ID` · `NAVER_CLIENT_SECRET` | Naver 로그인에 필요 | 위와 같음 (Jira 작업) |
 
 **쓰지 않는 키는 빈 값으로 두지 말고 정의 자체를 하지 않습니다.** `application.yml`이 `spring.config.import`로 `.env`를 프로퍼티로 올리므로, `KAKAO_CLIENT_ID=`처럼 정의만 하면 프로퍼티가 "없음"이 아니라 **빈 문자열**이 되어 `${KAKAO_CLIENT_ID:unset}`의 기본값이 적용되지 않습니다. 그러면 `Client id of registration 'kakao' must not be empty`로 **기동이 실패합니다.** 로컬 `.env`도, 운영 Secret도 같습니다 — 자격증명을 아직 받지 못한 공급자는 주입하지 않는 것이 정상 상태입니다([BT-05](../backend/troubleshooting/BT-05-dotenv-empty-value-overrides-default.md)).
 

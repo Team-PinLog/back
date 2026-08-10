@@ -3,7 +3,7 @@
 - **상태**: Accepted
 - **날짜**: 2026-07-27 (`Team-PinLog/docs` `e0ba57b`·`4b0d90f` 쿠키 기반 개정)
 - **작성 시점**: 2026-07-27 — 결정 이후에 정리
-- **관련**: S15P11A705-76
+- **관련**: Jira 작업
 - **공용 계약**: [11_인증_설계](https://github.com/Team-PinLog/docs/blob/main/static/11_인증_설계.md) (결정 근거의 원본) · [08_API_명세 §1.1·§1.7·§1.8](https://github.com/Team-PinLog/docs/blob/main/static/08_API_명세.md)
 
 ## 맥락

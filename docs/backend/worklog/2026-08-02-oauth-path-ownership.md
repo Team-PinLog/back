@@ -1,7 +1,7 @@
 # OAuth 인가·콜백 경로 상수의 소유를 security로 옮겼다
 
 - **날짜**: 2026-08-02
-- **추적**: S15P11A705-249
+- **추적**: Jira 작업
 - **관련**: [back#157](https://github.com/Team-PinLog/back/issues/157) · [package-structure](../../development/package-structure.md) · [BD-31](../decisions/BD-31-jwt-rs256-key-management.md)
 
 구조를 훑다가 `SecurityConfig`가 `domain/auth/controller/SocialLoginController`를 import하는 것을 봤다. 무엇을 쓰는지 따라가 보니 `AUTHORIZATION_BASE_URI` 문자열 하나였다.

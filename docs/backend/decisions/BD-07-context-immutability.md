@@ -3,7 +3,7 @@
 - **상태**: Accepted
 - **날짜**: 2026-07-22 (`Team-PinLog/docs` `c1b2869`)
 - **작성 시점**: 2026-07-27 — 결정 이후에 정리
-- **관련**: S15P11A705-76 · docs `c1b2869`·`1259316`·`eaeae93`·`4541b8a`(M2 A안)
+- **관련**: Jira 작업 · docs `c1b2869`·`1259316`·`eaeae93`·`4541b8a`(M2 A안)
 - **공용 계약**: [05_AI_설계 §4.2·5.3](https://github.com/Team-PinLog/docs/blob/main/static/05_AI_설계.md) · [06_데이터모델_및_무결성 §2.5](https://github.com/Team-PinLog/docs/blob/main/static/06_데이터모델_및_무결성.md)
 
 ## 맥락

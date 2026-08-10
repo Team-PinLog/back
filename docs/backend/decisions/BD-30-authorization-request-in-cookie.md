@@ -3,7 +3,7 @@
 - **상태**: Accepted — **직렬화 형식은 2026-08-04 [BD-49](BD-49-authorization-request-cookie-json.md)로 대체됨**(쿠키에 담는다는 결정 자체는 유효)
 - **날짜**: 2026-07-28 (`7f1e8ed`·`1ed1dbe` 구현 시점)
 - **작성 시점**: 2026-07-28 — 결정 이후에 정리(같은 날, 미푸시 커밋 점검 중 기록 누락 발견)
-- **관련**: S15P11A705-63 · `7f1e8ed`(Security 도입) · `1ed1dbe`(로그인 진입) · `CookieOAuth2AuthorizationRequestRepository`
+- **관련**: Jira 작업 · `7f1e8ed`(Security 도입) · `1ed1dbe`(로그인 진입) · `CookieOAuth2AuthorizationRequestRepository`
 - **공용 계약**: [11_인증_설계 §2](https://github.com/Team-PinLog/docs/blob/main/static/11_인증_설계.md) (인증 상태를 쿠키에 둔다 — 수용 기록은 [BD-21](BD-21-auth-token-model.md))
 
 > **정정(2026-08-04).** 아래 (b)의 **직렬화 형식** 부분이 [BD-49](BD-49-authorization-request-cookie-json.md)로 뒤집혔다. 쿠키에 담는다는 결정과 (a)·(d) 기각 근거는 그대로 유효하다.

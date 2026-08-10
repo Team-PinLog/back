@@ -3,7 +3,7 @@
 - **상태**: Accepted
 - **날짜**: 2026-07-22 (AI 설계 확립 시점. 단일 커밋으로 특정 불가)
 - **작성 시점**: 2026-07-27 — 결정 이후에 정리
-- **관련**: S15P11A705-76
+- **관련**: Jira 작업
 - **공용 계약**: [05_AI_설계 §5.1](https://github.com/Team-PinLog/docs/blob/main/static/05_AI_설계.md) · [10_MVP_기능범위 §2](https://github.com/Team-PinLog/docs/blob/main/static/10_MVP_기능범위.md)
 
 ## 맥락

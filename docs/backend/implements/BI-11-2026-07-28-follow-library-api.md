@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-28
-- **관련**: S15P11A705-69, [BD-15](../decisions/BD-15-shelf-not-a-table.md), [BD-14](../decisions/BD-14-identifier-concealment.md)
+- **관련**: Jira 작업, [BD-15](../decisions/BD-15-shelf-not-a-table.md), [BD-14](../decisions/BD-14-identifier-concealment.md)
 
 ## 산출
 

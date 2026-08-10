@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-31
-- **관련**: [S15P11A705-231](https://ssafy.atlassian.net/browse/S15P11A705-231)
+- **관련**: Jira 작업
 
 ## 맥락
 

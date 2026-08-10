@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-27
-- **관련**: S15P11A705-40 (`1911dc9`, `cae552e`, `7e31e02`), [BD-06](../decisions/BD-06-framework-error-mapping.md)
+- **관련**: Jira 작업 (`1911dc9`, `cae552e`, `7e31e02`), [BD-06](../decisions/BD-06-framework-error-mapping.md)
 
 ## 산출
 

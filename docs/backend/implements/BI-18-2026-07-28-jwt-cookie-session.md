@@ -2,13 +2,13 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-28
-- **관련**: S15P11A705-63
+- **관련**: Jira 작업
 - **근거 결정**: [BD-21](../decisions/BD-21-auth-token-model.md)(토큰 모델) · [BD-31](../decisions/BD-31-jwt-rs256-key-management.md)(알고리즘·키 관리)
 - **계약**: [인증 PR 계약](../../development/authentication.md)
 
 ## 무엇을 만들었나
 
-`OAuthLoginSuccessHandler`가 회원만 확정하고 쿠키 없이 리다이렉트하던 자리(`TODO(S15P11A705-63)`)를 채웠다. 그 한 줄이 **OAuth Client 역할의 끝**과 **BFF·리소스 서버 역할의 시작** 사이 경계였다.
+`OAuthLoginSuccessHandler`가 회원만 확정하고 쿠키 없이 리다이렉트하던 자리(`TODO(Jira 작업)`)를 채웠다. 그 한 줄이 **OAuth Client 역할의 끝**과 **BFF·리소스 서버 역할의 시작** 사이 경계였다.
 
 | 역할 | 산출 |
 | --- | --- |
@@ -139,7 +139,7 @@ readiness에 Redis를 넣지 않은 판단은 BD-28에 있고 여기서 뒤집�
 
 - **키 회전** — `kid`만 선반영했고 다중 키 검증은 없다. 지금 키를 바꾸면 전면 로그아웃이다.
 - **Access 즉시 무효화** — 로그아웃해도 Access는 최대 30분 유효하다. BD-21이 감수한 범위다.
-- **404(타인 자원 접근) 테스트** — 소유자가 있는 도메인 리소스가 이 브랜치에 없어 검증 대상이 없다. S15P11A705-67~71이 가져온다.
+- **404(타인 자원 접근) 테스트** — 소유자가 있는 도메인 리소스가 이 브랜치에 없어 검증 대상이 없다. Jira 작업~71이 가져온다.
 - **`Team-PinLog/docs`의 `static/08_API_명세.md` 개정** — 별도 저장소라 이 PR 밖이다.
 - **인프라에 `JWT_PRIVATE_KEY` 요청** — 운영 배포 전에 Secret이 없으면 파드가 뜨지 않는다.
-- **도메인 브랜치 스텁 제거** — S15P11A705-67의 `X-Debug-Member-Id` 리졸버와 `pinlog.auth.stub.enabled`를 병합 시 반드시 버려야 한다. 남으면 운영 인증 우회 구멍이다.
+- **도메인 브랜치 스텁 제거** — Jira 작업의 `X-Debug-Member-Id` 리졸버와 `pinlog.auth.stub.enabled`를 병합 시 반드시 버려야 한다. 남으면 운영 인증 우회 구멍이다.

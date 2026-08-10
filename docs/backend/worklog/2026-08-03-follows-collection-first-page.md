@@ -1,7 +1,7 @@
 # 팔로우 목록에 책장별 Collection 첫 페이지 동봉
 
 - **날짜**: 2026-08-03
-- **추적**: S15P11A705-244
+- **추적**: Jira 작업
 - **관련**: [docs#39](https://github.com/Team-PinLog/docs/pull/39) · [docs#38](https://github.com/Team-PinLog/docs/issues/38)
 
 내 책장 화면이 팔로우 책장 표지를 그리려면 `GET /follows` + 책장마다 `GET /follows/{id}/collections`로
@@ -22,7 +22,7 @@ docs#39, 프론트 확인 완료.
 - **작성자 탈퇴 필터를 집계 질의에 두지 않았다.** 팔로우 목록 질의가 탈퇴 회원을 이미 거르고,
   집계는 그 결과 위에서만 돈다.
 - **`collectionSize` 보정은 `size`와 같은 `CursorPage.normalizeSize` 하나다** — 서버 방어 상한의
-  답은 하나(S15P11A705-117). 명세에도 보정과 권장 호출값(`size=10`·`collectionSize=5`)을 명시했다.
+  답은 하나(Jira 작업). 명세에도 보정과 권장 호출값(`size=10`·`collectionSize=5`)을 명시했다.
   `size` 기본은 1.4의 20 그대로이며 `collectionSize`가 있어도 달라지지 않는다.
 - **안쪽 커서는 마지막으로 실린 항목을 가리킨다.** 초과 행(probe)을 가리키면 그 행이 건너뛰어진다.
   기존 9.3 엔드포인트로 이어받는 연속성은 테스트로 고정했다.

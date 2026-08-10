@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-31
-- **관련**: S15P11A705-200, [back#125](https://github.com/Team-PinLog/back/issues/125),
+- **관련**: Jira 작업, [back#125](https://github.com/Team-PinLog/back/issues/125),
   [BI-29](BI-29-2026-07-30-member-withdrawal.md)(`MeController`와 `SocialAccountRepository.findByMemberId`를 만든 곳)
 
 ## 산출
@@ -23,7 +23,7 @@
 
 `MemberRepository.isActive`의 javadoc이 이 질문을 별건으로 남겨 뒀다.
 
-> `existsById`가 아니라 `findById`를 쓰는 것은 기존 세 경로와 같은 조회를 유지하려는 것이다. 바꾸면 `@SQLRestriction`이 count 쿼리에도 적용되는지가 **별개의 질문**이 되고, 그것은 중복 제거인 이 변경의 범위가 아니다(S15P11A705-147).
+> `existsById`가 아니라 `findById`를 쓰는 것은 기존 세 경로와 같은 조회를 유지하려는 것이다. 바꾸면 `@SQLRestriction`이 count 쿼리에도 적용되는지가 **별개의 질문**이 되고, 그것은 중복 제거인 이 변경의 범위가 아니다(Jira 작업).
 
 활성 기준 집계가 넷 필요해지면서 이 티켓에서 처음 답이 필요해졌다. **적용된다** — 파생 `countBy...`만으로 성립하고 `@Query`가 필요하지 않다.
 
@@ -63,7 +63,7 @@
 
 ## 남은 것
 
-- **`AiDerivedDataInvalidationTests`가 아직 공용 픽스처를 쓰지 않는다.** 아래 리팩터에서 member 도메인 두 클래스만 옮겼고, 그 파일은 **AI 파트 소유**(S15P11A705-124)라 이 PR에서 건드리지 않았다. 같은 `createRecord`·`createCollection`·`firstContextId`가 그쪽에 남아 있으므로, AI 파트가 필요할 때 `CoreApiFixtures`를 상속하면 된다.
+- **`AiDerivedDataInvalidationTests`가 아직 공용 픽스처를 쓰지 않는다.** 아래 리팩터에서 member 도메인 두 클래스만 옮겼고, 그 파일은 **AI 파트 소유**(Jira 작업)라 이 PR에서 건드리지 않았다. 같은 `createRecord`·`createCollection`·`firstContextId`가 그쪽에 남아 있으므로, AI 파트가 필요할 때 `CoreApiFixtures`를 상속하면 된다.
 - `GET /feed/collections/{id}/shelf`가 여전히 미구현이다([#85](https://github.com/Team-PinLog/back/issues/85)).
 
 ## 리팩터 — 공용 픽스처 추출

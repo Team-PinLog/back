@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료
 - **날짜**: 2026-07-27
-- **관련**: S15P11A705-41 (`e755b1e`·`0f3c4d6`·`d1204bf`·`02fcaa7`·`6c61272`·`1acd804`·`67bcd11`), [BD-02](../decisions/BD-02-base-entity-common-columns.md)
+- **관련**: Jira 작업 (`e755b1e`·`0f3c4d6`·`d1204bf`·`02fcaa7`·`6c61272`·`1acd804`·`67bcd11`), [BD-02](../decisions/BD-02-base-entity-common-columns.md)
 
 ## 산출
 

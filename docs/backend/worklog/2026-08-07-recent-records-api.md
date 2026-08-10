@@ -1,7 +1,7 @@
 # 최근 7일 내 작성한 내 Record 목록 API를 더했다
 
 - **날짜**: 2026-08-07
-- **추적**: S15P11A705-370
+- **추적**: Jira 작업
 - **관련**: [명세 5.9](https://github.com/Team-PinLog/docs/pull/50) · [BD-13](../decisions/BD-13-public-boundary-query-dto-split.md) · [BD-18](../decisions/BD-18-keyword-preset-and-visibility.md)
 
 홈 화면 "최근 기록" 영역이 쓸 `GET /v1/records/recent`를 더했다. 마이그레이션은 없다.

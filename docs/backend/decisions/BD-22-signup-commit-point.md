@@ -3,7 +3,7 @@
 - **상태**: Accepted
 - **날짜**: 2026-07-27 (`Team-PinLog/docs` `d5288cd` 가입 흐름 변경)
 - **작성 시점**: 2026-07-27 — 결정 이후에 정리
-- **관련**: S15P11A705-76
+- **관련**: Jira 작업
 - **공용 계약**: [11_인증_설계 §5.1·§6](https://github.com/Team-PinLog/docs/blob/main/static/11_인증_설계.md) · [08_API_명세 §3.2](https://github.com/Team-PinLog/docs/blob/main/static/08_API_명세.md) · [02_정책_정의서 §2](https://github.com/Team-PinLog/docs/blob/main/static/02_정책_정의서.md)
 
 ## 맥락

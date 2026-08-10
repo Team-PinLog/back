@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-27
-- **관련**: S15P11A705-53 (`a45475a`, `93f4ad6`, `fe52533`, `86b0dd6`, `a1cd90f`), [BI-03](../implements/BI-03-2026-07-27-api-response-envelope.md), `Team-PinLog/docs` PR #11
+- **관련**: Jira 작업 (`a45475a`, `93f4ad6`, `fe52533`, `86b0dd6`, `a1cd90f`), [BI-03](../implements/BI-03-2026-07-27-api-response-envelope.md), `Team-PinLog/docs` PR #11
 
 > 번호 참고: 열린 PR #25가 아직 `dev`에 머지되지 않은 채 BD-02·BI-02·BT-01을 점유하고 있다. 이 브랜치의 `docs/backend/`에는 BD-02가 보이지 않지만, 번호 충돌을 피하기 위해 이 문서는 BD-03부터 시작한다.
 

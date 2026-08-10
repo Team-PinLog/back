@@ -1,7 +1,7 @@
-# 검색 응답에 Keyword 판정 상태 노출 (S15P11A705-209)
+# 검색 응답에 Keyword 판정 상태 노출 (Jira 작업)
 
 - **상태**: ✅ 완료
-- **관련**: [back#136](https://github.com/Team-PinLog/back/issues/136)(정본) · front#58(화면 렌더링, 프론트 파트) · S15P11A705-209
+- **관련**: [back#136](https://github.com/Team-PinLog/back/issues/136)(정본) · front#58(화면 렌더링, 프론트 파트) · Jira 작업
 - **PR**: back#161(명세 개정, 1/3) · [Team-PinLog/docs#41](https://github.com/Team-PinLog/docs/pull/41)(공용 계약, 2/3) · back(구현, 3/3)
 
 ## 무엇을 만들었나
@@ -31,8 +31,8 @@ back#136에서 백엔드가 이 조항을 근거로 **「백엔드는 계약대�
 §5의 판단은 *"내부 처리 상태는 사용자 관심사가 아니다"*였고 이는 **처리가 짧게 끝난다는 가정** 위에 있었다. 실측이 그 가정을 벗어났다.
 
 ```text
-S15P11A705-121·-197   GMS 판정이 분당 약 2건만 통과한다 (429)
-S15P11A705-198        PROCESSING 잔류 + PROCESSING_EXPIRY_SEC 600초로
+Jira 작업·-197   GMS 판정이 분당 약 2건만 통과한다 (429)
+Jira 작업        PROCESSING 잔류 + PROCESSING_EXPIRY_SEC 600초로
                       Context 하나가 10분 얼린 사례
 ```
 
@@ -141,7 +141,7 @@ GROUP BY ct.record_id
 
 ### N+1 부재 — 측정으로 확인했다
 
-`RecordSearchQueryCountTests`를 신설했다(`SqlQueryCounter` 사용, S15P11A705-252 선례). 결과가 3→12건으로 늘어도 **상태 조회는 1회 고정**이고, **기존 Keyword 조회 횟수도 그대로**다. 후자가 "필드를 더하면서 기존 조회를 늘리지 않았다"가 측정으로 드러나는 유일한 자리다.
+`RecordSearchQueryCountTests`를 신설했다(`SqlQueryCounter` 사용, Jira 작업 선례). 결과가 3→12건으로 늘어도 **상태 조회는 1회 고정**이고, **기존 Keyword 조회 횟수도 그대로**다. 후자가 "필드를 더하면서 기존 조회를 늘리지 않았다"가 측정으로 드러나는 유일한 자리다.
 
 결과 0건이면 상태 조회 자체가 나가지 않는 것도 함께 고정했다. 빈 `IN ()`으로 도는 쿼리는 문법 오류이거나 전체 스캔이기 때문이다.
 

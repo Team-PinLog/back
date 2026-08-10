@@ -1,7 +1,7 @@
 # 동시 회전에서 새던 전 세션 폐기를 막고, 재발급 실패가 쿠키를 정리하게 했다
 
 - **날짜**: 2026-08-03
-- **추적**: S15P11A705-267
+- **추적**: Jira 작업
 - **관련**: [BT-06](../troubleshooting/BT-06-refresh-revocation-leak-under-concurrent-rotation.md) · [BD-35](../decisions/BD-35-refresh-reuse-family-revocation.md) · [back#165](https://github.com/Team-PinLog/back/issues/165)
 
 프론트가 "`logged_in` 쿠키 수명과 Refresh TTL이 어긋난 것 같다"고 제보했는데 그건 아니었다. 세 값이 `refresh-token-ttl: 7d` 한 곳에서 나오므로 어긋날 수가 없다. 증상·원인 추적은 [BT-06](../troubleshooting/BT-06-refresh-revocation-leak-under-concurrent-rotation.md)에 남겼고, 여기에는 고치면서 내린 판단만 적는다.

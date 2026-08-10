@@ -1,7 +1,7 @@
 # 조회 응답 3곳에 Record·Collection 키워드를 채웠다
 
 - **날짜**: 2026-08-01
-- **추적**: S15P11A705-240
+- **추적**: Jira 작업
 - **관련**: [BI-36](../implements/BI-36-2026-08-01-keyword-exposure.md) · [back#145](https://github.com/Team-PinLog/back/issues/145) · [#147](https://github.com/Team-PinLog/back/pull/147) · [BD-18](../decisions/BD-18-keyword-preset-and-visibility.md)
 
 키워드를 실제로 채우는 응답이 **AI 검색 하나뿐**이었고, Record 상세·타인 Record 카드·책장 목록(§9.3·§8.1)은 `List.of()` 고정이라 "AI가 채우기 전까지 빈 배열"이 사실상 영구 빈 배열이었다. AI 몫(FastAPI가 `ai.context_keyword`를 채움)은 끝나 있었고, 빠져 있던 것은 백엔드 몫인 읽기 조인이다(BD-16이 백엔드의 권리이자 의무로 명시).

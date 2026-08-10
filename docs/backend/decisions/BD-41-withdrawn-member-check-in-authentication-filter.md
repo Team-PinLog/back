@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-30
-- **관련**: [S15P11A705-65](https://ssafy.atlassian.net/browse/S15P11A705-65), [back#34](https://github.com/Team-PinLog/back/issues/34),
+- **관련**: Jira 작업, [back#34](https://github.com/Team-PinLog/back/issues/34),
   [BD-21](BD-21-auth-token-model.md)(Access 30분·Refresh 7일), [BD-35](BD-35-refresh-reuse-family-revocation.md)(회원 단위 Refresh 폐기)
 
 ## 맥락
@@ -22,7 +22,7 @@ Access는 자기완결적 JWT이고 폐기 목록이 없다. `JwtAuthenticationF
 
 | 안 | 장점 | 단점 |
 |---|---|---|
-| (a) 필터에서 `MemberRepository.isActive` 확인 | 창이 즉시 닫힌다. 판정이 이미 한 곳에 모여 있다(S15P11A705-147) | 인증 요청마다 PK 조회 1회 |
+| (a) 필터에서 `MemberRepository.isActive` 확인 | 창이 즉시 닫힌다. 판정이 이미 한 곳에 모여 있다(Jira 작업) | 인증 요청마다 PK 조회 1회 |
 | (b) 창을 감수하고 문서화 | 추가 비용 0. 스테이트리스 토큰의 알려진 대가다 | 탈퇴자가 30분간 쓰기 가능. 완료 조건을 계약 수준으로 낮춰야 한다 |
 | (c) Redis 탈퇴 마커(TTL 30분) | DB 부하 없음, 만료 자동 | 새 키 스페이스. 필터가 Redis에 의존하게 되어 **Redis 순단이 인증 실패로 번지고**, fail-open/closed 판단이 추가로 필요하다 |
 
@@ -32,7 +32,7 @@ Access는 자기완결적 JWT이고 폐기 목록이 없다. `JwtAuthenticationF
 
 **① 창 안에서 가능한 것이 읽기가 아니라 쓰기다.** 조회만 새는 것이라면 (b)를 택할 만하다. 그런데 탈퇴 직후 30분간 Record·Collection 생성이 되고, 그 행들은 연쇄 삭제가 이미 지나간 뒤에 만들어져 **어떤 정리 경로에도 걸리지 않는다.** 탈퇴 후 남는 고아 데이터를 감수하는 것과 요청당 PK 조회를 감수하는 것 사이의 선택이고, 후자가 싸다.
 
-**② 판정 지점이 이미 존재한다.** `S15P11A705-147`이 공개 조회 세 경로의 미탈퇴 판정을 `MemberRepository.isActive` 하나로 모아 두었고, 그 javadoc이 *"탈퇴 정책이 바뀌면 만질 자리는 여기 하나"*라고 적고 있다. 인증 경로가 같은 메서드를 쓰면 정책이 갈라지지 않는다. (c)를 택하면 미탈퇴 판정이 두 벌(DB·Redis)이 되고 둘의 동기화가 새 문제가 된다.
+**② 판정 지점이 이미 존재한다.** `Jira 작업`이 공개 조회 세 경로의 미탈퇴 판정을 `MemberRepository.isActive` 하나로 모아 두었고, 그 javadoc이 *"탈퇴 정책이 바뀌면 만질 자리는 여기 하나"*라고 적고 있다. 인증 경로가 같은 메서드를 쓰면 정책이 갈라지지 않는다. (c)를 택하면 미탈퇴 판정이 두 벌(DB·Redis)이 되고 둘의 동기화가 새 문제가 된다.
 
 (c)를 기각한 결정적 이유는 성능이 아니라 **장애 전파**다. 지금 Redis가 죽으면 재발급만 실패하고 진행 중인 세션은 Access 만료까지 살아 있다. 필터가 Redis를 읽으면 Redis 순단이 곧 전체 인증 실패이거나(fail-closed), 아니면 순단 중에 탈퇴자가 통과한다(fail-open). readiness 그룹에 `redis`를 넣지 않기로 한 [BD-28](BD-28-readiness-includes-db.md)과 같은 방향이다 — 외부 의존성 하나가 서비스 전체를 끌어내리지 않게 한다.
 

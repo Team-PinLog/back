@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-29
-- **관련**: S15P11A705-120, [back#58](https://github.com/Team-PinLog/back/issues/58),
+- **관련**: Jira 작업, [back#58](https://github.com/Team-PinLog/back/issues/58),
   [P42](../../ai/proposals/P42-feed-mvp-without-place-metadata.md),
   AI 파트 명세 [feed-profile-cache](../../ai/spec/feed-profile-cache.md) 7장 ·
   [feed-recommendation](../../ai/spec/feed-recommendation.md) 4장

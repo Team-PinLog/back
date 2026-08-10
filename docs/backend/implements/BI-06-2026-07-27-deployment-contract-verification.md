@@ -2,7 +2,7 @@
 
 - **상태**: ✅ 완료 (검증), ⚠️ blocker 2건 별도
 - **날짜**: 2026-07-27
-- **관련**: S15P11A705-51, Infra 연계 S15P11A705-46·S15P11A705-47, [BT-02](../troubleshooting/BT-02-flyway-out-of-order-version-ranges.md) · [BT-03](../troubleshooting/BT-03-health-endpoint-blocks-on-redis-outage.md)
+- **관련**: Jira 작업, Infra 연계 Jira 작업, [BT-02](../troubleshooting/BT-02-flyway-out-of-order-version-ranges.md) · [BT-03](../troubleshooting/BT-03-health-endpoint-blocks-on-redis-outage.md)
 
 Infra가 전달한 "Backend 배포 연동 수정·확인 체크리스트"를 항목별로 검증했다. 실제로 수정한 것은 pgvector 버전 정렬뿐이고 나머지는 이미 충족 상태였다.
 
@@ -32,7 +32,7 @@ Infra가 전달한 "Backend 배포 연동 수정·확인 체크리스트"를 항
 ALTER EXTENSION vector UPDATE;   -- 0.8.1 → 0.8.5 확인
 ```
 
-운영 전환(S15P11A705-46)에서도 기존 PVC를 유지하면 같은 상황이 되므로 Infra에 전달했다.
+운영 전환(Jira 작업)에서도 기존 PVC를 유지하면 같은 상황이 되므로 Infra에 전달했다.
 
 ### 운영 환경변수만으로 기동
 
@@ -101,5 +101,5 @@ docker build --platform linux/amd64 --build-arg BUILD_SHA=$(git rev-parse HEAD) 
 
 ## 남은 blocker
 
-1. [BT-02](../troubleshooting/BT-02-flyway-out-of-order-version-ranges.md) — 백엔드 migration 번호 구간이 AI 구간보다 낮아, AI migration이 적용된 DB에서는 백엔드 migration 추가 시 Flyway validate가 실패한다. **S15P11A705-66 착수 전에 합의가 필요하다.**
+1. [BT-02](../troubleshooting/BT-02-flyway-out-of-order-version-ranges.md) — 백엔드 migration 번호 구간이 AI 구간보다 낮아, AI migration이 적용된 DB에서는 백엔드 migration 추가 시 Flyway validate가 실패한다. **Jira 작업 착수 전에 합의가 필요하다.**
 2. [BT-03](../troubleshooting/BT-03-health-endpoint-blocks-on-redis-outage.md) — Redis 장애 시 집계 `/health`가 60초 블로킹. probe 경로를 liveness·readiness로 한정하면 회피되지만, 그 경우 의존성 장애가 readiness에 반영되지 않는다.

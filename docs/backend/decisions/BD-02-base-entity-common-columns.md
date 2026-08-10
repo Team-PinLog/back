@@ -2,7 +2,7 @@
 
 - **상태**: Accepted
 - **날짜**: 2026-07-27
-- **관련**: S15P11A705-41 (`0f3c4d6`), [BI-02](../implements/BI-02-2026-07-27-member-base-entity-soft-delete.md)
+- **관련**: Jira 작업 (`0f3c4d6`), [BI-02](../implements/BI-02-2026-07-27-member-base-entity-soft-delete.md)
 
 ## 맥락
 

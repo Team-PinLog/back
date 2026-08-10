@@ -1,9 +1,9 @@
 # BT-02. 백엔드 migration이 AI 구간보다 낮은 번호라 Flyway validate가 실패한다
 
-- **상태**: ✅ 해결 (2026-07-28, S15P11A705-86) — 아래 "해결" 절 참고. 구간 소유를 유지하고 `out-of-order`를 허용하는 (a)를 채택했다([BD-26](../decisions/BD-26-flyway-out-of-order.md))
+- **상태**: ✅ 해결 (2026-07-28, Jira 작업) — 아래 "해결" 절 참고. 구간 소유를 유지하고 `out-of-order`를 허용하는 (a)를 채택했다([BD-26](../decisions/BD-26-flyway-out-of-order.md))
 - **날짜**: 2026-07-27
 - **레이어**: Flyway / 배포
-- **관련**: S15P11A705-51 검증 중 발견, S15P11A705-66(다음 백엔드 migration)에 직접 영향. 해소는 S15P11A705-86
+- **관련**: Jira 작업 검증 중 발견, Jira 작업(다음 백엔드 migration)에 직접 영향. 해소는 Jira 작업
 
 ## 증상
 
@@ -39,8 +39,8 @@ DB에는 `V1`·`V100`~`V102`가 적용돼 있고, 레포에는 그 뒤에 추가
 
 ### 운영에 미치는 영향
 
-- 최초 배포(S15P11A705-48)는 빈 DB라 통과한다.
-- 그 이후 백엔드가 migration을 하나라도 추가하면(예: S15P11A705-66의 core 테이블) **다음 배포에서 애플리케이션이 기동 실패한다.** RollingUpdate 중이라면 새 Pod가 CrashLoop에 빠지고 롤아웃이 멈춘다.
+- 최초 배포(Jira 작업)는 빈 DB라 통과한다.
+- 그 이후 백엔드가 migration을 하나라도 추가하면(예: Jira 작업의 core 테이블) **다음 배포에서 애플리케이션이 기동 실패한다.** RollingUpdate 중이라면 새 Pod가 CrashLoop에 빠지고 롤아웃이 멈춘다.
 
 ## 확인 방법 (진단 당시)
 
@@ -57,7 +57,7 @@ Successfully applied 1 migration
 
 이 1회 확인이 (a)의 근거가 되었고, 아래 "해결"에서 상시 설정으로 승격했다.
 
-## 해결 (2026-07-28, S15P11A705-86)
+## 해결 (2026-07-28, Jira 작업)
 
 **(a)를 채택했다** — 구간 소유 구조를 유지하고 `application.yml`에 `spring.flyway.out-of-order: true`를 적용했다. 결정 배경과 감수 항목은 [BD-26](../decisions/BD-26-flyway-out-of-order.md)에 있다.
 

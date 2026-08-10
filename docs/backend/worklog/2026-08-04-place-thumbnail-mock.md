@@ -1,7 +1,7 @@
 # record 상세 응답에 place 썸네일을 추가한다 (시연용 목업)
 
 - **날짜**: 2026-08-04
-- **추적**: S15P11A705-305
+- **추적**: Jira 작업
 - **관련**: [back#182](https://github.com/Team-PinLog/back/issues/182) · [docs#47](https://github.com/Team-PinLog/docs/pull/47)
 
 카카오 로컬 API는 장소 사진을 주지 않아 place에는 이미지가 없었다. 시연에서 상세 화면이

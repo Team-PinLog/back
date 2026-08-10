@@ -25,9 +25,9 @@
 
 ## 배경 — 인증은 실수로 빠진 것이 아니었다
 
-backend foundation reset은 Spring Security, OAuth, 임시 계정, `SecurityConfig`를 **의도적으로 제거**했습니다. 인증 없이도 서비스가 실행·테스트·배포되도록 기반을 먼저 정리하기 위함이었고, 그동안 core 도메인은 **인증 스텁** 위에서 개발됐습니다(back#28 합의, S15P11A705-67).
+backend foundation reset은 Spring Security, OAuth, 임시 계정, `SecurityConfig`를 **의도적으로 제거**했습니다. 인증 없이도 서비스가 실행·테스트·배포되도록 기반을 먼저 정리하기 위함이었고, 그동안 core 도메인은 **인증 스텁** 위에서 개발됐습니다(back#28 합의, Jira 작업).
 
-**인증은 S15P11A705-63에서 한 PR로 병합됐습니다.** 스텁은 그 PR에서 제거됐습니다 — 아래는 스텁이 고정해 둔 계약 중 **그대로 이어받은 것**입니다.
+**인증은 Jira 작업에서 한 PR로 병합됐습니다.** 스텁은 그 PR에서 제거됐습니다 — 아래는 스텁이 고정해 둔 계약 중 **그대로 이어받은 것**입니다.
 
 - principal 타입은 `MemberPrincipal(Long memberId)` record이고, 컨트롤러는 `@LoginMember MemberPrincipal`로 받습니다. 이 시그니처는 바뀌지 않았습니다 — 도메인 컨트롤러가 수정 대상이 되지 않도록 스텁이 미리 고정해 둔 값이고, 그 판단이 실제로 값을 했습니다.
 - 서비스는 `Long memberId` 파라미터를 받습니다. `SecurityContext`를 서비스에서 직접 읽지 않습니다.
@@ -141,12 +141,12 @@ DB가 필요한 인증 테스트는 PostgreSQL Testcontainers를 사용합니다
 - [x] ~~envelope opt-out 장치~~ — 불필요함이 확인됐습니다(위 "공통 응답 envelope의 예외"). Security entry point의 오류 envelope는 `SecurityErrorWriter`가 만듭니다
 - [x] 로컬 개발·테스트에서 인증 통과 방법 문서화 (아래 §7)
 - [x] 성공 / 401 / 403(CSRF) / 공개 경로 / 쿠키 속성 / 본문 토큰 부재 테스트
-- [x] **404(타인 자원 접근)** — 도메인 API(S15P11A705-67~71)가 `dev`에 병합되면서 검증 대상이 생겼습니다. `PublicCollectionApiTests`의 `withdrawnOwnersCollectionIsHiddenFromOthers`·`unpublishedCollectionIsHiddenFromOthers`가 실제 인증 위에서 404를 고정합니다([BD-13](../backend/decisions/BD-13-public-boundary-query-dto-split.md))
+- [x] **404(타인 자원 접근)** — 도메인 API(Jira 작업~71)가 `dev`에 병합되면서 검증 대상이 생겼습니다. `PublicCollectionApiTests`의 `withdrawnOwnersCollectionIsHiddenFromOthers`·`unpublishedCollectionIsHiddenFromOthers`가 실제 인증 위에서 404를 고정합니다([BD-13](../backend/decisions/BD-13-public-boundary-query-dto-split.md))
 - [x] `./gradlew clean check --no-daemon` 통과
 - [x] 이 문서와 API 규약 갱신
 - [ ] **공용 계약(`Team-PinLog/docs`) `static/08_API_명세.md` 개정** — 별도 저장소라 이 PR 밖입니다
 
-## 7. 구현된 형태 (S15P11A705-63)
+## 7. 구현된 형태 (Jira 작업)
 
 여기부터는 계약이 아니라 **실제로 이렇게 만들어졌다**는 기록입니다. 계약과 어긋나면 위쪽이 이깁니다.
 
@@ -211,7 +211,7 @@ public CursorPage<CollectionSummaryResponse> listMine(@LoginMember MemberPrincip
 }
 ```
 
-> **도메인 브랜치와의 병합 주의.** S15P11A705-67이 같은 이름의 스텁(`X-Debug-Member-Id` 헤더를 읽는 리졸버)을 먼저 만들어 뒀습니다. 병합할 때 **스텁 쪽을 버리고 이 구현을 남겨야 합니다.** 스텁의 헤더 분기와 `pinlog.auth.stub.enabled` 프로퍼티가 남으면 운영 인증 우회 구멍이 됩니다.
+> **도메인 브랜치와의 병합 주의.** Jira 작업이 같은 이름의 스텁(`X-Debug-Member-Id` 헤더를 읽는 리졸버)을 먼저 만들어 뒀습니다. 병합할 때 **스텁 쪽을 버리고 이 구현을 남겨야 합니다.** 스텁의 헤더 분기와 `pinlog.auth.stub.enabled` 프로퍼티가 남으면 운영 인증 우회 구멍이 됩니다.
 
 ## 8. 로컬 개발과 테스트에서 인증 통과하기
 
