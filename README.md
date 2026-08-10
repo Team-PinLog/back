@@ -2,6 +2,30 @@
 
 PinLog 백엔드 애플리케이션입니다. Spring Boot와 Java 21을 기반으로 하며, 로컬 개발 인프라는 Docker Compose로 실행합니다.
 
+## 시스템 아키텍처
+
+![PinLog Backend 시스템 아키텍처](docs/assets/system-architecture-backend.png)
+
+### 요청/인증 경계
+
+모든 API는 애플리케이션이 소유하는 `/api/core` context path로 들어옵니다. Spring Security 필터 체인은 Actuator·인증 진입점 등 명시된 공개 경로만 허용하고 나머지는 인증을 요구하며, Access JWT 쿠키를 `MemberPrincipal`로 변환합니다. 쿠키 기반 인증의 상태 변경 요청은 CSRF 검증을 거치고, 도메인 서비스에는 `SecurityContext` 대신 해석된 `memberId`만 전달합니다.
+
+### Core 도메인·트랜잭션
+
+`member`, `place`, `record`, `collection`, `follow`, `feed`, `search`는 controller → service → repository의 세로 슬라이스로 구성됩니다. 서비스가 트랜잭션 경계를 소유하고 JPA의 Open EntityManager in View는 끄며, PostgreSQL의 `core` 스키마를 도메인 데이터의 원본으로 사용합니다.
+
+### AI 비동기 처리·Scheduler
+
+Context 변경은 Core 트랜잭션 커밋 뒤 `@TransactionalEventListener(AFTER_COMMIT)`와 전용 executor를 통해 FastAPI 처리 요청으로 전달됩니다. 유실되거나 정지된 작업은 `AiRescanScheduler`가 `fixedDelay`로 재스캔하며, 후보 잠금·재시도 상태 커밋과 외부 HTTP 호출을 분리해 DB 잠금을 호출 대기 동안 유지하지 않습니다.
+
+### PostgreSQL core/ai·Flyway와 Redis
+
+하나의 pgvector PostgreSQL에서 `core`와 `ai` 스키마를 분리하고, Hibernate는 스키마를 생성하지 않고 `validate`만 수행합니다. Flyway는 공통 기반 `V1`, Backend `V2`~`V99`, AI `V100`~`V199`의 소유 구간으로 마이그레이션하며, Redis는 Refresh 토큰 회전·폐기 등 세션 상태와 캐시를 담당합니다.
+
+### Actuator startup/liveness/readiness/metrics
+
+Actuator의 전체 health는 startup probe에, `/actuator/health/liveness`는 프로세스 생존 판정에, `/actuator/health/readiness`는 트래픽 수신 판정에 사용합니다. readiness에는 애플리케이션 상태와 DB를 포함하되 Redis는 제외하고, liveness에는 외부 의존성을 넣지 않습니다. Prometheus는 `/actuator/prometheus`에서 Micrometer 메트릭을 수집하며 모든 경로 앞에는 `/api/core`가 붙습니다.
+
 ## 기여와 개발 규칙
 
 시작 절차, Jira 중심 작업 추적, 검증과 PR 규칙의 단일 원본은 [CONTRIBUTING.md](./CONTRIBUTING.md)입니다. API, DB, 테스트의 상세 기준은 [개발 규약](./docs/development/)에서 확인합니다.
