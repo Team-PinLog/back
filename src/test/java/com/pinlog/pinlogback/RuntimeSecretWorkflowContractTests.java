@@ -26,7 +26,7 @@ class RuntimeSecretWorkflowContractTests {
 	private static final Path BACKEND_CI = Path.of(".github/workflows/backend-ci.yml");
 	private static final String ACTION =
 		"Team-PinLog/infra/.github/actions/sealedsecret-infra-pr"
-			+ "@ee325683ee2fb99ee47b07c11d02396b33701e0b";
+			+ "@9e3b3c98fdaa83c78ad31b6f9e3a4894249ca238";
 
 	/** 스텝을 이름으로 집는다. checkout은 {@code name}이 없어 {@code uses}가 신원이다. */
 	private static final String CHECKOUT = "actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683";
