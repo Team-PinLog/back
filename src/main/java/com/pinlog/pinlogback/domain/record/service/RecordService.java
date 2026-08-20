@@ -45,6 +45,7 @@ import com.pinlog.pinlogback.domain.record.entity.Context;
 import com.pinlog.pinlogback.domain.record.entity.Record;
 import com.pinlog.pinlogback.domain.record.repository.ContextRepository;
 import com.pinlog.pinlogback.domain.record.repository.RecordRepository;
+import com.pinlog.pinlogback.global.common.QueryPlanPin;
 import com.pinlog.pinlogback.global.exception.InvalidRequestException;
 import com.pinlog.pinlogback.global.exception.ResourceNotFoundException;
 import com.pinlog.pinlogback.global.response.BoundsResponse;
@@ -75,11 +76,13 @@ public class RecordService {
 	private final ContextKeywordRepository contextKeywordRepository;
 	private final RecordLatestCollectionRepository recordLatestCollectionRepository;
 	private final ApplicationEventPublisher events;
+	private final QueryPlanPin queryPlanPin;
 
 	public RecordService(PlaceRepository placeRepository, RecordRepository recordRepository,
 		ContextRepository contextRepository, ContextAiStateRepository contextAiStateRepository,
 		AiDerivedDataRepository aiDerivedDataRepository, ContextKeywordRepository contextKeywordRepository,
-		RecordLatestCollectionRepository recordLatestCollectionRepository, ApplicationEventPublisher events) {
+		RecordLatestCollectionRepository recordLatestCollectionRepository, ApplicationEventPublisher events,
+		QueryPlanPin queryPlanPin) {
 		this.placeRepository = placeRepository;
 		this.recordRepository = recordRepository;
 		this.contextRepository = contextRepository;
@@ -88,6 +91,7 @@ public class RecordService {
 		this.contextKeywordRepository = contextKeywordRepository;
 		this.recordLatestCollectionRepository = recordLatestCollectionRepository;
 		this.events = events;
+		this.queryPlanPin = queryPlanPin;
 	}
 
 	/**
@@ -256,6 +260,11 @@ public class RecordService {
 		String keyword) {
 		boolean allPresent = requireWholeBbox(swLat, swLng, neLat, neLng);
 		String likeKeyword = toLikeKeyword(keyword);
+		if (allPresent) {
+			// bbox 값이 걸러내는 양은 화면마다 다른데 generic plan은 그 값을 못 읽어 조인 순서를
+			// 뒤집는다(S15P11A705-404). bbox 없는 경로는 이 문제가 없으므로 걸지 않는다.
+			queryPlanPin.forceCustomPlanForThisTransaction();
+		}
 		List<MapMarkerResponse> found = allPresent
 			? recordRepository.findMarkersWithinBounds(memberId, swLat, swLng, neLat, neLng, likeKeyword)
 			: recordRepository.findMarkers(memberId, likeKeyword);
@@ -275,6 +284,11 @@ public class RecordService {
 	public MapKeywordsResponse mapKeywords(Long memberId, BigDecimal swLat, BigDecimal swLng,
 		BigDecimal neLat, BigDecimal neLng) {
 		boolean bounded = requireWholeBbox(swLat, swLng, neLat, neLng);
+		if (bounded) {
+			// 마커 조회와 같은 이유다(S15P11A705-404). bbox 없는 집계는 자기 취약점이 따로 있으나
+			// 그 범위는 S15P11A705-405의 전수 감사가 판단한다.
+			queryPlanPin.forceCustomPlanForThisTransaction();
+		}
 		List<TopKeywordRow> rows = bounded
 			? contextKeywordRepository.findTopKeywordsInBounds(
 				memberId, swLat, swLng, neLat, neLng, TOP_KEYWORD_LIMIT)
